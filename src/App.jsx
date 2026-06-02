@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import EditorPage from './components/EditorPage'
 import HomePage from './pages/HomePage'
 import ModelsMockupPage from './pages/ModelsMockupPage'
+import FeaturesPage from './pages/FeaturesPage'
+import ContactPage from './pages/ContactPage'
 import Navbar from './components/Navbar'
 
 function App() {
@@ -13,6 +15,8 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/modelsMockup" element={<ModelsMockupPage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/editor" element={<EditorPage />} />
           </Routes>
         </div>

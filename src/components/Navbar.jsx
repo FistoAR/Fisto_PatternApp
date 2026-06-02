@@ -1,12 +1,13 @@
 import fistoLogo from '../assets/images/fisto-logo.png';
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 
-const navLinks = ['Home', 'Features', 'Mockups', 'Pricing', 'Contact'];
+const navLinks = ['Home','Mockups', 'Features', 'Contact'];
 
 export default function Navbar({ onTogglePanel }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const navRef = useRef(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -51,13 +52,13 @@ export default function Navbar({ onTogglePanel }) {
           {/* Nav Links */}
           <ul className="hidden lg:flex items-center gap-8 lg:gap-10 list-none m-0 p-0">
             {navLinks.map((link) => {
-              // Mark "Home" as selected for the main route, or use standard logic.
-              // We'll hardcode 'Home' or match it against path for now.
-              const isSelected = link === 'Home' && location.pathname === '/';
+              // Route mapping
+              const path = link === 'Home' ? '/' : link === 'Mockups' ? '/modelsMockup' : `/${link.toLowerCase()}`;
+              const isSelected = location.pathname === path;
               return (
                 <li key={link} className="nav-animate-item">
-                  <a
-                    href={`#${link.toLowerCase()}`}
+                  <Link
+                    to={path}
                     className={`text-[14px] lg:text-[16px] transition-colors duration-200 no-underline ${
                       isSelected  
                         ? 'text-black font-bold' 
@@ -65,7 +66,7 @@ export default function Navbar({ onTogglePanel }) {
                     }`}
                   >
                     {link}
-                  </a>
+                  </Link>
                 </li>
               );
             })}
@@ -104,18 +105,19 @@ export default function Navbar({ onTogglePanel }) {
       </div>
 
       <div
-        className={`lg:hidden overflow-hidden border-t border-[#f1eee9] bg-white transition-[max-height,opacity] duration-300 ${
+        className={`lg:hidden overflow-hidden border-t border-[#f1eee9] bg-[#FBF9F6] transition-[max-height,opacity] duration-300 ${
           isMenuOpen ? 'max-h-[420px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
         <div className="px-6 pb-5 pt-3">
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {navLinks.map((link) => {
-              const isSelected = link === 'Home' && location.pathname === '/';
+              const path = link === 'Home' ? '/' : link === 'Mockups' ? '/modelsMockup' : `/${link.toLowerCase()}`;
+              const isSelected = location.pathname === path;
               return (
                 <li key={link}>
-                  <a
-                    href={`#${link.toLowerCase()}`}
+                  <Link
+                    to={path}
                     onClick={() => setIsMenuOpen(false)}
                     className={`block rounded-lg px-4 py-3 text-[16px] no-underline transition-colors ${
                       isSelected
@@ -124,7 +126,7 @@ export default function Navbar({ onTogglePanel }) {
                     }`}
                   >
                     {link}
-                  </a>
+                  </Link>
                 </li>
               );
             })}

@@ -263,44 +263,66 @@ function sidebarIconType(label) {
   return 'box';
 }
 
-function SidebarItem({ label, active, icon, onClick, isGroup }) {
-  const inactiveClass = isGroup
-    ? 'bg-[#ecebea] text-[#8f8f8f] hover:bg-[#e5e2df] hover:text-[#cc6428]'
-    : 'bg-transparent text-[#9a9a9a] hover:bg-[#f7eee9] hover:text-[#cc6428]';
+function SidebarItem({ label, active, icon, onClick, isGroup, expanded, hasChildren, parentActive }) {
+  const inactiveGroupClass = 'bg-[#ecebea] text-[#8f8f8f] hover:bg-[#e5e2df] hover:text-[#2b2b2b]';
+  const activeGroupClass = 'bg-[#F2B62C] text-[#2b2b2b] font-bold'; // Yellow background, dark text
+  const inactiveChildClass = 'bg-transparent text-[#858585] hover:bg-[#f7eee9] hover:text-[#37472F]';
+  const activeChildClass = 'bg-[#D2692B] text-white font-bold';
+
+  let finalClass = '';
+  if (isGroup) {
+    finalClass = (active || parentActive) ? activeGroupClass : inactiveGroupClass;
+  } else {
+    finalClass = active ? activeChildClass : inactiveChildClass;
+  }
+
   const iconSrc = sidebarIcons[icon] ?? boxIcon;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center gap-3 rounded-[8px] border-none py-4 text-left transition-all duration-200 hover:translate-x-1 ${
-        active ? 'bg-[#cc6428] text-white' : inactiveClass
-      } ${isGroup ? 'px-3 text-[clamp(13px,1.45vw,18px)] font-bold sm:px-5' : 'px-4 text-[clamp(12px,1.3vw,16px)] font-semibold sm:px-8'}`}
+      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] border-none py-3 transition-all duration-200 ${finalClass} ${isGroup ? 'px-4 text-[clamp(13px,1.45vw,16px)] font-bold' : 'pr-4 pl-10 text-[clamp(12px,1.3vw,14px)] font-semibold'}`}
     >
-      <img
-        src={iconSrc}
-        alt=""
-        className={`${isGroup ? 'h-7 w-7' : 'h-6 w-6'} shrink-0 object-contain transition-all ${
-          active ? 'brightness-0 invert' : 'opacity-65'
-        }`}
-      />
-      <span>{label}</span>
+      <div className="flex items-center gap-3">
+        <img
+          src={iconSrc}
+          alt=""
+          className={`${isGroup ? 'h-6 w-6' : 'h-5 w-5'} shrink-0 object-contain transition-all ${
+            (!isGroup && active) ? 'brightness-0 invert' : (isGroup && (active || parentActive) ? 'brightness-0' : 'opacity-60')
+          }`}
+        />
+        <span>{label}</span>
+      </div>
+      {isGroup && hasChildren && (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''} ${(active || parentActive) ? 'text-[#2b2b2b]' : 'text-[#8f8f8f]'}`}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      )}
     </button>
   );
 }
 
 export default function ModelsMockupPage() {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState('Boxes');
+  const [activeCategory, setActiveCategory] = useState('Premium Square Box');
+  const [expandedGroups, setExpandedGroups] = useState({ 'Boxes': true });
 
-  const flatSidebar = useMemo(
-    () =>
-      categoryGroups.flatMap((group) => [
-        { label: group.title, isGroup: true },
-        ...group.items.map((item) => ({ label: item, isGroup: false })),
-      ]),
-    []
-  );
+  const toggleGroup = (groupTitle) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupTitle]: !prev[groupTitle],
+    }));
+  };
 
   const displayedSections = useMemo(() => {
     const active = normalizeLabel(activeCategory);
@@ -339,16 +361,47 @@ export default function ModelsMockupPage() {
 
             <div className="min-h-0 flex-1 overflow-y-auto pr-3">
               <div className="space-y-2 pb-8">
-                {flatSidebar.map(({ label, isGroup }) => (
-                  <SidebarItem
-                    key={label}
-                    label={label}
-                    active={activeCategory === label}
-                    onClick={() => setActiveCategory(label)}
-                    icon={sidebarIconType(label)}
-                    isGroup={isGroup}
-                  />
-                ))}
+                {categoryGroups.map((group) => {
+                  const isExpanded = expandedGroups[group.title];
+                  const isParentActive = group.items.includes(activeCategory) || activeCategory === group.title;
+                  
+                  return (
+                    <div key={group.title} className="flex flex-col gap-1">
+                      <SidebarItem
+                        label={group.title}
+                        isGroup={true}
+                        active={activeCategory === group.title}
+                        parentActive={isParentActive}
+                        expanded={isExpanded}
+                        hasChildren={group.items.length > 0}
+                        icon={sidebarIconType(group.title)}
+                        onClick={() => {
+                          if (group.items.length > 0) {
+                            toggleGroup(group.title);
+                            setActiveCategory(group.title);
+                          } else {
+                            setActiveCategory(group.title);
+                          }
+                        }}
+                      />
+                      
+                      {isExpanded && group.items.length > 0 && (
+                        <div className="flex flex-col gap-1 mt-1 mb-2">
+                          {group.items.map((item) => (
+                            <SidebarItem
+                              key={item}
+                              label={item}
+                              isGroup={false}
+                              active={activeCategory === item}
+                              icon={sidebarIconType(item)}
+                              onClick={() => setActiveCategory(item)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </aside>
