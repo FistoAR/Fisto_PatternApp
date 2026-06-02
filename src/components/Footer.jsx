@@ -27,7 +27,7 @@ function PinIcon() {
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-[#BDC0B0] px-6 py-16 font-['Poppins'] text-black lg:px-12 xl:px-20">
+    <footer id="contact" className="w-full bg-[#BDC0B0] px-6 py-16 font-['Poppins'] text-black lg:px-12 xl:px-20">
       <div className="mx-auto grid w-full max-w-[1352px] grid-cols-1 gap-10 md:grid-cols-[1fr_1.25fr_1.05fr_2fr] md:items-start md:gap-12">
         <div className="flex items-center md:pt-2">
           <img src={fistoLogo} alt="FIST-O Tech Pvt Ltd" className="h-auto w-[190px] object-contain" />

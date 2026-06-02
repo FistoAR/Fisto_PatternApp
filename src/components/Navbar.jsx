@@ -1,35 +1,65 @@
 import fistoLogo from '../assets/images/fisto-logo.png';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { gsap } from 'gsap';
 
 const navLinks = ['Home', 'Features', 'Mockups', 'Pricing', 'Contact'];
 
 export default function Navbar({ onTogglePanel }) {
   const location = useLocation();
+  const navRef = useRef(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (prefersReducedMotion.matches) return undefined;
+
+    const context = gsap.context(() => {
+      gsap.fromTo(
+        navRef.current,
+        { autoAlpha: 0, y: -28 },
+        { autoAlpha: 1, y: 0, duration: 0.72, ease: 'power3.out' }
+      );
+
+      gsap.fromTo(
+        '.nav-animate-item',
+        { autoAlpha: 0, y: -12 },
+        { autoAlpha: 1, y: 0, duration: 0.48, ease: 'power3.out', stagger: 0.07, delay: 0.12 }
+      );
+    }, navRef);
+
+    return () => context.revert();
+  }, []);
+
+  const handleMenuToggle = () => {
+    setIsMenuOpen((isOpen) => !isOpen);
+    onTogglePanel?.();
+  };
 
   return (
-    <nav className="w-full bg-white z-50 shrink-0 border-b border-transparent sticky top-0">
-      <div className="w-full flex items-center justify-between px-6 lg:px-12 xl:px-20 py-2 lg:py-4">
+    <nav ref={navRef} className="w-full bg-white z-50 shrink-0 border-b border-transparent sticky top-0 shadow-sm lg:shadow-none">
+      <div className="w-full flex items-center justify-between px-6 lg:px-12 xl:px-20 py-2 lg:py-2">
         
         {/* Logo */}
-        <div className="flex items-center">
+        <div className="nav-animate-item flex items-center">
           <img src={fistoLogo} alt="Fisto Logo" className="h-10 lg:h-12 w-auto object-contain" />
         </div>
 
         {/* Right Group: Nav Links + Sign In Button */}
         <div className="flex items-center gap-8 lg:gap-12">
           
-          {/* Nav Links — hidden on small screens */}
-          <ul className="hidden md:flex items-center gap-8 lg:gap-10 list-none m-0 p-0">
+          {/* Nav Links */}
+          <ul className="hidden lg:flex items-center gap-8 lg:gap-10 list-none m-0 p-0">
             {navLinks.map((link) => {
               // Mark "Home" as selected for the main route, or use standard logic.
               // We'll hardcode 'Home' or match it against path for now.
               const isSelected = link === 'Home' && location.pathname === '/';
               return (
-                <li key={link}>
+                <li key={link} className="nav-animate-item">
                   <a
                     href={`#${link.toLowerCase()}`}
-                    className={`text-[16px] lg:text-[18px] transition-colors duration-200 no-underline ${
-                      isSelected 
+                    className={`text-[14px] lg:text-[16px] transition-colors duration-200 no-underline ${
+                      isSelected  
                         ? 'text-black font-bold' 
                         : 'text-[#8B8B8B] font-medium hover:text-black'
                     }`}
@@ -42,26 +72,63 @@ export default function Navbar({ onTogglePanel }) {
           </ul>
 
           {/* Right side buttons */}
-          <div className="flex items-center gap-4">
+          <div className="nav-animate-item flex items-center gap-4">
             {/* Mobile menu toggle for right panel */}
             <button
-              onClick={onTogglePanel}
+              onClick={handleMenuToggle}
+              aria-expanded={isMenuOpen}
+              aria-label="Toggle navigation menu"
               className="lg:hidden p-2 text-gray-500 hover:text-gray-800 border-none bg-transparent cursor-pointer rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6">
-                <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 10a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
-              </svg>
+              {isMenuOpen ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-7 h-7">
+                  <path fillRule="evenodd" d="M4.22 4.22a.75.75 0 0 1 1.06 0L10 8.94l4.72-4.72a.75.75 0 1 1 1.06 1.06L11.06 10l4.72 4.72a.75.75 0 1 1-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 0 1-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-7 h-7">
+                  <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 10a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+                </svg>
+              )}
             </button>
 
             {/* Sign In Button */}
             <button
-              className="px-6 py-2.5 text-[14px] lg:text-[16px] font-semibold text-white rounded-xl transition-all duration-200 cursor-pointer border-none hover:shadow-lg hover:brightness-110"
+              className="px-4 py-1.5 text-[14px] lg:text-[16px] font-semibold text-white rounded-xl transition-all duration-200 cursor-pointer border-none hover:shadow-lg hover:brightness-110"
               style={{ background: '#C15F27' }}
             >
-              Sign In
+              Upload Your IML
             </button>
           </div>
 
+        </div>
+      </div>
+
+      <div
+        className={`lg:hidden overflow-hidden border-t border-[#f1eee9] bg-white transition-[max-height,opacity] duration-300 ${
+          isMenuOpen ? 'max-h-[420px] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-6 pb-5 pt-3">
+          <ul className="m-0 flex list-none flex-col gap-1 p-0">
+            {navLinks.map((link) => {
+              const isSelected = link === 'Home' && location.pathname === '/';
+              return (
+                <li key={link}>
+                  <a
+                    href={`#${link.toLowerCase()}`}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`block rounded-lg px-4 py-3 text-[16px] no-underline transition-colors ${
+                      isSelected
+                        ? 'bg-[#f7eee9] text-[#C15F27] font-bold'
+                        : 'text-[#6B7280] font-semibold hover:bg-[#f7eee9] hover:text-[#C15F27]'
+                    }`}
+                  >
+                    {link}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </div>
     </nav>
