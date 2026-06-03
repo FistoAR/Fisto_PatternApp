@@ -1,25 +1,52 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import EditorPage from './components/EditorPage'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import EditorPage from './pages/EditorPage'
 import HomePage from './pages/HomePage'
 import ModelsMockupPage from './pages/ModelsMockupPage'
 import FeaturesPage from './pages/FeaturesPage'
 import ContactPage from './pages/ContactPage'
 import Navbar from './components/Navbar'
 
+function ScrollToTop({ containerRef }) {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo(0, 0);
+    }
+  }, [pathname, containerRef]);
+
+  return null;
+}
+
+function AppContent() {
+  const { pathname } = useLocation();
+  const isEditor = pathname === '/editor';
+
+  return (
+    <>
+      <Navbar />
+      <div className={`flex-1 flex flex-col min-h-0 relative ${isEditor ? '' : '-mt-[5vh]'}`}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/modelsMockup" element={<ModelsMockupPage />} />
+          <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/editor" element={<EditorPage />} />
+        </Routes>
+      </div>
+    </>
+  );
+}
+
 function App() {
+  const scrollContainerRef = useRef(null);
+
   return (
     <BrowserRouter>
-      <div className="flex flex-col h-screen w-screen overflow-x-hidden bg-white">
-        <Navbar/>
-        <div className="flex-1 flex flex-col min-h-0 relative -mt-[5vh]">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/modelsMockup" element={<ModelsMockupPage />} />
-            <Route path="/features" element={<FeaturesPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/editor" element={<EditorPage />} />
-          </Routes>
-        </div>
+      <ScrollToTop containerRef={scrollContainerRef} />
+      <div ref={scrollContainerRef} className="flex flex-col h-screen w-screen overflow-x-hidden bg-white">
+        <AppContent />
       </div>
     </BrowserRouter>
   )

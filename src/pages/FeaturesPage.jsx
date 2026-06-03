@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 import ReadyMockupBanner from '../components/ReadyMockupBanner';
@@ -19,6 +19,10 @@ import supportIcon from '../assets/images/featureSection/Icons/support.webp';
 
 export default function FeaturesPage() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#FBF9F6] w-full font-['Inter']">

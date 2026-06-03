@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Footer from '../components/Footer';
 import ReadyMockupBanner from '../components/ReadyMockupBanner';
 
@@ -8,6 +8,10 @@ import mailIcon from '../assets/images/contact/mail.webp';
 import locationIcon from '../assets/images/contact/location.webp';
 
 export default function ContactPage() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#FBF9F6] w-full font-['Inter']">
       <main className="flex-1 w-full pt-16 lg:pt-24 px-6 lg:px-12 xl:px-20">

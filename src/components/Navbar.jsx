@@ -94,7 +94,7 @@ export default function Navbar({ onTogglePanel }) {
 
             {/* Sign In Button */}
             <button
-              className="px-4 py-1.5 text-[14px] lg:text-[16px] font-semibold text-white rounded-xl transition-all duration-200 cursor-pointer border-none hover:shadow-lg hover:brightness-110"
+              className="px-4 py-1.5 text-[14px] lg:text-[16px] font-semibold text-white rounded-lg transition-all duration-200 cursor-pointer border-none hover:shadow-lg hover:brightness-110"
               style={{ background: '#C15F27' }}
             >
               Upload Your IML
