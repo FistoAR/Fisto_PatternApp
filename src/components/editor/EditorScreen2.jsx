@@ -7,14 +7,17 @@ import ModelsPopup from './ModelsPopup';
 import UploadsPopup from './UploadsPopup';
 import LayoutPopup from './LayoutPopup';
 
-export default function EditorScreen2({ onBack, isActive }) {
+export default function EditorScreen2({ onBack, isActive, modelUrl, setModelUrl }) {
   const location = useLocation();
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const textureCanvasRef = useRef(null);
   const [textureVersion, setTextureVersion] = useState(0);
 
   const handleSave = () => {
-    if (textureCanvasRef.current) {
+    if (canvasRef.current && canvasRef.current.getCleanTexture) {
+      const dataUrl = canvasRef.current.getCleanTexture();
+      onBack(dataUrl);
+    } else if (textureCanvasRef.current) {
       const dataUrl = textureCanvasRef.current.toDataURL('image/png');
       onBack(dataUrl);
     } else {
@@ -26,7 +29,6 @@ export default function EditorScreen2({ onBack, isActive }) {
   const [uploadedImages, setUploadedImages] = useState([]);
   const canvasRef = useRef(null);
 
-  const [modelUrl, setModelUrl] = useState(location.state?.initialModelUrl || null);
   const [wireframe, setWireframe] = useState(false);
   const [showUv, setShowUv] = useState(true);
   const [fullUv, setFullUv] = useState(false);

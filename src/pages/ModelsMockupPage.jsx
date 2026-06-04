@@ -37,6 +37,65 @@ import plasticBox2Url from "../assets/models/box models/plastic box/Plasticbox-M
 import foodBox1Url from "../assets/models/box models/food box/Food packaging mockup.glb?url";
 import foodBox2Url from "../assets/models/box models/food box/plastic food container-Mockup2.glb?url";
 
+// Bag Models
+import paperBag1Url from "../assets/models/Bag/Paper.glb?url";
+import plasticBag1Url from "../assets/models/Bag/Plastic1.glb?url";
+import plasticBag2Url from "../assets/models/Bag/Plastic2.glb?url";
+import plasticBag3Url from "../assets/models/Bag/Plastic3.glb?url";
+import plasticBag4Url from "../assets/models/Bag/Plastic4.glb?url";
+
+// Bottle Models
+import waterBottle1Url from "../assets/models/Bottle/2.bottle-water bottle/01.Round 300ml ltr.glb?url";
+import waterBottle2Url from "../assets/models/Bottle/2.bottle-water bottle/02.water bottle Mockup.glb?url";
+import waterBottle3Url from "../assets/models/Bottle/2.bottle-water bottle/03.small water bottle M.glb?url";
+import waterBottle4Url from "../assets/models/Bottle/2.bottle-water bottle/04 .glb?url";
+
+import oilBottle1Url from "../assets/models/Bottle/2.bottle-oil bottle/01.Oil bottle.glb?url";
+import oilBottle2Url from "../assets/models/Bottle/2.bottle-oil bottle/02.oil CrimsonMockup.glb?url";
+
+import glassBottle1Url from "../assets/models/Bottle/2.bottle-glass bottle/01.oil glass bottle-M.glb?url";
+import glassBottle2Url from "../assets/models/Bottle/2.bottle-glass bottle/02.Glass bottle Mockup.glb?url";
+
+import waterCan1Url from "../assets/models/Bottle/2.bottl- water can/01.glb?url";
+import waterCan2Url from "../assets/models/Bottle/2.bottl- water can/02.glb?url";
+import waterCan3Url from "../assets/models/Bottle/2.bottl- water can/03.glb?url";
+
+// Container Models
+import tumbler1Url from "../assets/models/Container/Tumbler/01.Paper tumbler .glb?url";
+import tumbler2Url from "../assets/models/Container/Tumbler/02.glb?url";
+
+import cup1Url from "../assets/models/Container/cup/01-M.glb?url";
+import cup2Url from "../assets/models/Container/cup/02.glb?url";
+import cup3Url from "../assets/models/Container/cup/03.R 250 M.glb?url";
+import cup4Url from "../assets/models/Container/cup/04.R 750 ML .glb?url";
+
+import roundContainer1Url from "../assets/models/Container/Food Conatiner/Round Container/01.R 500 ML.glb?url";
+import roundContainer2Url from "../assets/models/Container/Food Conatiner/Round Container/02.R 1000 ML .glb?url";
+
+import roundSquare1Url from "../assets/models/Container/Food Conatiner/Round Square/01.120 dessert cup.glb?url";
+import roundSquare2Url from "../assets/models/Container/Food Conatiner/Round Square/02.RS.glb?url";
+
+import rectContainer1Url from "../assets/models/Container/Food Conatiner/Rectangle Container/01.650 BT.glb?url";
+import rectContainer2Url from "../assets/models/Container/Food Conatiner/Rectangle Container/02.1000 BT.glb?url";
+
+import sweetBox1Url from "../assets/models/Container/Food Conatiner/Sweet Box/01.SB 250 .glb?url";
+import sweetBox2Url from "../assets/models/Container/Food Conatiner/Sweet Box/02.SB TE 500 .glb?url";
+
+// Food Packaging Models
+import iceCream1Url from "../assets/models/Food/Ice cream/01.glb?url";
+import iceCream2Url from "../assets/models/Food/Ice cream/02.glb?url";
+
+import burgerWrap1Url from "../assets/models/Food/Burger/01.glb?url";
+import burgerWrap2Url from "../assets/models/Food/Burger/02.glb?url";
+
+import pizzaBox1Url from "../assets/models/Food/pIZZA/01.glb?url";
+import pizzaBox2Url from "../assets/models/Food/pIZZA/02.glb?url";
+
+// Tshirt Models
+import tshirt1Url from "../assets/models/Tshirt/t-shirt.glb?url";
+import tshirt2Url from "../assets/models/Tshirt/t-shirt1.glb?url";
+import hoodie1Url from "../assets/models/Tshirt/Hoodie.glb?url";
+
 const modelMappings = {
   "Square Box 1": sqBox1Url,
   "Square Box 2": sqBox2Url,
@@ -44,6 +103,62 @@ const modelMappings = {
   "Plastic Box 2": plasticBox2Url,
   "Food Box 1": foodBox1Url,
   "Food Box 2": foodBox2Url,
+
+  "Paper Bag 1": paperBag1Url,
+  "Paper Bag 2": paperBag1Url,
+  "Paper Bag 3": paperBag1Url,
+  "Plastic Bag 1": plasticBag1Url,
+  "Plastic Bag 2": plasticBag2Url,
+  "Plastic Bag 3": plasticBag3Url,
+  "Plastic Bag 4": plasticBag4Url,
+
+  "Water Bottle 1": waterBottle1Url,
+  "Water Bottle 2": waterBottle2Url,
+  "Water Bottle 3": waterBottle3Url,
+  "Water Bottle 4": waterBottle4Url,
+
+  "Oil Bottle 1": oilBottle1Url,
+  "Oil Bottle 2": oilBottle2Url,
+
+  "Glass Bottle 1": glassBottle1Url,
+  "Glass Bottle 2": glassBottle2Url,
+
+  "Water can 1": waterCan1Url,
+  "Water can 2": waterCan2Url,
+  "Water can 3": waterCan3Url,
+
+  "Tumbler 1": tumbler1Url,
+  "Tumbler 2": tumbler2Url,
+
+  "Cup 1": cup1Url,
+  "Cup 2": cup2Url,
+  "Cup 3": cup3Url,
+  "Cup 4": cup4Url,
+
+  "Round Container 1": roundContainer1Url,
+  "Round Container 2": roundContainer2Url,
+
+  "Round Square Container 1": roundSquare1Url,
+  "Round Square Container 2": roundSquare2Url,
+
+  "Rectangle Container 1": rectContainer1Url,
+  "Rectangle Container 2": rectContainer2Url,
+
+  "Sweet box 1": sweetBox1Url,
+  "Sweet box 2": sweetBox2Url,
+
+  "Ice Cream 1": iceCream1Url,
+  "Ice Cream 2": iceCream2Url,
+
+  "Burger Wrap 1": burgerWrap1Url,
+  "Burger Wrap 2": burgerWrap2Url,
+
+  "Pizza Box 1": pizzaBox1Url,
+  "Pizza Box 2": pizzaBox2Url,
+
+  "T-shirt 1": tshirt1Url,
+  "T-shirt 2": tshirt2Url,
+  "Hoodies 1": hoodie1Url,
 };
 import waterBottleImage from "../assets/images/MockupsSection/waterBottle.webp";
 
@@ -182,13 +297,13 @@ const catalogSections = [
     title: "Paper Bag",
     icon: "bag",
     sidebarLabels: ["Paper Bag", "Bag"],
-    products: ["Paper Bag 1", "Paper Bag 2", "Paper Bag 3"],
+    products: ["Paper Bag 1"],
   },
   {
     title: "Plastic Bag",
     icon: "bag",
     sidebarLabels: ["Plastic Bag", "Bag"],
-    products: ["Plastic Bag 1", "Plastic Bag 2"],
+    products: ["Plastic Bag 1", "Plastic Bag 2", "Plastic Bag 3", "Plastic Bag 4"],
   },
   {
     title: "T-shirt",
@@ -324,7 +439,13 @@ function ProductPlaceholder({ name, index }) {
   ];
 
   return (
-    <article className="group cursor-pointer rounded-[8px] border border-transparent bg-white p-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d7c9bd] hover:shadow-[0_18px_34px_rgba(15,23,42,0.16)]">
+    <article
+      onClick={() => {
+        const url = modelMappings[name] || null;
+        navigate("/editor", { state: { initialModelUrl: url } });
+      }}
+      className="group cursor-pointer rounded-[8px] border border-transparent bg-white p-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d7c9bd] hover:shadow-[0_18px_34px_rgba(15,23,42,0.16)]"
+    >
       <div
         className={`relative aspect-[1.02] overflow-hidden rounded-[8px] bg-gradient-to-br ${tones[index % tones.length]}`}
       >
@@ -362,7 +483,8 @@ function ProductPlaceholder({ name, index }) {
       </h3>
       <button
         type="button"
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
           const url = modelMappings[name] || null;
           navigate("/editor", { state: { initialModelUrl: url } });
         }}
@@ -464,8 +586,8 @@ function SidebarItem({
 export default function ModelsMockupPage() {
   const navigate = useNavigate();
   const scrollRef = useRef(null);
-  const [activeCategory, setActiveCategory] = useState("Boxes");
-  const [expandedGroups, setExpandedGroups] = useState({ Boxes: true });
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [expandedGroups, setExpandedGroups] = useState({ All: true });
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -484,6 +606,9 @@ export default function ModelsMockupPage() {
   };
 
   const displayedSections = useMemo(() => {
+    if (activeCategory === "All") {
+      return catalogSections;
+    }
     const active = normalizeLabel(activeCategory);
     const alias = productAliases[active] ?? active;
 
@@ -529,6 +654,19 @@ export default function ModelsMockupPage() {
 
             <div className="min-h-0 flex-1 overflow-y-auto pr-3">
               <div className="space-y-2 pb-8">
+                <SidebarItem
+                  label="All"
+                  isGroup={true}
+                  active={activeCategory === "All"}
+                  parentActive={activeCategory === "All"}
+                  expanded={false}
+                  hasChildren={false}
+                  icon="box"
+                  onClick={() => {
+                    setActiveCategory("All");
+                  }}
+                />
+
                 {categoryGroups.map((group) => {
                   const isExpanded = expandedGroups[group.title];
                   const isParentActive =

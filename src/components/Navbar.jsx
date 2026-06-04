@@ -2,6 +2,7 @@ import fistoLogo from '../assets/images/fisto-logo.png';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
+import sqBox1Url from '../assets/models/box models/sq box/Box-4(Mockup).glb?url';
 
 const navLinks = ['Home','Mockups', 'Features', 'Contact'];
 
@@ -37,8 +38,12 @@ export default function Navbar({ onTogglePanel }) {
     onTogglePanel?.();
   };
 
+  const handleUploadIMLClick = () => {
+    navigate('/editor', { state: { initialModelUrl: sqBox1Url } });
+  };
+
   return (
-    <nav ref={navRef} className="w-full bg-white z-50 shrink-0 border-b border-transparent sticky top-0 shadow-sm lg:shadow-none">
+    <nav ref={navRef} className="w-full bg-white z-[99] relative shrink-0 border-b border-transparent sticky top-0 shadow-sm lg:shadow-none">
       <div className="w-full flex items-center justify-between px-6 lg:px-12 xl:px-20 py-2 lg:py-2">
         
         {/* Logo */}
@@ -54,7 +59,7 @@ export default function Navbar({ onTogglePanel }) {
             {navLinks.map((link) => {
               // Route mapping
               const path = link === 'Home' ? '/' : link === 'Mockups' ? '/modelsMockup' : `/${link.toLowerCase()}`;
-              const isSelected = location.pathname === path;
+              const isSelected = location.pathname === path || (link === 'Mockups' && location.pathname === '/editor');
               return (
                 <li key={link} className="nav-animate-item">
                   <Link
@@ -92,13 +97,16 @@ export default function Navbar({ onTogglePanel }) {
               )}
             </button>
 
-            {/* Sign In Button */}
-            <button
-              className="px-4 py-1.5 text-[14px] lg:text-[16px] font-semibold text-white rounded-lg transition-all duration-200 cursor-pointer border-none hover:shadow-lg hover:brightness-110"
-              style={{ background: '#C15F27' }}
-            >
-              Upload Your IML
-            </button>
+            {/* Upload Your IML Button */}
+            {location.pathname !== '/editor' && (
+              <button
+                onClick={handleUploadIMLClick}
+                className="px-4 py-1.5 text-[14px] lg:text-[16px] font-semibold text-white rounded-lg transition-all duration-200 cursor-pointer border-none hover:shadow-lg hover:brightness-110"
+                style={{ background: '#C15F27' }}
+              >
+                Upload Your IML
+              </button>
+            )}
           </div>
 
         </div>
@@ -113,7 +121,7 @@ export default function Navbar({ onTogglePanel }) {
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {navLinks.map((link) => {
               const path = link === 'Home' ? '/' : link === 'Mockups' ? '/modelsMockup' : `/${link.toLowerCase()}`;
-              const isSelected = location.pathname === path;
+              const isSelected = location.pathname === path || (link === 'Mockups' && location.pathname === '/editor');
               return (
                 <li key={link}>
                   <Link

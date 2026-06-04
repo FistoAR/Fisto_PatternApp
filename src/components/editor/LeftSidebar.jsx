@@ -52,7 +52,7 @@ export default function LeftSidebar({ active, setActive, items }) {
           onClick={() => setActive(active === tool.id ? 'edit' : tool.id)}
           className={`
             relative flex flex-col items-center justify-center gap-2 border-none cursor-pointer bg-transparent
-            transition-all duration-200 text-[11px] font-bold tracking-wider uppercase p-0 w-full py-3
+            transition-all duration-200 text-[12.5px] font-bold tracking-wider uppercase p-0 w-full py-3
             max-[640px]:text-[9px]
             ${active === tool.id
               ? 'text-[#C15F27]'
@@ -61,7 +61,7 @@ export default function LeftSidebar({ active, setActive, items }) {
           `}
         >
           {active === tool.id && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[24px] bg-[#C15F27] rounded-r-full" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-[44px] bg-[#C15F27] rounded-r-full" />
           )}
           <div className={`
             flex items-center justify-center transition-all duration-200

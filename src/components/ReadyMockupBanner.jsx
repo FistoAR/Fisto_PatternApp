@@ -3,7 +3,7 @@ import frameImg from '../assets/images/Home/frame.webp';
 
 export default function ReadyMockupBanner({
   className = '',
-  target = '/modelsMockup',
+  target = '/editor',
   animated = false,
   fullWidth = false,
   label = 'Ready To Get Started?',

@@ -74,8 +74,8 @@ export default function HomePage() {
         .from('.hero-copy-item', { autoAlpha: 0, x: -42, duration: 0.65, stagger: 0.11 }, '-=0.32')
         .from('.hero-feature', { autoAlpha: 0, y: 24, scale: 0.92, duration: 0.55, stagger: 0.1 }, '-=0.18');
 
-      gsap.to('.hero-section', {
-        backgroundPosition: '52% 44%',
+      gsap.to('.hero-bg-img', {
+        yPercent: 15,
         ease: 'none',
         scrollTrigger: {
           trigger: '.hero-section',
@@ -140,10 +140,16 @@ export default function HomePage() {
         {/* Hero Section */}
         <div 
           id="home"
-          className="hero-section relative w-[100vw] h-[100vh] flex flex-col justify-center bg-cover bg-center bg-no-repeat" 
-          style={{ backgroundImage: `url(${homeBg})` }}
+          className="hero-section relative w-[100vw] h-[100vh] flex flex-col justify-center overflow-hidden" 
         >
-          <div className="w-full px-6 lg:px-12 xl:px-20 flex flex-col lg:flex-row items-center">
+          {/* Background SVG Image with floating animation */}
+          <img 
+            src={homeBg} 
+            alt="Background" 
+            className="hero-bg-img absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+            style={{ objectPosition: '52% 44%' }}
+          />
+          <div className="w-full px-6 lg:px-12 xl:px-20 flex flex-col lg:flex-row items-center z-10">
             
             {/* Left Content */}
             <div className="w-full lg:w-[60%] z-10 text-left pt-10 lg:pt-0">
@@ -165,8 +171,8 @@ export default function HomePage() {
               </p>
 
               <button
-                onClick={() => navigate('/modelsMockup')}
-                className="hero-copy-item group flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg shadow-lg hover:opacity-90 transition-opacity border-none cursor-pointer mb-16"
+                onClick={() => navigate('/editor')}
+                className="hero-copy-item hero-btn group flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg shadow-lg hover:opacity-90 border-none cursor-pointer mb-16"
                 style={{ background: '#C15F27' }}
               >
                 Start Designing

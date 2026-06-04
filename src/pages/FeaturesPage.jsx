@@ -1,124 +1,237 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 import ReadyMockupBanner from '../components/ReadyMockupBanner';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+// Register ScrollTrigger
+gsap.registerPlugin(ScrollTrigger);
 
 // Icons
-import jarIcon from '../assets/images/Icons/jar.webp';
 import frameImg from '../assets/images/featureSection/feautureHero.webp';
+import jarIcon from '../assets/images/Icons/jar.webp';
+import icon50K from '../assets/images/featureSection/Icons/50K.webp';
+import icon100plus from '../assets/images/featureSection/Icons/100plus.webp';
+import ratingIcon from '../assets/images/featureSection/Icons/rating.webp';
 
-// Feature Icons
+// Feature Icons Imports
 import highQualityIcon from '../assets/images/featureSection/Icons/highQuality.webp';
 import editIcon from '../assets/images/featureSection/Icons/edit.webp';
 import categoriesIcon from '../assets/images/featureSection/categories.webp';
 import multiFormatIcon from '../assets/images/featureSection/Icons/multiFormat.webp';
-import smartIcon from '../assets/images/featureSection/Icons/smart.webp';
 import realisticIcon from '../assets/images/featureSection/Icons/realistic.webp';
 import fastIcon from '../assets/images/featureSection/Icons/fast.webp';
 import supportIcon from '../assets/images/featureSection/Icons/support.webp';
+import realTime3DIcon from '../assets/images/featureSection/Icons/RealTime3D.webp';
+import smartIcon from '../assets/images/featureSection/Icons/smart.webp';
+import highQualityRenderingIcon from '../assets/images/featureSection/Icons/High Quality Rendering.webp';
+import realTimeLightningIcon from '../assets/images/featureSection/Icons/RealTimeLightning.webp';
+import multipleViewingIcon from '../assets/images/featureSection/Icons/Multipleviewing.webp';
+import qrCodeIcon from '../assets/images/featureSection/Icons/QRCode.webp';
+import multilayerIcon from '../assets/images/featureSection/Icons/Multilayer.webp';
+import uploadOwnIcon from '../assets/images/featureSection/Icons/Upload own.webp';
+import exportMultiformatIcon from '../assets/images/featureSection/Icons/ExportMultiformat.webp';
+import organizedProductIcon from '../assets/images/featureSection/Icons/OrganizedProduct.webp';
+import icon360d from '../assets/images/featureSection/Icons/360d.webp';
+import printreadyIcon from '../assets/images/featureSection/Icons/Printready.webp';
+import desktopCompatibilityIcon from '../assets/images/featureSection/Icons/desktopCompatibility.webp';
+import cloudBasedDesignIcon from '../assets/images/featureSection/Icons/CloudBasedDesign.webp';
+import sharableDesignIcon from '../assets/images/featureSection/Icons/sharableDesign.webp';
+
+const FEATURES = [
+  {
+    title: "High-Quality Mockups",
+    description: "Access premium, photorealistic mockups for all your packaging needs.",
+    icon: highQualityIcon
+  },
+  {
+    title: "Easy Customization",
+    description: "Edit colors, texts and designs in just a few clicks with our smart tools.",
+    icon: editIcon
+  },
+  {
+    title: "Organized Categories",
+    description: "Browse mockups by category to quickly find exactly what you need.",
+    icon: categoriesIcon
+  },
+  {
+    title: "Multi-Format Files",
+    description: "Download in multiple formats including PSD, AI, PNG and more.",
+    icon: multiFormatIcon
+  },
+  {
+    title: "Realistic Shadows & Lighting",
+    description: "Built-in lighting and shadows for ultra-realistic results.",
+    icon: realisticIcon
+  },
+  {
+    title: "Fast & Reliable",
+    description: "Optimized for speed and performance to save your time.",
+    icon: fastIcon
+  },
+  {
+    title: "Dedicated Support",
+    description: "Our support team is always ready to help you with any questions.",
+    icon: supportIcon
+  },
+  {
+    title: "Real-Time 3D Preview",
+    description: "Instantly preview your packaging in interactive 3D.",
+    icon: realTime3DIcon
+  },
+  {
+    title: "Realistic Material & Texture Mapping",
+    description: "Apply realistic materials and textures for a true-to-life look.",
+    icon: smartIcon
+  },
+  {
+    title: "High-Quality Rendering",
+    description: "Generate high-resolution renders for professional presentations.",
+    icon: highQualityRenderingIcon
+  },
+  {
+    title: "Real-Time Lighting & Shadow Effects",
+    description: "Experience realistic lighting and shadow simulations instantly.",
+    icon: realTimeLightningIcon
+  },
+  {
+    title: "Multiple Viewing Angles",
+    description: "Inspect your packaging design from every perspective.",
+    icon: multipleViewingIcon
+  },
+  {
+    title: "QR Code-Based AR Experience",
+    description: "Generate QR codes to view packaging in Augmented Reality.",
+    icon: qrCodeIcon
+  },
+  {
+    title: "Multi-Layer Artwork Support",
+    description: "Manage multiple artwork layers with complete control.",
+    icon: multilayerIcon
+  },
+  {
+    title: "Upload Your Own Graphics",
+    description: "Upload logos, images, and custom graphics effortlessly.",
+    icon: uploadOwnIcon
+  },
+  {
+    title: "Easy Design Customization",
+    description: "Customize colors, logos, text, and branding elements easily.",
+    icon: editIcon
+  },
+  {
+    title: "Export Multi-Format File Support",
+    description: "Export designs in PNG, JPG, PDF, SVG, and more.",
+    icon: exportMultiformatIcon
+  },
+  {
+    title: "Organized Product Categories",
+    description: "Browse products through structured and easy-to-use categories.",
+    icon: organizedProductIcon
+  },
+  {
+    title: "360° Product Visualization",
+    description: "Rotate and explore packaging designs in full 360° view.",
+    icon: icon360d
+  },
+  {
+    title: "Print-Ready Packaging Preview",
+    description: "Validate print-ready artwork with accurate production previews.",
+    icon: printreadyIcon
+  },
+  {
+    title: "Desktop Compatibility",
+    description: "Fully compatible with Windows and macOS desktop platforms.",
+    icon: desktopCompatibilityIcon
+  },
+  {
+    title: "Cloud-Based Design Storage",
+    description: "Store and access your projects securely from the cloud.",
+    icon: cloudBasedDesignIcon
+  },
+  {
+    title: "Shareable Design Links",
+    description: "Share designs instantly with clients, teams, and stakeholders.",
+    icon: sharableDesignIcon
+  }
+];
 
 export default function FeaturesPage() {
   const navigate = useNavigate();
+  const pageRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    const context = gsap.context(() => {
+      // Animate top hero section on load
+      gsap.fromTo('.features-hero-title', 
+        { autoAlpha: 0, y: 30 }, 
+        { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out' }
+      );
+      gsap.fromTo('.features-hero-subtitle', 
+        { autoAlpha: 0, y: 20 }, 
+        { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out', delay: 0.15 }
+      );
+      gsap.fromTo('.features-hero-image', 
+        { autoAlpha: 0, scale: 0.95 }, 
+        { autoAlpha: 1, scale: 1, duration: 0.9, ease: 'power3.out', delay: 0.25 }
+      );
+
+      // Staggered trigger animation on features cards
+      gsap.fromTo('.feature-card', 
+        { autoAlpha: 0, y: 30, scale: 0.98 }, 
+        { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.03, ease: 'power3.out' }
+      );
+    }, pageRef);
+
+    return () => context.revert();
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FBF9F6] w-full font-['Inter']">
+    <div ref={pageRef} className="flex flex-col min-h-screen bg-[#FBF9F6] w-full font-['Inter']">
       <main className="flex-1 w-full pt-16">
         
         {/* Top Hero Section */}
         <div className="w-full px-6 lg:px-12 xl:px-34 mb-10 flex flex-col lg:flex-row items-center justify-between gap-10">
           <div className="max-w-xl">
-            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
+            <h1 className="features-hero-title text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
               Features that Make<br/>
               Mockups <span style={{ color: '#37472F' }}>Simple,</span><br/>
               <span style={{ color: '#37472F' }}>Fast & Powerful</span>
             </h1>
-            <p className="text-gray-600 text-xl">
+            <p className="features-hero-subtitle text-gray-600 text-xl">
               Fist-o provides all the tools you need to create professional<br/>
               packaging mockups with ease and efficiency.
             </p>
           </div>
-          <div className="relative w-full lg:w-[40%] flex justify-end">
+          <div className="features-hero-image relative w-full lg:w-[40%] flex justify-end">
             <img src={frameImg} alt="Products" className="w-full max-w-[600px] object-contain" />
           </div>
         </div>
 
         {/* Features Grid Section */}
-        <div className="w-full px-6 lg:px-12 xl:px-20 mb-20">
+        <div className="w-full px-6 lg:px-12 xl:px-20 mb-20 features-grid-container">
           <div className="text-center mb-12">
             <h3 className="text-xl font-bold tracking-widest uppercase mb-4" style={{ color: '#C15F27' }}>WHY CHOOSE FIST-O</h3>
             <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Powerful Features For Every Creator</h2>
-            <p className="text-gray-500 text-lg">Everting you to design, customize and showcase packaging mockups like a pro.</p>
+            <p className="text-gray-500 text-lg">Everything you need to design, customize and showcase packaging mockups like a pro.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Cards */}
-            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center text-[#37472F] mb-6">
-                <img src={highQualityIcon} alt="High-Quality" className="w-6 h-6 object-contain" />
+            {FEATURES.map((feat) => (
+              <div 
+                key={feat.title} 
+                className="feature-card bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col transition-all duration-300 transform hover:-translate-y-2 hover:shadow-lg hover:border-[#C15F27]/25 hover:bg-orange-50/5 cursor-default"
+              >
+                <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center mb-6">
+                  <img src={feat.icon} alt={feat.title} className="w-6 h-6 object-contain" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">{feat.title}</h4>
+                <p className="text-sm text-gray-500 leading-relaxed">{feat.description}</p>
               </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">High-Quality Mockups</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Access premium, Photorealistic mockups for all your packaging needs.</p>
-            </div>
-
-            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center text-[#37472F] mb-6">
-                <img src={editIcon} alt="Easy Customization" className="w-6 h-6 object-contain" />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Easy Customization</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Edit colors, texts and designs in just a few clicks with our smart tools.</p>
-            </div>
-
-            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center text-[#37472F] mb-6">
-                <img src={categoriesIcon} alt="Organized Categories" className="w-6 h-6 object-contain" />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Organized Categories</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Browse mockups by category to quickly find exactly what you need.</p>
-            </div>
-
-            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center text-[#37472F] mb-6">
-                <img src={multiFormatIcon} alt="Multi-Format" className="w-6 h-6 object-contain" />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Multi-Format Files</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Download in multiple formats including PSD, AI, PNG and more.</p>
-            </div>
-
-            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center text-[#37472F] mb-6">
-                <img src={smartIcon} alt="Smart Object" className="w-6 h-6 object-contain" />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Smart Object Support</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Replace designs instantly using smart objects for seamless editing.</p>
-            </div>
-
-            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center text-[#37472F] mb-6">
-                <img src={realisticIcon} alt="Realistic Shadows" className="w-6 h-6 object-contain" />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Realistic Shadows & Lighting</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Built-in lighting and shadows for ultra-realistic results.</p>
-            </div>
-
-            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center text-[#37472F] mb-6">
-                <img src={fastIcon} alt="Fast & Reliable" className="w-6 h-6 object-contain" />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Fast & Reliable</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Optimized for speed and performance to save your time.</p>
-            </div>
-
-            <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100 flex flex-col">
-              <div className="w-12 h-12 rounded-full bg-[#EBF2DE] flex items-center justify-center text-[#37472F] mb-6">
-                <img src={supportIcon} alt="Dedicated Support" className="w-6 h-6 object-contain" />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Dedicated Support</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Our support team is always ready to help you with any questions.</p>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -137,7 +250,7 @@ export default function FeaturesPage() {
             <div className="hidden lg:block w-[1px] h-12 bg-white/20"></div>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-                <img src={jarIcon} alt="Icon" className="w-6 h-6 object-contain filter invert brightness-0" />
+                <img src={icon50K} alt="Mockups Created" className="w-6 h-6 object-contain" />
               </div>
               <div>
                 <div className="text-2xl font-bold">50K+</div>
@@ -147,7 +260,7 @@ export default function FeaturesPage() {
             <div className="hidden lg:block w-[1px] h-12 bg-white/20"></div>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" /></svg>
+                <img src={icon100plus} alt="Countries Served" className="w-6 h-6 object-contain" />
               </div>
               <div>
                 <div className="text-2xl font-bold">100+</div>
@@ -157,7 +270,7 @@ export default function FeaturesPage() {
             <div className="hidden lg:block w-[1px] h-12 bg-white/20"></div>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" /></svg>
+                <img src={ratingIcon} alt="Customer Rating" className="w-6 h-6 object-contain" />
               </div>
               <div>
                 <div className="text-2xl font-bold" style={{ color: '#F2B62C' }}>4.9/5</div>
@@ -169,7 +282,7 @@ export default function FeaturesPage() {
 
         {/* Bottom Banner */}
         <div className="w-full px-6 lg:px-12 xl:px-20 pb-16">
-          <ReadyMockupBanner target="/modelsMockup" fullWidth />
+          <ReadyMockupBanner target="/editor" fullWidth />
         </div>
 
       </main>
