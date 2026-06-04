@@ -10,6 +10,9 @@ export default function EditorPage() {
   const [modelUrl, setModelUrl] = useState(location.state?.initialModelUrl || sqBox1Url);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
 
+  // Key to force Screen 2 canvas re-mount on reset
+  const [canvasResetKey, setCanvasResetKey] = useState(0);
+
   // Unified state for size, textures, and colors
   const [editorState, setEditorState] = useState({
     textures: {},
@@ -53,6 +56,7 @@ export default function EditorPage() {
     setEditorState(defaultState);
     history.current = [defaultState];
     historyIndex.current = 0;
+    setCanvasResetKey(k => k + 1);
   };
 
   // Transition from Screen 1 to Screen 2
@@ -115,6 +119,7 @@ export default function EditorPage() {
           setModelUrl={setModelUrl}
           onBack={handleBackToModelViewer}
           isActive={currentScreen === 2}
+          canvasResetKey={canvasResetKey}
         />
       </div>
     </div>

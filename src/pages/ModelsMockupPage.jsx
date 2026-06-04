@@ -2,11 +2,31 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
 import ReadyMockupBanner from "../components/ReadyMockupBanner";
-import bagIcon from "../assets/images/Icons/bag.webp";
-import boxIcon from "../assets/images/Icons/box.webp";
-import boxAltIcon from "../assets/images/Icons/box2.webp";
-import jarIcon from "../assets/images/Icons/jar.webp";
-import shirtIcon from "../assets/images/Icons/t-shirt.webp";
+import bagIcon from "../assets/images/MockupsSection/Icons/bag.webp";
+import boxIcon from "../assets/images/MockupsSection/Icons/box.webp";
+import boxAltIcon from "../assets/images/MockupsSection/Icons/box2.webp";
+import jarIcon from "../assets/images/MockupsSection/Icons/jar.webp";
+import shirtIcon from "../assets/images/MockupsSection/Icons/t-shirt.webp";
+import bottleIcon from "../assets/images/MockupsSection/Icons/Bottle.webp";
+import burgerIcon from "../assets/images/MockupsSection/Icons/Burger.webp";
+import foodBoxIcon from "../assets/images/MockupsSection/Icons/FoodBox.webp";
+import glassBottleIcon from "../assets/images/MockupsSection/Icons/GlassBottle.webp";
+import hoodieIcon from "../assets/images/MockupsSection/Icons/Hoodie.webp";
+import icecreamIcon from "../assets/images/MockupsSection/Icons/Icecream.webp";
+import paperBagIcon from "../assets/images/MockupsSection/Icons/PaperBag.webp";
+import paperCupIcon from "../assets/images/MockupsSection/Icons/PaperCup.webp";
+import pizzaIcon from "../assets/images/MockupsSection/Icons/Pizza.webp";
+import plasticBagIcon from "../assets/images/MockupsSection/Icons/PlasticBag.webp";
+import plasticBoxIcon from "../assets/images/MockupsSection/Icons/PlasticBox.webp";
+import plasticCupIcon from "../assets/images/MockupsSection/Icons/PlasticCup.webp";
+import rectangleContainerIcon from "../assets/images/MockupsSection/Icons/RectangleContainer.webp";
+import roundContainerIcon from "../assets/images/MockupsSection/Icons/RoundContainer.webp";
+import roundSquareContainerIcon from "../assets/images/MockupsSection/Icons/RoundSquareContainer.webp";
+import sweetBoxIcon from "../assets/images/MockupsSection/Icons/SweetBox.webp";
+import tShirtIcon from "../assets/images/MockupsSection/Icons/TShirt.webp";
+import tumblerIcon from "../assets/images/MockupsSection/Icons/Tumbler.webp";
+import waterCanIcon from "../assets/images/MockupsSection/Icons/WaterCan.webp";
+import waterbottleIcon from "../assets/images/MockupsSection/Icons/Waterbottle.webp";
 import mockupBanner from "../assets/images/MockupsSection/banner.svg";
 import burgerWrapperImage from "../assets/images/MockupsSection/BurgerWrapper.webp";
 import foodBoxImage from "../assets/images/MockupsSection/Food Box.webp";
@@ -385,12 +405,40 @@ function ShirtIcon({ className = "h-6 w-6" }) {
 }
 
 const sidebarIcons = {
-  bag: bagIcon,
-  bottle: jarIcon,
+  // Generic / Fallback
   box: boxIcon,
+  bag: bagIcon,
+  bottle: bottleIcon,
   container: jarIcon,
   pack: boxAltIcon,
   shirt: shirtIcon,
+
+  // Group mappings
+  boxes: boxIcon,
+  "food packaging": boxAltIcon,
+
+  // Specific Subcategory mappings
+  "square box": boxIcon,
+  "food box": foodBoxIcon,
+  "plastic box": plasticBoxIcon,
+  "water bottle": waterbottleIcon,
+  "oil bottle": bottleIcon,
+  "glass bottle": glassBottleIcon,
+  "water can": waterCanIcon,
+  tumbler: tumblerIcon,
+  cup: paperCupIcon,
+  "round container": roundContainerIcon,
+  "round square container": roundSquareContainerIcon,
+  "rectangle container": rectangleContainerIcon,
+  "sweet box": sweetBoxIcon,
+  "ice cream": icecreamIcon,
+  "burger wrap": burgerIcon,
+  "pizza box": pizzaIcon,
+  "paper bag": paperBagIcon,
+  "plastic bag": plasticBagIcon,
+  "t-shirt": tShirtIcon,
+  "t shirt": tShirtIcon,
+  hoodies: hoodieIcon,
 };
 
 const productImages = {
@@ -504,19 +552,7 @@ function normalizeLabel(value) {
 }
 
 function sidebarIconType(label) {
-  const normalized = normalizeLabel(label);
-  if (normalized.includes("bag")) return "bag";
-  if (normalized.includes("shirt")) return "shirt";
-  if (normalized.includes("bottle") || normalized.includes("can"))
-    return "bottle";
-  if (
-    normalized.includes("container") ||
-    normalized.includes("cup") ||
-    normalized.includes("tumbler")
-  )
-    return "container";
-  if (normalized.includes("food") || normalized.includes("fro")) return "pack";
-  return "box";
+  return normalizeLabel(label);
 }
 
 function SidebarItem({

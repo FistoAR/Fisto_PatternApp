@@ -247,6 +247,262 @@ class DraggableImage {
   }
 }
 
+class DraggableText {
+  constructor(text, textureSize, options = {}) {
+    this.text = text;
+    this.fontSize = options.fontSize || 80;
+    this.color = options.color || "#000000";
+    this.fontFamily = options.fontFamily || "Outfit, sans-serif";
+    this.bold = options.bold || false;
+    this.italic = options.italic || false;
+    this.underline = options.underline || false;
+
+    this.opacity = 1;
+    this.rotation = 0;
+    this.flipX = false;
+    this.flipY = false;
+    this.locked = false;
+
+    this.updateDimensions();
+
+    // Center initially
+    this.x = (textureSize.width - this.width) / 2;
+    this.y = (textureSize.height - this.height) / 2;
+  }
+
+  updateDimensions() {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx.font = `${this.italic ? "italic " : ""}${this.bold ? "bold " : ""}${this.fontSize}px ${this.fontFamily}`;
+    const metrics = ctx.measureText(this.text);
+    // Add some padding to make selection/dragging easier
+    this.nativeWidth = Math.max(100, metrics.width + 40);
+    this.nativeHeight = this.fontSize * 1.3;
+    
+    this.width = this.nativeWidth;
+    this.height = this.nativeHeight;
+  }
+
+  clone(offset = 32) {
+    const copy = Object.create(DraggableText.prototype);
+    copy.text = this.text;
+    copy.fontSize = this.fontSize;
+    copy.color = this.color;
+    copy.fontFamily = this.fontFamily;
+    copy.bold = this.bold;
+    copy.italic = this.italic;
+    copy.underline = this.underline;
+    copy.nativeWidth = this.nativeWidth;
+    copy.nativeHeight = this.nativeHeight;
+    copy.width = this.width;
+    copy.height = this.height;
+    copy.x = this.x + offset;
+    copy.y = this.y + offset;
+    copy.rotation = this.rotation;
+    copy.opacity = this.opacity;
+    copy.flipX = this.flipX;
+    copy.flipY = this.flipY;
+    copy.locked = this.locked;
+    return copy;
+  }
+
+  getCenterTex() {
+    return { x: this.x + this.width / 2, y: this.y + this.height / 2 };
+  }
+
+  _toLocal(mx, my, scale) {
+    const cx = (this.x + this.width / 2) / scale;
+    const cy = (this.y + this.height / 2) / scale;
+    const dx = mx - cx;
+    const dy = my - cy;
+    const cos = Math.cos(-this.rotation);
+    const sin = Math.sin(-this.rotation);
+    return {
+      lx: dx * cos - dy * sin,
+      ly: dx * sin + dy * cos,
+    };
+  }
+
+  draw(ctx, scale) {
+    ctx.save();
+    ctx.globalAlpha = this.opacity;
+
+    const scaledX = this.x / scale;
+    const scaledY = this.y / scale;
+    const scaledW = this.width / scale;
+    const scaledH = this.height / scale;
+
+    ctx.translate(scaledX + scaledW / 2, scaledY + scaledH / 2);
+    ctx.rotate(this.rotation);
+    ctx.scale(this.flipX ? -1 : 1, this.flipY ? -1 : 1);
+    
+    const scaleX = this.width / this.nativeWidth;
+    const scaleY = this.height / this.nativeHeight;
+    ctx.scale(scaleX, scaleY);
+
+    ctx.fillStyle = this.color;
+    ctx.font = `${this.italic ? "italic " : ""}${this.bold ? "bold " : ""}${this.fontSize / scale}px ${this.fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(this.text, 0, 0);
+
+    if (this.underline) {
+      const metrics = ctx.measureText(this.text);
+      const textWidth = metrics.width;
+      // Position underline just below the text baseline
+      const underlineY = (this.fontSize / scale) * 0.4;
+      const thickness = Math.max(1, (this.fontSize / scale) / 15);
+      
+      ctx.beginPath();
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = thickness;
+      ctx.moveTo(-textWidth / 2, underlineY);
+      ctx.lineTo(textWidth / 2, underlineY);
+      ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  drawControls(ctx, scale) {
+    const scaledW = this.width / scale;
+    const scaledH = this.height / scale;
+    const cx = (this.x + this.width / 2) / scale;
+    const cy = (this.y + this.height / 2) / scale;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(this.rotation);
+
+    // --- Bounding box ---
+    ctx.strokeStyle = "#7c5cfc";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.strokeRect(-scaledW / 2, -scaledH / 2, scaledW, scaledH);
+
+    // --- Corner handles (circles) ---
+    const cornerRadius = 5;
+    const corners = [
+      [-scaledW / 2, -scaledH / 2],
+      [scaledW / 2, -scaledH / 2],
+      [scaledW / 2, scaledH / 2],
+      [-scaledW / 2, scaledH / 2],
+    ];
+
+    corners.forEach(([hx, hy]) => {
+      ctx.beginPath();
+      ctx.arc(hx, hy, cornerRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.strokeStyle = "#7c5cfc";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+
+    // --- Edge midpoint handles (small squares) ---
+    const midSize = 4;
+    const midpoints = [
+      [0, -scaledH / 2], // top
+      [scaledW / 2, 0], // right
+      [0, scaledH / 2], // bottom
+      [-scaledW / 2, 0], // left
+    ];
+
+    midpoints.forEach(([hx, hy]) => {
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#7c5cfc";
+      ctx.lineWidth = 2;
+      ctx.fillRect(hx - midSize, hy - midSize, midSize * 2, midSize * 2);
+      ctx.strokeRect(hx - midSize, hy - midSize, midSize * 2, midSize * 2);
+    });
+
+    // --- Rotation handle (top center, outside the box) ---
+    const rotHandleOffset = 28;
+    const rotHandleY = -(scaledH / 2 + rotHandleOffset);
+
+    // Connecting line
+    ctx.beginPath();
+    ctx.moveTo(0, -scaledH / 2);
+    ctx.lineTo(0, rotHandleY + 10);
+    ctx.strokeStyle = "#7c5cfc";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Rotation icon circle background
+    ctx.beginPath();
+    ctx.arc(0, rotHandleY, 12, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.strokeStyle = "#7c5cfc";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Draw rotation arrow icon
+    ctx.save();
+    ctx.translate(0, rotHandleY);
+    ctx.strokeStyle = "#7c5cfc";
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Circular arrow
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, -Math.PI * 0.8, Math.PI * 0.5, false);
+    ctx.stroke();
+
+    // Arrow head
+    const aex = 6 * Math.cos(Math.PI * 0.5);
+    const aey = 6 * Math.sin(Math.PI * 0.5);
+    ctx.beginPath();
+    ctx.moveTo(aex - 3, aey - 2);
+    ctx.lineTo(aex, aey);
+    ctx.lineTo(aex + 3, aey - 2);
+    ctx.stroke();
+
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  contains(mx, my, scale) {
+    const { lx, ly } = this._toLocal(mx, my, scale);
+    const hw = this.width / scale / 2;
+    const hh = this.height / scale / 2;
+    return lx >= -hw && lx <= hw && ly >= -hh && ly <= hh;
+  }
+
+  hitTest(mx, my, scale) {
+    if (this.locked) return HANDLE.NONE;
+    const { lx, ly } = this._toLocal(mx, my, scale);
+    const hw = this.width / scale / 2;
+    const hh = this.height / scale / 2;
+    const hitR = 10;
+
+    // Rotation handle
+    const rotHandleOffset = 28;
+    const rotY = -(hh + rotHandleOffset);
+    if (lx * lx + (ly - rotY) * (ly - rotY) < 16 * 16) return HANDLE.ROTATE;
+
+    // Corner handles
+    if (Math.hypot(lx - -hw, ly - -hh) < hitR) return HANDLE.TL;
+    if (Math.hypot(lx - hw, ly - -hh) < hitR) return HANDLE.TR;
+    if (Math.hypot(lx - hw, ly - hh) < hitR) return HANDLE.BR;
+    if (Math.hypot(lx - -hw, ly - hh) < hitR) return HANDLE.BL;
+
+    // Edge midpoint handles
+    if (Math.hypot(lx - 0, ly - -hh) < hitR) return HANDLE.T;
+    if (Math.hypot(lx - hw, ly - 0) < hitR) return HANDLE.R;
+    if (Math.hypot(lx - 0, ly - hh) < hitR) return HANDLE.B;
+    if (Math.hypot(lx - -hw, ly - 0) < hitR) return HANDLE.L;
+
+    // Body
+    if (lx >= -hw && lx <= hw && ly >= -hh && ly <= hh) return HANDLE.MOVE;
+
+    return HANDLE.NONE;
+  }
+}
+
 function drawUVs(
   mesh,
   components,
@@ -713,6 +969,7 @@ const Canvas = forwardRef(
       fullUv,
       bgColor,
       isActive,
+      onSelectedLayerChange,
     },
     ref,
   ) => {
@@ -722,6 +979,11 @@ const Canvas = forwardRef(
     const imagesRef = useRef([]);
     const selectedImageRef = useRef(null);
     const [selectedImage, setSelectedImage] = useState(null);
+
+    // Inline text editing overlay
+    const [editingText, setEditingText] = useState(null); // { layer, x, y, w, h }
+    const onSelectedLayerChangeRef = useRef(onSelectedLayerChange);
+    useEffect(() => { onSelectedLayerChangeRef.current = onSelectedLayerChange; }, [onSelectedLayerChange]);
     const contextMenuTargetRef = useRef(null);
     const [contextMenu, setContextMenu] = useState({
       open: false,
@@ -952,19 +1214,45 @@ const Canvas = forwardRef(
           bakeCtx.restore();
         }
       }
-      imagesRef.current.forEach((img) => {
+      imagesRef.current.forEach((item) => {
         bakeCtx.save();
-        bakeCtx.globalAlpha = img.opacity;
-        bakeCtx.translate(img.x + img.width / 2, img.y + img.height / 2);
-        bakeCtx.rotate(img.rotation);
-        bakeCtx.scale(img.flipX ? -1 : 1, img.flipY ? -1 : 1);
-        bakeCtx.drawImage(
-          img.img,
-          -img.width / 2,
-          -img.height / 2,
-          img.width,
-          img.height,
-        );
+        bakeCtx.globalAlpha = item.opacity;
+        bakeCtx.translate(item.x + item.width / 2, item.y + item.height / 2);
+        bakeCtx.rotate(item.rotation);
+        bakeCtx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
+        if (item instanceof DraggableText) {
+          const scaleX = item.width / item.nativeWidth;
+          const scaleY = item.height / item.nativeHeight;
+          bakeCtx.scale(scaleX, scaleY);
+
+          bakeCtx.fillStyle = item.color;
+          bakeCtx.font = `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${item.fontSize}px ${item.fontFamily}`;
+          bakeCtx.textAlign = 'center';
+          bakeCtx.textBaseline = 'middle';
+          bakeCtx.fillText(item.text, 0, 0);
+          
+          if (item.underline) {
+            const metrics = bakeCtx.measureText(item.text);
+            const textWidth = metrics.width;
+            const underlineY = item.fontSize * 0.4;
+            const thickness = Math.max(1, item.fontSize / 15);
+            
+            bakeCtx.beginPath();
+            bakeCtx.strokeStyle = item.color;
+            bakeCtx.lineWidth = thickness;
+            bakeCtx.moveTo(-textWidth / 2, underlineY);
+            bakeCtx.lineTo(textWidth / 2, underlineY);
+            bakeCtx.stroke();
+          }
+        } else {
+          bakeCtx.drawImage(
+            item.img,
+            -item.width / 2,
+            -item.height / 2,
+            item.width,
+            item.height,
+          );
+        }
         bakeCtx.restore();
       });
 
@@ -975,18 +1263,42 @@ const Canvas = forwardRef(
     const pushHistory = useCallback(
       (actionImages, actionFaceColors) => {
         const stateSnapshot = {
-          images: actionImages.map((img) => ({
-            src: img.img.src,
-            x: img.x,
-            y: img.y,
-            width: img.width,
-            height: img.height,
-            rotation: img.rotation,
-            opacity: img.opacity,
-            flipX: img.flipX,
-            flipY: img.flipY,
-            locked: img.locked,
-          })),
+          images: actionImages.map((item) => {
+            if (item instanceof DraggableText) {
+              return {
+                type: 'text',
+                text: item.text,
+                x: item.x,
+                y: item.y,
+                width: item.width,
+                height: item.height,
+                rotation: item.rotation,
+                opacity: item.opacity,
+                flipX: item.flipX,
+                flipY: item.flipY,
+                locked: item.locked,
+                fontSize: item.fontSize,
+                color: item.color,
+                fontFamily: item.fontFamily,
+                bold: item.bold,
+                italic: item.italic,
+                underline: item.underline,
+              };
+            }
+            return {
+              type: 'image',
+              src: item.img.src,
+              x: item.x,
+              y: item.y,
+              width: item.width,
+              height: item.height,
+              rotation: item.rotation,
+              opacity: item.opacity,
+              flipX: item.flipX,
+              flipY: item.flipY,
+              locked: item.locked,
+            };
+          }),
           faceColors: { ...actionFaceColors },
         };
 
@@ -1006,19 +1318,39 @@ const Canvas = forwardRef(
         setFaceColors(state.faceColors);
         faceColorsRef.current = state.faceColors;
 
-        const newImages = state.images.map((imgData) => {
+        const newImages = state.images.map((itemData) => {
+          if (itemData.type === 'text') {
+            const dt = new DraggableText(itemData.text, textureSizeRef.current, {
+              fontSize: itemData.fontSize,
+              color: itemData.color,
+              fontFamily: itemData.fontFamily,
+              bold: itemData.bold,
+              italic: itemData.italic,
+              underline: itemData.underline,
+            });
+            dt.x = itemData.x;
+            dt.y = itemData.y;
+            dt.width = itemData.width;
+            dt.height = itemData.height;
+            dt.rotation = itemData.rotation;
+            dt.opacity = itemData.opacity !== undefined ? itemData.opacity : 1;
+            dt.flipX = itemData.flipX || false;
+            dt.flipY = itemData.flipY || false;
+            dt.locked = itemData.locked || false;
+            return dt;
+          }
           const imgEl = new Image();
-          imgEl.src = imgData.src;
+          imgEl.src = itemData.src;
           const di = new DraggableImage(imgEl, textureSizeRef.current);
-          di.x = imgData.x;
-          di.y = imgData.y;
-          di.width = imgData.width;
-          di.height = imgData.height;
-          di.rotation = imgData.rotation;
-          di.opacity = imgData.opacity !== undefined ? imgData.opacity : 1;
-          di.flipX = imgData.flipX || false;
-          di.flipY = imgData.flipY || false;
-          di.locked = imgData.locked || false;
+          di.x = itemData.x;
+          di.y = itemData.y;
+          di.width = itemData.width;
+          di.height = itemData.height;
+          di.rotation = itemData.rotation;
+          di.opacity = itemData.opacity !== undefined ? itemData.opacity : 1;
+          di.flipX = itemData.flipX || false;
+          di.flipY = itemData.flipY || false;
+          di.locked = itemData.locked || false;
           return di;
         });
 
@@ -1324,6 +1656,7 @@ const Canvas = forwardRef(
 
       selectedImageRef.current = clickedImage;
       setSelectedImage(clickedImage);
+      onSelectedLayerChangeRef.current?.(clickedImage);
 
       if (clickedImage) {
         interaction.isDragging = true;
@@ -1690,6 +2023,36 @@ const Canvas = forwardRef(
       uploadImage: (file) => {
         onUploadImage(file);
       },
+      addText: (text = 'Text') => {
+        const dt = new DraggableText(text, textureSizeRef.current);
+        imagesRef.current.push(dt);
+        selectedImageRef.current = dt;
+        setSelectedImage(dt);
+        needsDisplayRedrawRef.current = true;
+        bakeTexture();
+        saveState();
+        redrawDisplay();
+        onSelectedLayerChangeRef.current?.(dt);
+      },
+      updateSelectedTextProps: (props) => {
+        const sel = selectedImageRef.current;
+        if (!sel || !(sel instanceof DraggableText)) return;
+        Object.assign(sel, props);
+        if (
+          props.text !== undefined ||
+          props.fontSize !== undefined ||
+          props.fontFamily !== undefined ||
+          props.bold !== undefined ||
+          props.italic !== undefined ||
+          props.underline !== undefined
+        ) {
+          sel.updateDimensions();
+        }
+        needsDisplayRedrawRef.current = true;
+        bakeTexture();
+        redrawDisplay();
+      },
+      getSelectedLayer: () => selectedImageRef.current,
       getCleanTexture: () => {
         setSelectedFace(null);
         bakeTexture(true); // Bake synchronously without selection highlight
@@ -1700,19 +2063,45 @@ const Canvas = forwardRef(
         exportCanvas.width = textureSizeRef.current.width;
         exportCanvas.height = textureSizeRef.current.height;
         const ctx = exportCanvas.getContext("2d");
-        imagesRef.current.forEach((img) => {
+        imagesRef.current.forEach((item) => {
           ctx.save();
-          ctx.globalAlpha = img.opacity;
-          ctx.translate(img.x + img.width / 2, img.y + img.height / 2);
-          ctx.rotate(img.rotation);
-          ctx.scale(img.flipX ? -1 : 1, img.flipY ? -1 : 1);
-          ctx.drawImage(
-            img.img,
-            -img.width / 2,
-            -img.height / 2,
-            img.width,
-            img.height,
-          );
+          ctx.globalAlpha = item.opacity;
+          ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
+          ctx.rotate(item.rotation);
+          ctx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
+          if (item instanceof DraggableText) {
+            const scaleX = item.width / item.nativeWidth;
+            const scaleY = item.height / item.nativeHeight;
+            ctx.scale(scaleX, scaleY);
+
+            ctx.fillStyle = item.color;
+            ctx.font = `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${item.fontSize}px ${item.fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(item.text, 0, 0);
+            
+            if (item.underline) {
+              const metrics = ctx.measureText(item.text);
+              const textWidth = metrics.width;
+              const underlineY = item.fontSize * 0.4;
+              const thickness = Math.max(1, item.fontSize / 15);
+              
+              ctx.beginPath();
+              ctx.strokeStyle = item.color;
+              ctx.lineWidth = thickness;
+              ctx.moveTo(-textWidth / 2, underlineY);
+              ctx.lineTo(textWidth / 2, underlineY);
+              ctx.stroke();
+            }
+          } else {
+            ctx.drawImage(
+              item.img,
+              -item.width / 2,
+              -item.height / 2,
+              item.width,
+              item.height,
+            );
+          }
           ctx.restore();
         });
         return exportCanvas.toDataURL("image/png");
@@ -1837,6 +2226,23 @@ const Canvas = forwardRef(
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onContextMenu={handleContextMenu}
+                onDoubleClick={(e) => {
+                  const displayCanvas = displayCanvasRef.current;
+                  if (!displayCanvas) return;
+                  const rect = displayCanvas.getBoundingClientRect();
+                  const mx = (e.clientX - rect.left) / zoom;
+                  const my = (e.clientY - rect.top) / zoom;
+                  const scale = canvasScaleRef.current;
+                  const sel = selectedImageRef.current;
+                  if (sel instanceof DraggableText && sel.contains(mx, my, scale)) {
+                    const renderScale = rect.width / displayCanvas.width;
+                    const scaledX = (sel.x / scale) * renderScale + rect.left;
+                    const scaledY = (sel.y / scale) * renderScale + rect.top;
+                    const scaledW = (sel.width / scale) * renderScale;
+                    const scaledH = (sel.height / scale) * renderScale;
+                    setEditingText({ layer: sel, x: scaledX, y: scaledY, w: scaledW, h: scaledH });
+                  }
+                }}
                 style={{
                   cursor:
                     toolMode === "hand"
@@ -1849,6 +2255,59 @@ const Canvas = forwardRef(
                 }}
                 className="touch-none transition-transform duration-75"
               />
+
+              {/* Inline Text Edit Overlay */}
+              {editingText && (
+                <div
+                  style={{
+                    position: 'fixed',
+                    left: editingText.x,
+                    top: editingText.y,
+                    width: editingText.w * 1.5,
+                    zIndex: 9999,
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <input
+                    autoFocus
+                    defaultValue={editingText.layer.text}
+                    onFocus={(e) => {
+                      if (e.target.value === 'Your Text') {
+                        e.target.value = '';
+                      } else {
+                        e.target.select();
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim() || 'Text';
+                      editingText.layer.text = val;
+                      editingText.layer.updateDimensions();
+                      setEditingText(null);
+                      needsDisplayRedrawRef.current = true;
+                      bakeTexture();
+                      saveState();
+                      redrawDisplay();
+                      onSelectedLayerChangeRef.current?.(editingText.layer);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.target.blur();
+                      if (e.key === 'Escape') setEditingText(null);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '4px 8px',
+                      fontSize: 14,
+                      fontFamily: editingText.layer.fontFamily,
+                      color: editingText.layer.color,
+                      border: '2px solid #7c5cfc',
+                      borderRadius: 6,
+                      outline: 'none',
+                      background: 'rgba(255,255,255,0.95)',
+                      boxShadow: '0 2px 16px rgba(124,92,252,0.2)',
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Face Color Popup */}
               {selectedFace && (
