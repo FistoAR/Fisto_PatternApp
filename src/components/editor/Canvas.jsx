@@ -54,6 +54,8 @@ class DraggableImage {
     this.flipX = false;
     this.flipY = false;
     this.locked = false;
+    this.selectedFaceIds = [];
+    this.fitType = null;
   }
 
   clone(offset = 32) {
@@ -68,6 +70,8 @@ class DraggableImage {
     copy.flipX = this.flipX;
     copy.flipY = this.flipY;
     copy.locked = this.locked;
+    copy.selectedFaceIds = [...(this.selectedFaceIds || [])];
+    copy.fitType = this.fitType;
     return copy;
   }
 
@@ -90,8 +94,40 @@ class DraggableImage {
     };
   }
 
-  draw(ctx, scale) {
+  draw(ctx, scale, uvComponents = []) {
     ctx.save();
+
+    // Clip to the selected faces if any to show image contained inside selected frame/face
+    if (
+      this.selectedFaceIds &&
+      this.selectedFaceIds.length > 0 &&
+      uvComponents &&
+      uvComponents.length > 0
+    ) {
+      ctx.beginPath();
+      let hasPath = false;
+      this.selectedFaceIds.forEach((fId) => {
+        const comp = uvComponents.find((c) => c.id === fId);
+        if (comp && comp.path && comp.path.length > 0) {
+          ctx.moveTo(
+            comp.path[0].u * ctx.canvas.width,
+            comp.path[0].v * ctx.canvas.height,
+          );
+          for (let i = 1; i < comp.path.length; i++) {
+            ctx.lineTo(
+              comp.path[i].u * ctx.canvas.width,
+              comp.path[i].v * ctx.canvas.height,
+            );
+          }
+          hasPath = true;
+        }
+      });
+      if (hasPath) {
+        ctx.closePath();
+        ctx.clip();
+      }
+    }
+
     ctx.globalAlpha = this.opacity;
 
     const scaledX = this.x / scale;
@@ -278,7 +314,7 @@ class DraggableText {
     // Add some padding to make selection/dragging easier
     this.nativeWidth = Math.max(100, metrics.width + 40);
     this.nativeHeight = this.fontSize * 1.3;
-    
+
     this.width = this.nativeWidth;
     this.height = this.nativeHeight;
   }
@@ -335,7 +371,7 @@ class DraggableText {
     ctx.translate(scaledX + scaledW / 2, scaledY + scaledH / 2);
     ctx.rotate(this.rotation);
     ctx.scale(this.flipX ? -1 : 1, this.flipY ? -1 : 1);
-    
+
     const scaleX = this.width / this.nativeWidth;
     const scaleY = this.height / this.nativeHeight;
     ctx.scale(scaleX, scaleY);
@@ -351,8 +387,8 @@ class DraggableText {
       const textWidth = metrics.width;
       // Position underline just below the text baseline
       const underlineY = (this.fontSize / scale) * 0.4;
-      const thickness = Math.max(1, (this.fontSize / scale) / 15);
-      
+      const thickness = Math.max(1, this.fontSize / scale / 15);
+
       ctx.beginPath();
       ctx.strokeStyle = this.color;
       ctx.lineWidth = thickness;
@@ -507,7 +543,7 @@ function drawUVs(
   mesh,
   components,
   faceColors,
-  selectedFace,
+  selectedFaces,
   ctx,
   w,
   h,
@@ -595,21 +631,23 @@ function drawUVs(
   }
   ctx.restore();
 
-  // 3. Highlight selected face with solid blue border
-  if (selectedFace) {
-    const comp = components.find((c) => c.id === selectedFace);
-    if (comp && comp.path && comp.path.length > 0) {
-      ctx.beginPath();
-      ctx.moveTo(comp.path[0].u * w, comp.path[0].v * h);
-      for (let i = 1; i < comp.path.length; i++) {
-        ctx.lineTo(comp.path[i].u * w, comp.path[i].v * h);
-      }
-      ctx.closePath();
+  // 3. Highlight selected faces with solid blue border
+  if (selectedFaces && selectedFaces.size > 0) {
+    selectedFaces.forEach((fId) => {
+      const comp = components.find((c) => c.id === fId);
+      if (comp && comp.path && comp.path.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(comp.path[0].u * w, comp.path[0].v * h);
+        for (let i = 1; i < comp.path.length; i++) {
+          ctx.lineTo(comp.path[i].u * w, comp.path[i].v * h);
+        }
+        ctx.closePath();
 
-      ctx.strokeStyle = "#3b82f6"; // solid blue-500
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
+        ctx.strokeStyle = "#3b82f6"; // solid blue-500
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    });
   }
 
   ctx.restore();
@@ -670,7 +708,7 @@ function orderEdgesToPath(edges) {
   return path;
 }
 
-export function extractUvComponents(mesh) {
+export function extractUvComponents(mesh, modelUrl) {
   const geometry = mesh?.geometry;
   if (!geometry || !geometry.attributes.uv) return [];
 
@@ -774,20 +812,78 @@ export function extractUvComponents(mesh) {
     if (rootI !== rootJ) parent[rootI] = rootJ;
   };
 
+  let isBoxModel = false;
+  if (modelUrl) {
+    const urlLower = modelUrl.toLowerCase();
+    if (
+      urlLower.includes("box") ||
+      urlLower.includes("rect") ||
+      urlLower.includes("square") ||
+      urlLower.includes("sq") ||
+      urlLower.includes("pizza") ||
+      urlLower.includes("sweet") ||
+      urlLower.includes("packaging") ||
+      urlLower.includes("biriyani")
+    ) {
+      isBoxModel = true;
+    }
+  }
+
+  // Check mesh names in the GLTF (which are fully preserved in production/development builds)
+  if (!isBoxModel && mesh) {
+    const meshName = (mesh.name || "").toLowerCase();
+    const parentName = (mesh.parent?.name || "").toLowerCase();
+    const combinedName = `${meshName} ${parentName}`;
+    if (
+      combinedName.includes("box") ||
+      combinedName.includes("rect") ||
+      combinedName.includes("square") ||
+      combinedName.includes("sweet") ||
+      combinedName.includes("pizza") ||
+      combinedName.includes("packaging") ||
+      combinedName.includes("biriyani") ||
+      combinedName.includes("bt") || // matches 650 BT, 1000 BT (rectangular containers)
+      combinedName.includes("sb") // matches SB 250, SB TE 500 (sweet boxes)
+    ) {
+      isBoxModel = true;
+    }
+  }
+
+  // Geometric classification fallback (100% reliable for generic names & blob uploads)
+  if (!isBoxModel) {
+    const uniqueNormals = new Set();
+    triangles.forEach((tri) => {
+      if (tri.normal) {
+        const nx = Math.round(tri.normal.x * 10) / 10;
+        const ny = Math.round(tri.normal.y * 10) / 10;
+        const nz = Math.round(tri.normal.z * 10) / 10;
+        uniqueNormals.add(`${nx},${ny},${nz}`);
+      }
+    });
+    // A box typically has <= 20 unique normal directions. A cylinder/cup/round container has >= 26.
+    if (uniqueNormals.size <= 20) {
+      isBoxModel = true;
+    }
+  }
+
   for (const edge of uvEdgeMap.values()) {
     if (edge.tris.length >= 2) {
       const t1 = triangles[edge.tris[0]];
-      const t2 = triangles[edge.tris[1]];
-
-      // Check if the shared edge is axis-aligned (horizontal or vertical in UV space)
-      const dx = Math.abs(edge.p1.u - edge.p2.u);
-      const dy = Math.abs(edge.p1.v - edge.p2.v);
-      const isAxisAligned = dx < 0.001 || dy < 0.001;
-
-      // Merge triangles if they are coplanar AND the shared edge is a diagonal (not a crease)
-      if (dot(t1.normal, t2.normal) > 0.8) {
-        if (!isAxisAligned) {
-          union(t1.id, t2.id);
+      if (t1 && t1.normal) {
+        for (let i = 1; i < edge.tris.length; i++) {
+          const t2 = triangles[edge.tris[i]];
+          if (t2 && t2.normal) {
+            const d = dot(t1.normal, t2.normal);
+            if (d > 0.3) {
+              if (isBoxModel && d < 0.99) {
+                const dx = Math.abs(edge.p1.u - edge.p2.u);
+                const dy = Math.abs(edge.p1.v - edge.p2.v);
+                const isAxisAligned = dx < 0.01 || dy < 0.01;
+                if (isAxisAligned) continue;
+              }
+              union(t1.id, t2.id);
+            }
+          }
         }
       }
     }
@@ -823,10 +919,16 @@ export function extractUvComponents(mesh) {
         const edge = uvEdgeMap.get(key);
 
         let isBoundary = true;
-        if (edge.tris.length >= 2) {
-          const otherTriId =
-            edge.tris[0] === triId ? edge.tris[1] : edge.tris[0];
-          if (faceTriSet.has(otherTriId)) isBoundary = false;
+        if (edge && edge.tris.length >= 2) {
+          let countInFace = 0;
+          for (const tId of edge.tris) {
+            if (faceTriSet.has(tId)) {
+              countInFace++;
+            }
+          }
+          if (countInFace >= 2) {
+            isBoundary = false;
+          }
         }
 
         if (isBoundary) {
@@ -842,9 +944,9 @@ export function extractUvComponents(mesh) {
       checkEdge(tri.c, tri.a);
     });
 
-    const area = (maxU - minU) * (maxV - minV);
-    if (area < 0.0025 || outlineEdges.length < 3) continue;
+    if (outlineEdges.length < 3) continue;
 
+    const area = (maxU - minU) * (maxV - minV);
     const path = orderEdgesToPath(outlineEdges);
     if (path.length > 0) {
       finalComponents.push({
@@ -970,6 +1072,7 @@ const Canvas = forwardRef(
       bgColor,
       isActive,
       onSelectedLayerChange,
+      onFaceSelectionChange,
     },
     ref,
   ) => {
@@ -983,7 +1086,14 @@ const Canvas = forwardRef(
     // Inline text editing overlay
     const [editingText, setEditingText] = useState(null); // { layer, x, y, w, h }
     const onSelectedLayerChangeRef = useRef(onSelectedLayerChange);
-    useEffect(() => { onSelectedLayerChangeRef.current = onSelectedLayerChange; }, [onSelectedLayerChange]);
+    useEffect(() => {
+      onSelectedLayerChangeRef.current = onSelectedLayerChange;
+    }, [onSelectedLayerChange]);
+
+    const onFaceSelectionChangeRef = useRef(onFaceSelectionChange);
+    useEffect(() => {
+      onFaceSelectionChangeRef.current = onFaceSelectionChange;
+    }, [onFaceSelectionChange]);
     const contextMenuTargetRef = useRef(null);
     const [contextMenu, setContextMenu] = useState({
       open: false,
@@ -1006,6 +1116,15 @@ const Canvas = forwardRef(
     const uvComponentsRef = useRef([]); // for sync access in event handlers
     const [selectedFace, setSelectedFace] = useState(null);
     const [selectedFaceUv, setSelectedFaceUv] = useState(null);
+    const [selectedFaces, setSelectedFacesState] = useState(new Set());
+    const selectedFacesRef = useRef(new Set());
+    const setSelectedFaces = useCallback((val) => {
+      const next =
+        typeof val === "function" ? val(selectedFacesRef.current) : val;
+      selectedFacesRef.current = next;
+      setSelectedFacesState(next);
+      onFaceSelectionChangeRef.current?.(next);
+    }, []);
     const [faceColors, setFaceColors] = useState({});
     const faceColorsRef = useRef({});
 
@@ -1132,7 +1251,7 @@ const Canvas = forwardRef(
           currentMeshRef.current,
           uvComponentsRef.current,
           faceColors,
-          selectedFace,
+          selectedFaces,
           ctx,
           w,
           h,
@@ -1142,122 +1261,154 @@ const Canvas = forwardRef(
 
       const scale = canvasScaleRef.current;
       imagesRef.current.forEach((img) => {
-        img.draw(ctx, scale);
+        img.draw(ctx, scale, uvComponentsRef.current);
       });
 
       // Draw controls for selected image LAST (on top)
       if (selectedImageRef.current) {
         selectedImageRef.current.drawControls(ctx, scale);
       }
-    }, [showUv, fullUv, faceColors, selectedFace]);
+    }, [showUv, fullUv, faceColors, selectedFaces]);
 
-    const bakeTexture = useCallback((ignoreSelection = false) => {
-      const bakeCanvas = textureCanvasRef.current;
-      if (!bakeCanvas) return;
-      const bakeCtx = bakeCanvas.getContext("2d");
+    const bakeTexture = useCallback(
+      (ignoreSelection = false) => {
+        const bakeCanvas = textureCanvasRef.current;
+        if (!bakeCanvas) return;
+        const bakeCtx = bakeCanvas.getContext("2d");
 
-      bakeCtx.clearRect(0, 0, bakeCanvas.width, bakeCanvas.height);
-      bakeCtx.fillStyle = bgColor;
-      bakeCtx.fillRect(0, 0, bakeCanvas.width, bakeCanvas.height);
+        bakeCtx.clearRect(0, 0, bakeCanvas.width, bakeCanvas.height);
+        bakeCtx.fillStyle = bgColor;
+        bakeCtx.fillRect(0, 0, bakeCanvas.width, bakeCanvas.height);
 
-      // Bake Face Colors first
-      uvComponentsRef.current.forEach((comp) => {
-        const color = faceColors[comp.id];
-        if (color && comp.path && comp.path.length > 0) {
-          bakeCtx.beginPath();
-          bakeCtx.moveTo(
-            comp.path[0].u * bakeCanvas.width,
-            comp.path[0].v * bakeCanvas.height,
-          );
-          for (let i = 1; i < comp.path.length; i++) {
-            bakeCtx.lineTo(
-              comp.path[i].u * bakeCanvas.width,
-              comp.path[i].v * bakeCanvas.height,
+        // Bake Face Colors first
+        uvComponentsRef.current.forEach((comp) => {
+          const color = faceColors[comp.id];
+          if (color && comp.path && comp.path.length > 0) {
+            bakeCtx.beginPath();
+            bakeCtx.moveTo(
+              comp.path[0].u * bakeCanvas.width,
+              comp.path[0].v * bakeCanvas.height,
             );
-          }
-          bakeCtx.closePath();
-          bakeCtx.fillStyle = color;
-          bakeCtx.fill();
-        }
-      });
-
-      // --- Highlight Selected Face in 3D ---
-      if (selectedFace && !ignoreSelection) {
-        const comp = uvComponentsRef.current.find((c) => c.id === selectedFace);
-        if (comp && comp.path && comp.path.length > 0) {
-          bakeCtx.save();
-          bakeCtx.beginPath();
-          bakeCtx.moveTo(
-            comp.path[0].u * bakeCanvas.width,
-            comp.path[0].v * bakeCanvas.height,
-          );
-          for (let i = 1; i < comp.path.length; i++) {
-            bakeCtx.lineTo(
-              comp.path[i].u * bakeCanvas.width,
-              comp.path[i].v * bakeCanvas.height,
-            );
-          }
-          bakeCtx.closePath();
-
-          // If uncolored, draw a soft blue fill so it's obviously selected
-          if (!faceColors[selectedFace]) {
-            bakeCtx.fillStyle = "rgba(59, 130, 246, 0.3)";
+            for (let i = 1; i < comp.path.length; i++) {
+              bakeCtx.lineTo(
+                comp.path[i].u * bakeCanvas.width,
+                comp.path[i].v * bakeCanvas.height,
+              );
+            }
+            bakeCtx.closePath();
+            bakeCtx.fillStyle = color;
             bakeCtx.fill();
           }
+        });
 
-          // Clip and draw a VERY thick inner blue border
-          bakeCtx.clip();
-          bakeCtx.lineWidth = 20; // 10px visible inner stroke
-          bakeCtx.strokeStyle = "#2563eb"; // strong blue
-          bakeCtx.stroke();
+        // --- Highlight Selected Faces in 3D ---
+        if (selectedFaces && selectedFaces.size > 0 && !ignoreSelection) {
+          selectedFaces.forEach((fId) => {
+            const comp = uvComponentsRef.current.find((c) => c.id === fId);
+            if (comp && comp.path && comp.path.length > 0) {
+              bakeCtx.save();
+              bakeCtx.beginPath();
+              bakeCtx.moveTo(
+                comp.path[0].u * bakeCanvas.width,
+                comp.path[0].v * bakeCanvas.height,
+              );
+              for (let i = 1; i < comp.path.length; i++) {
+                bakeCtx.lineTo(
+                  comp.path[i].u * bakeCanvas.width,
+                  comp.path[i].v * bakeCanvas.height,
+                );
+              }
+              bakeCtx.closePath();
 
-          bakeCtx.restore();
+              // If uncolored, draw a soft blue fill so it's obviously selected
+              if (!faceColors[fId]) {
+                bakeCtx.fillStyle = "rgba(59, 130, 246, 0.3)";
+                bakeCtx.fill();
+              }
+
+              // Clip and draw a VERY thick inner blue border
+              bakeCtx.clip();
+              bakeCtx.lineWidth = 20; // 10px visible inner stroke
+              bakeCtx.strokeStyle = "#2563eb"; // strong blue
+              bakeCtx.stroke();
+
+              bakeCtx.restore();
+            }
+          });
         }
-      }
-      imagesRef.current.forEach((item) => {
-        bakeCtx.save();
-        bakeCtx.globalAlpha = item.opacity;
-        bakeCtx.translate(item.x + item.width / 2, item.y + item.height / 2);
-        bakeCtx.rotate(item.rotation);
-        bakeCtx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
-        if (item instanceof DraggableText) {
-          const scaleX = item.width / item.nativeWidth;
-          const scaleY = item.height / item.nativeHeight;
-          bakeCtx.scale(scaleX, scaleY);
+        imagesRef.current.forEach((item) => {
+          bakeCtx.save();
 
-          bakeCtx.fillStyle = item.color;
-          bakeCtx.font = `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${item.fontSize}px ${item.fontFamily}`;
-          bakeCtx.textAlign = 'center';
-          bakeCtx.textBaseline = 'middle';
-          bakeCtx.fillText(item.text, 0, 0);
-          
-          if (item.underline) {
-            const metrics = bakeCtx.measureText(item.text);
-            const textWidth = metrics.width;
-            const underlineY = item.fontSize * 0.4;
-            const thickness = Math.max(1, item.fontSize / 15);
-            
+          // Clip to selected faces if any to prevent image bleeding onto adjacent UV frames/islands in the 3D model
+          if (item.selectedFaceIds && item.selectedFaceIds.length > 0) {
             bakeCtx.beginPath();
-            bakeCtx.strokeStyle = item.color;
-            bakeCtx.lineWidth = thickness;
-            bakeCtx.moveTo(-textWidth / 2, underlineY);
-            bakeCtx.lineTo(textWidth / 2, underlineY);
-            bakeCtx.stroke();
+            let hasPath = false;
+            item.selectedFaceIds.forEach((fId) => {
+              const comp = uvComponentsRef.current.find((c) => c.id === fId);
+              if (comp && comp.path && comp.path.length > 0) {
+                bakeCtx.moveTo(
+                  comp.path[0].u * bakeCanvas.width,
+                  comp.path[0].v * bakeCanvas.height,
+                );
+                for (let i = 1; i < comp.path.length; i++) {
+                  bakeCtx.lineTo(
+                    comp.path[i].u * bakeCanvas.width,
+                    comp.path[i].v * bakeCanvas.height,
+                  );
+                }
+                hasPath = true;
+              }
+            });
+            if (hasPath) {
+              bakeCtx.closePath();
+              bakeCtx.clip();
+            }
           }
-        } else {
-          bakeCtx.drawImage(
-            item.img,
-            -item.width / 2,
-            -item.height / 2,
-            item.width,
-            item.height,
-          );
-        }
-        bakeCtx.restore();
-      });
 
-      onTextureUpdatedRef.current();
-    }, [bgColor, faceColors, selectedFace, textureCanvasRef]);
+          bakeCtx.globalAlpha = item.opacity;
+          bakeCtx.translate(item.x + item.width / 2, item.y + item.height / 2);
+          bakeCtx.rotate(item.rotation);
+          bakeCtx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
+          if (item instanceof DraggableText) {
+            const scaleX = item.width / item.nativeWidth;
+            const scaleY = item.height / item.nativeHeight;
+            bakeCtx.scale(scaleX, scaleY);
+
+            bakeCtx.fillStyle = item.color;
+            bakeCtx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
+            bakeCtx.textAlign = "center";
+            bakeCtx.textBaseline = "middle";
+            bakeCtx.fillText(item.text, 0, 0);
+
+            if (item.underline) {
+              const metrics = bakeCtx.measureText(item.text);
+              const textWidth = metrics.width;
+              const underlineY = item.fontSize * 0.4;
+              const thickness = Math.max(1, item.fontSize / 15);
+
+              bakeCtx.beginPath();
+              bakeCtx.strokeStyle = item.color;
+              bakeCtx.lineWidth = thickness;
+              bakeCtx.moveTo(-textWidth / 2, underlineY);
+              bakeCtx.lineTo(textWidth / 2, underlineY);
+              bakeCtx.stroke();
+            }
+          } else {
+            bakeCtx.drawImage(
+              item.img,
+              -item.width / 2,
+              -item.height / 2,
+              item.width,
+              item.height,
+            );
+          }
+          bakeCtx.restore();
+        });
+
+        onTextureUpdatedRef.current();
+      },
+      [bgColor, faceColors, selectedFaces, textureCanvasRef],
+    );
 
     // --- History Logic ---
     const pushHistory = useCallback(
@@ -1266,7 +1417,7 @@ const Canvas = forwardRef(
           images: actionImages.map((item) => {
             if (item instanceof DraggableText) {
               return {
-                type: 'text',
+                type: "text",
                 text: item.text,
                 x: item.x,
                 y: item.y,
@@ -1286,7 +1437,7 @@ const Canvas = forwardRef(
               };
             }
             return {
-              type: 'image',
+              type: "image",
               src: item.img.src,
               x: item.x,
               y: item.y,
@@ -1319,15 +1470,19 @@ const Canvas = forwardRef(
         faceColorsRef.current = state.faceColors;
 
         const newImages = state.images.map((itemData) => {
-          if (itemData.type === 'text') {
-            const dt = new DraggableText(itemData.text, textureSizeRef.current, {
-              fontSize: itemData.fontSize,
-              color: itemData.color,
-              fontFamily: itemData.fontFamily,
-              bold: itemData.bold,
-              italic: itemData.italic,
-              underline: itemData.underline,
-            });
+          if (itemData.type === "text") {
+            const dt = new DraggableText(
+              itemData.text,
+              textureSizeRef.current,
+              {
+                fontSize: itemData.fontSize,
+                color: itemData.color,
+                fontFamily: itemData.fontFamily,
+                bold: itemData.bold,
+                italic: itemData.italic,
+                underline: itemData.underline,
+              },
+            );
             dt.x = itemData.x;
             dt.y = itemData.y;
             dt.width = itemData.width;
@@ -1404,6 +1559,150 @@ const Canvas = forwardRef(
       redrawDisplay();
       bakeTexture();
     }, [redrawDisplay, bakeTexture]);
+
+    const copiedLayerRef = useRef(null);
+
+    useEffect(() => {
+      const handleKeyDown = (e) => {
+        const activeEl = document.activeElement;
+        if (
+          activeEl &&
+          (activeEl.tagName === "INPUT" ||
+            activeEl.tagName === "SELECT" ||
+            activeEl.tagName === "TEXTAREA" ||
+            activeEl.isContentEditable)
+        ) {
+          return;
+        }
+
+        const isModKey = e.metaKey || e.ctrlKey;
+        const sel = selectedImageRef.current;
+
+        // 1. Undo: Cmd/Ctrl + Z
+        if (isModKey && e.key.toLowerCase() === "z" && !e.shiftKey) {
+          e.preventDefault();
+          undo();
+        }
+
+        // 2. Redo: Cmd/Ctrl + Y or Cmd/Ctrl + Shift + Z
+        if (
+          (isModKey && e.key.toLowerCase() === "y") ||
+          (isModKey && e.shiftKey && e.key.toLowerCase() === "z")
+        ) {
+          e.preventDefault();
+          redo();
+        }
+
+        // 3. Delete / Backspace: Delete selected layer
+        if (e.key === "Delete" || e.key === "Backspace") {
+          if (sel) {
+            e.preventDefault();
+            onDelete();
+          }
+        }
+
+        // 4. Copy: Cmd/Ctrl + C
+        if (isModKey && e.key.toLowerCase() === "c") {
+          if (sel) {
+            e.preventDefault();
+            copiedLayerRef.current = sel.clone(0);
+          }
+        }
+
+        // 5. Paste: Cmd/Ctrl + V
+        if (isModKey && e.key.toLowerCase() === "v") {
+          if (copiedLayerRef.current) {
+            e.preventDefault();
+            const pasted = copiedLayerRef.current.clone(30);
+            imagesRef.current.push(pasted);
+            setSelectedImage(pasted);
+            selectedImageRef.current = pasted;
+            needsDisplayRedrawRef.current = true;
+            bakeTexture();
+            saveState();
+            redrawDisplay();
+            copiedLayerRef.current = pasted;
+          }
+        }
+
+        // 6. Duplicate: Cmd/Ctrl + D
+        if (isModKey && e.key.toLowerCase() === "d") {
+          if (sel) {
+            e.preventDefault();
+            const copy = sel.clone(30);
+            imagesRef.current.push(copy);
+            setSelectedImage(copy);
+            selectedImageRef.current = copy;
+            needsDisplayRedrawRef.current = true;
+            bakeTexture();
+            saveState();
+            redrawDisplay();
+          }
+        }
+
+        // 7. V or S -> select/cursor tool
+        if (
+          !isModKey &&
+          (e.key.toLowerCase() === "v" || e.key.toLowerCase() === "s")
+        ) {
+          e.preventDefault();
+          setToolMode("cursor");
+        }
+
+        // 8. H -> hand/pan tool
+        if (!isModKey && e.key.toLowerCase() === "h") {
+          e.preventDefault();
+          setToolMode("hand");
+        }
+
+        // 9. M -> multiselect tool
+        if (!isModKey && e.key.toLowerCase() === "m") {
+          e.preventDefault();
+          setToolMode("multiselect");
+        }
+
+        // 10. Esc -> deselect all
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setSelectedFaces(new Set());
+          setSelectedFace(null);
+          setSelectedFaceUv(null);
+          selectedImageRef.current = null;
+          setSelectedImage(null);
+          onSelectedLayerChangeRef.current?.(null);
+          setContextMenu({ ...contextMenu, open: false });
+        }
+
+        // 11. Arrow Keys: nudge selected image
+        if (
+          sel &&
+          ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)
+        ) {
+          e.preventDefault();
+          const nudgeAmount = e.shiftKey ? 10 : 1;
+          const scale = canvasScaleRef.current || 1;
+          const nudgeGlobal = nudgeAmount * scale;
+
+          if (e.key === "ArrowUp") sel.y -= nudgeGlobal;
+          if (e.key === "ArrowDown") sel.y += nudgeGlobal;
+          if (e.key === "ArrowLeft") sel.x -= nudgeGlobal;
+          if (e.key === "ArrowRight") sel.x += nudgeGlobal;
+
+          sel.fitType = null;
+          sel.selectedFaceIds = [];
+
+          needsDisplayRedrawRef.current = true;
+          bakeTexture();
+          saveState();
+          redrawDisplay();
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }, [undo, redo, toolMode, contextMenu]);
 
     const resizeDisplayCanvas = useCallback(() => {
       if (!containerRef.current || !displayCanvasRef.current) return;
@@ -1507,7 +1806,7 @@ const Canvas = forwardRef(
         currentMeshRef.current = bestMesh;
 
         // Extract UV components for interaction
-        const components = extractUvComponents(bestMesh);
+        const components = extractUvComponents(bestMesh, modelUrl);
         uvComponentsRef.current = components;
         setUvComponents(components);
 
@@ -1654,11 +1953,11 @@ const Canvas = forwardRef(
         }
       }
 
-      selectedImageRef.current = clickedImage;
-      setSelectedImage(clickedImage);
-      onSelectedLayerChangeRef.current?.(clickedImage);
-
       if (clickedImage) {
+        selectedImageRef.current = clickedImage;
+        setSelectedImage(clickedImage);
+        onSelectedLayerChangeRef.current?.(clickedImage);
+
         interaction.isDragging = true;
         interaction.mode = HANDLE.MOVE;
         interaction.startMx = mx;
@@ -1668,9 +1967,62 @@ const Canvas = forwardRef(
         setCursor("move");
         displayCanvas.setPointerCapture(e.pointerId);
         startRenderLoop();
-        // Clear face selection when clicking an image
-        setSelectedFace(null);
-        setSelectedFaceUv(null);
+
+        // Also check if we should select/toggle the UV face underneath
+        const u = mx / displayCanvas.width;
+        const v = my / displayCanvas.height;
+        let clickedFace = null;
+        let clickedUv = null;
+        for (const comp of uvComponentsRef.current) {
+          if (pointInPolygon({ u, v }, comp.path)) {
+            clickedFace = comp.id;
+            clickedUv = { u, v };
+            break;
+          }
+        }
+
+        if (clickedFace) {
+          if (toolMode === "multiselect") {
+            const nextFaces = new Set(selectedFacesRef.current);
+            if (nextFaces.has(clickedFace)) {
+              nextFaces.delete(clickedFace);
+              if (selectedFace === clickedFace) {
+                if (nextFaces.size > 0) {
+                  const iter = nextFaces.values();
+                  const firstFace = iter.next().value;
+                  setSelectedFace(firstFace);
+                  const comp = uvComponentsRef.current.find(
+                    (c) => c.id === firstFace,
+                  );
+                  if (comp) {
+                    setSelectedFaceUv({
+                      u: (comp.minU + comp.maxU) / 2,
+                      v: (comp.minV + comp.maxV) / 2,
+                    });
+                  } else {
+                    setSelectedFaceUv(null);
+                  }
+                } else {
+                  setSelectedFace(null);
+                  setSelectedFaceUv(null);
+                }
+              }
+            } else {
+              nextFaces.add(clickedFace);
+              setSelectedFace(clickedFace);
+              setSelectedFaceUv(clickedUv);
+            }
+            setSelectedFaces(nextFaces);
+          } else {
+            // Normal cursor mode: select it if not already selected
+            if (!selectedFacesRef.current.has(clickedFace)) {
+              const nextFaces = new Set([clickedFace]);
+              setSelectedFaces(nextFaces);
+              setSelectedFace(clickedFace);
+              setSelectedFaceUv(clickedUv);
+            }
+          }
+        }
       } else {
         // Check for UV face click
         const u = mx / displayCanvas.width;
@@ -1684,8 +2036,56 @@ const Canvas = forwardRef(
             break;
           }
         }
-        setSelectedFace(clickedFace);
-        setSelectedFaceUv(clickedUv);
+
+        if (clickedFace) {
+          // Keep current image selection when selecting a UV face!
+          if (toolMode === "multiselect") {
+            const nextFaces = new Set(selectedFacesRef.current);
+            if (nextFaces.has(clickedFace)) {
+              nextFaces.delete(clickedFace);
+              if (selectedFace === clickedFace) {
+                if (nextFaces.size > 0) {
+                  // Pick the first remaining face as the anchor
+                  const iter = nextFaces.values();
+                  const firstFace = iter.next().value;
+                  setSelectedFace(firstFace);
+                  const comp = uvComponentsRef.current.find(
+                    (c) => c.id === firstFace,
+                  );
+                  if (comp) {
+                    setSelectedFaceUv({
+                      u: (comp.minU + comp.maxU) / 2,
+                      v: (comp.minV + comp.maxV) / 2,
+                    });
+                  } else {
+                    setSelectedFaceUv(null);
+                  }
+                } else {
+                  setSelectedFace(null);
+                  setSelectedFaceUv(null);
+                }
+              }
+            } else {
+              nextFaces.add(clickedFace);
+              setSelectedFace(clickedFace);
+              setSelectedFaceUv(clickedUv);
+            }
+            setSelectedFaces(nextFaces);
+          } else {
+            const nextFaces = new Set([clickedFace]);
+            setSelectedFaces(nextFaces);
+            setSelectedFace(clickedFace);
+            setSelectedFaceUv(clickedUv);
+          }
+        } else {
+          // Clicked outside both an image and any UV face (blank background): clear all
+          setSelectedFaces(new Set());
+          setSelectedFace(null);
+          setSelectedFaceUv(null);
+          selectedImageRef.current = null;
+          setSelectedImage(null);
+          onSelectedLayerChangeRef.current?.(null);
+        }
       }
 
       redrawDisplay();
@@ -1736,6 +2136,10 @@ const Canvas = forwardRef(
       const dy = my - interaction.startMy;
 
       if (mode === HANDLE.MOVE) {
+        if (dx !== 0 || dy !== 0) {
+          img.fitType = null;
+          img.selectedFaceIds = [];
+        }
         const newX = interaction.startImgX + dx * scale;
         const newY = interaction.startImgY + dy * scale;
         const texW = textureSizeRef.current.width;
@@ -1751,10 +2155,17 @@ const Canvas = forwardRef(
         const cx = (img.x + img.width / 2) / scale;
         const cy = (img.y + img.height / 2) / scale;
         const currentAngle = Math.atan2(my - cy, mx - cx);
-        img.rotation =
+        const newRot =
           interaction.startRotation + (currentAngle - interaction.startAngle);
+        if (newRot !== img.rotation) {
+          img.fitType = null;
+          img.selectedFaceIds = [];
+        }
+        img.rotation = newRot;
       } else {
         // Resize handles
+        img.fitType = null;
+        img.selectedFaceIds = [];
         applyResize(img, mode, mx, my, scale, interaction);
       }
 
@@ -1858,6 +2269,10 @@ const Canvas = forwardRef(
         // End of an image interaction, save state
         if (interaction.mode !== HANDLE.NONE) {
           saveState();
+          const img = selectedImageRef.current;
+          if (img) {
+            onSelectedLayerChangeRef.current?.({ ...img });
+          }
         }
       }
 
@@ -1999,7 +2414,7 @@ const Canvas = forwardRef(
       setContextMenu({ ...contextMenu, open: false });
     };
 
-    function onUploadImage(fileOrUrl) {
+    function onUploadImage(fileOrUrl, fitType = null) {
       if (!fileOrUrl) return;
       const url =
         typeof fileOrUrl === "string"
@@ -2008,9 +2423,63 @@ const Canvas = forwardRef(
       const img = new Image();
       img.onload = () => {
         const newImg = new DraggableImage(img, textureSizeRef.current);
+
+        let minU = Infinity,
+          maxU = -Infinity,
+          minV = Infinity,
+          maxV = -Infinity;
+        let hasSelected = false;
+
+        uvComponentsRef.current.forEach((comp) => {
+          if (selectedFacesRef.current.has(comp.id)) {
+            minU = Math.min(minU, comp.minU);
+            maxU = Math.max(maxU, comp.maxU);
+            minV = Math.min(minV, comp.minV);
+            maxV = Math.max(maxV, comp.maxV);
+            hasSelected = true;
+          }
+        });
+
+        if (hasSelected && fitType) {
+          const widthInTex = (maxU - minU) * textureSizeRef.current.width;
+          const heightInTex = (maxV - minV) * textureSizeRef.current.height;
+          const centerXInTex =
+            ((minU + maxU) / 2) * textureSizeRef.current.width;
+          const centerYInTex =
+            ((minV + maxV) / 2) * textureSizeRef.current.height;
+
+          let imgWidth, imgHeight;
+          if (fitType === "cover") {
+            imgWidth = widthInTex;
+            imgHeight = heightInTex;
+          } else if (fitType === "contain") {
+            const boxAspect = widthInTex / heightInTex;
+            const imgW = img.naturalWidth || img.width || 300;
+            const imgH = img.naturalHeight || img.height || 300;
+            const imgAspect = imgW / imgH;
+            if (imgAspect > boxAspect) {
+              imgWidth = widthInTex;
+              imgHeight = widthInTex / imgAspect;
+            } else {
+              imgHeight = heightInTex;
+              imgWidth = heightInTex * imgAspect;
+            }
+          }
+
+          newImg.width = imgWidth;
+          newImg.height = imgHeight;
+          newImg.x = centerXInTex - imgWidth / 2;
+          newImg.y = centerYInTex - imgHeight / 2;
+        }
+
+        if (hasSelected) {
+          newImg.selectedFaceIds = Array.from(selectedFacesRef.current);
+          newImg.fitType = fitType;
+        }
         imagesRef.current.push(newImg);
         selectedImageRef.current = newImg;
         setSelectedImage(newImg);
+        onSelectedLayerChangeRef.current?.(newImg);
         needsDisplayRedrawRef.current = true;
         bakeTexture();
         saveState();
@@ -2020,10 +2489,77 @@ const Canvas = forwardRef(
     }
 
     useImperativeHandle(ref, () => ({
-      uploadImage: (file) => {
-        onUploadImage(file);
+      hasSelectedFace: () => {
+        return selectedFacesRef.current.size > 0;
       },
-      addText: (text = 'Text') => {
+      hasSelectedImage: () => {
+        return !!selectedImageRef.current;
+      },
+      uploadImage: (file, fitType = null) => {
+        onUploadImage(file, fitType);
+      },
+      applyFitToSelectedImage: (fitType) => {
+        const sel = selectedImageRef.current;
+        if (!sel || !sel.img) return;
+
+        let minU = Infinity,
+          maxU = -Infinity,
+          minV = Infinity,
+          maxV = -Infinity;
+        let hasSelected = false;
+
+        uvComponentsRef.current.forEach((comp) => {
+          if (selectedFacesRef.current.has(comp.id)) {
+            minU = Math.min(minU, comp.minU);
+            maxU = Math.max(maxU, comp.maxU);
+            minV = Math.min(minV, comp.minV);
+            maxV = Math.max(maxV, comp.maxV);
+            hasSelected = true;
+          }
+        });
+
+        if (hasSelected && fitType) {
+          const widthInTex = (maxU - minU) * textureSizeRef.current.width;
+          const heightInTex = (maxV - minV) * textureSizeRef.current.height;
+          const centerXInTex =
+            ((minU + maxU) / 2) * textureSizeRef.current.width;
+          const centerYInTex =
+            ((minV + maxV) / 2) * textureSizeRef.current.height;
+
+          const img = sel.img;
+          let imgWidth, imgHeight;
+          if (fitType === "cover") {
+            imgWidth = widthInTex;
+            imgHeight = heightInTex;
+          } else if (fitType === "contain") {
+            const boxAspect = widthInTex / heightInTex;
+            const imgW = img.naturalWidth || img.width || 300;
+            const imgH = img.naturalHeight || img.height || 300;
+            const imgAspect = imgW / imgH;
+            if (imgAspect > boxAspect) {
+              imgWidth = widthInTex;
+              imgHeight = widthInTex / imgAspect;
+            } else {
+              imgHeight = heightInTex;
+              imgWidth = heightInTex * imgAspect;
+            }
+          }
+
+          sel.width = imgWidth;
+          sel.height = imgHeight;
+          sel.x = centerXInTex - imgWidth / 2;
+          sel.y = centerYInTex - imgHeight / 2;
+          sel.rotation = 0;
+          sel.selectedFaceIds = Array.from(selectedFacesRef.current);
+          sel.fitType = fitType;
+
+          needsDisplayRedrawRef.current = true;
+          bakeTexture();
+          saveState();
+          redrawDisplay();
+        }
+      },
+      addText: (text = "Text") => {
         const dt = new DraggableText(text, textureSizeRef.current);
         imagesRef.current.push(dt);
         selectedImageRef.current = dt;
@@ -2075,17 +2611,17 @@ const Canvas = forwardRef(
             ctx.scale(scaleX, scaleY);
 
             ctx.fillStyle = item.color;
-            ctx.font = `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${item.fontSize}px ${item.fontFamily}`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
+            ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
             ctx.fillText(item.text, 0, 0);
-            
+
             if (item.underline) {
               const metrics = ctx.measureText(item.text);
               const textWidth = metrics.width;
               const underlineY = item.fontSize * 0.4;
               const thickness = Math.max(1, item.fontSize / 15);
-              
+
               ctx.beginPath();
               ctx.strokeStyle = item.color;
               ctx.lineWidth = thickness;
@@ -2197,6 +2733,7 @@ const Canvas = forwardRef(
             ) {
               setSelectedFace(null);
               setSelectedFaceUv(null);
+              setSelectedFaces(new Set());
               setSelectedImage(null);
               selectedImageRef.current = null;
               if (contextMenu.open)
@@ -2234,13 +2771,22 @@ const Canvas = forwardRef(
                   const my = (e.clientY - rect.top) / zoom;
                   const scale = canvasScaleRef.current;
                   const sel = selectedImageRef.current;
-                  if (sel instanceof DraggableText && sel.contains(mx, my, scale)) {
+                  if (
+                    sel instanceof DraggableText &&
+                    sel.contains(mx, my, scale)
+                  ) {
                     const renderScale = rect.width / displayCanvas.width;
                     const scaledX = (sel.x / scale) * renderScale + rect.left;
                     const scaledY = (sel.y / scale) * renderScale + rect.top;
                     const scaledW = (sel.width / scale) * renderScale;
                     const scaledH = (sel.height / scale) * renderScale;
-                    setEditingText({ layer: sel, x: scaledX, y: scaledY, w: scaledW, h: scaledH });
+                    setEditingText({
+                      layer: sel,
+                      x: scaledX,
+                      y: scaledY,
+                      w: scaledW,
+                      h: scaledH,
+                    });
                   }
                 }}
                 style={{
@@ -2260,7 +2806,7 @@ const Canvas = forwardRef(
               {editingText && (
                 <div
                   style={{
-                    position: 'fixed',
+                    position: "fixed",
                     left: editingText.x,
                     top: editingText.y,
                     width: editingText.w * 1.5,
@@ -2272,14 +2818,14 @@ const Canvas = forwardRef(
                     autoFocus
                     defaultValue={editingText.layer.text}
                     onFocus={(e) => {
-                      if (e.target.value === 'Your Text') {
-                        e.target.value = '';
+                      if (e.target.value === "Your Text") {
+                        e.target.value = "";
                       } else {
                         e.target.select();
                       }
                     }}
                     onBlur={(e) => {
-                      const val = e.target.value.trim() || 'Text';
+                      const val = e.target.value.trim() || "Text";
                       editingText.layer.text = val;
                       editingText.layer.updateDimensions();
                       setEditingText(null);
@@ -2290,20 +2836,20 @@ const Canvas = forwardRef(
                       onSelectedLayerChangeRef.current?.(editingText.layer);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.target.blur();
-                      if (e.key === 'Escape') setEditingText(null);
+                      if (e.key === "Enter") e.target.blur();
+                      if (e.key === "Escape") setEditingText(null);
                     }}
                     style={{
-                      width: '100%',
-                      padding: '4px 8px',
+                      width: "100%",
+                      padding: "4px 8px",
                       fontSize: 14,
                       fontFamily: editingText.layer.fontFamily,
                       color: editingText.layer.color,
-                      border: '2px solid #7c5cfc',
+                      border: "2px solid #7c5cfc",
                       borderRadius: 6,
-                      outline: 'none',
-                      background: 'rgba(255,255,255,0.95)',
-                      boxShadow: '0 2px 16px rgba(124,92,252,0.2)',
+                      outline: "none",
+                      background: "rgba(255,255,255,0.95)",
+                      boxShadow: "0 2px 16px rgba(124,92,252,0.2)",
                     }}
                   />
                 </div>
@@ -2344,7 +2890,14 @@ const Canvas = forwardRef(
                         onInput={(e) => {
                           const val = e.target.value;
                           setFaceColors((prev) => {
-                            const next = { ...prev, [selectedFace]: val };
+                            const next = { ...prev };
+                            if (selectedFaces && selectedFaces.size > 0) {
+                              selectedFaces.forEach((fId) => {
+                                next[fId] = val;
+                              });
+                            } else {
+                              next[selectedFace] = val;
+                            }
                             faceColorsRef.current = next;
                             return next;
                           });
@@ -2357,7 +2910,13 @@ const Canvas = forwardRef(
                       <button
                         onClick={() => {
                           const newColors = { ...faceColors };
-                          delete newColors[selectedFace];
+                          if (selectedFaces && selectedFaces.size > 0) {
+                            selectedFaces.forEach((fId) => {
+                              delete newColors[fId];
+                            });
+                          } else {
+                            delete newColors[selectedFace];
+                          }
                           setFaceColors(newColors);
                           faceColorsRef.current = newColors;
                           saveState();
@@ -2410,6 +2969,32 @@ const Canvas = forwardRef(
                     alt="Hand"
                     className="w-6 h-6 object-contain opacity-80 hover:opacity-100"
                   />
+                </button>
+              </Tooltip>
+              <Tooltip label="Multi-Select Mode">
+                <button
+                  onClick={() => setToolMode("multiselect")}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "multiselect" ? "bg-gray-100" : "bg-transparent hover:bg-gray-50"}`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-5 h-5 opacity-80 hover:opacity-100 text-gray-800"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 3l12 8l-4.5 1.5l3.5 5.5l-1.5 1l-3.5-5.5l-2.5 2.5V3z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 4h6m-3-3v6"
+                    />
+                  </svg>
                 </button>
               </Tooltip>
 

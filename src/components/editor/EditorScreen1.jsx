@@ -301,12 +301,9 @@ export default function EditorScreen1({
   onResetAll,
   canUndo,
   canRedo,
+  activeTab,
+  setActiveTab,
 }) {
-  const [activeTab, setActiveTab] = useState(() => {
-    return modelUrl && modelUrl.includes("Box-4(Mockup).glb")
-      ? "models"
-      : "edit";
-  });
   const [showCustomSize, setShowCustomSize] = useState(false);
   const [showCameraViews, setShowCameraViews] = useState(false);
   const orbitControlsRef = useRef(null);
@@ -422,6 +419,81 @@ export default function EditorScreen1({
       setCustomSizeInput(appliedCustomSize);
     }
   }, [appliedCustomSize]);
+
+  // Keyboard shortcuts for EditorScreen1
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "SELECT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.isContentEditable)
+      ) {
+        return;
+      }
+
+      const isModKey = e.metaKey || e.ctrlKey;
+
+      // Undo: Cmd/Ctrl + Z
+      if (isModKey && e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo && onUndo) onUndo();
+      }
+
+      // Redo: Cmd/Ctrl + Y or Cmd/Ctrl + Shift + Z
+      if (
+        (isModKey && e.key.toLowerCase() === "y") ||
+        (isModKey && e.shiftKey && e.key.toLowerCase() === "z")
+      ) {
+        e.preventDefault();
+        if (canRedo && onRedo) onRedo();
+      }
+
+      // V or S -> select/cursor tool
+      if (!isModKey && (e.key.toLowerCase() === "v" || e.key.toLowerCase() === "s")) {
+        e.preventDefault();
+        handleSetToolMode("cursor");
+      }
+
+      // H -> hand/pan tool
+      if (!isModKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        handleSetToolMode("hand");
+      }
+
+      // R -> reset view
+      if (!isModKey && e.key.toLowerCase() === "r") {
+        e.preventDefault();
+        if (orbitControlsRef.current && cameraRef.current) {
+          orbitControlsRef.current.target.set(0, 0, 0);
+          orbitControlsRef.current.update();
+        }
+      }
+
+      // E -> open export modal
+      if (!isModKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        setShowExportModal(true);
+      }
+
+      // Escape -> close export modal, reset tool settings
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setShowExportModal(false);
+        setShowSwitchDialog(false);
+        setShowCustomSize(false);
+        setSelectedMaterial("");
+        setActiveTab("edit");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [canUndo, canRedo, onUndo, onRedo, activeTab, setActiveTab]);
 
   const handleCameraView = (view) => {
     if (!orbitControlsRef.current) return;
@@ -593,7 +665,12 @@ export default function EditorScreen1({
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
+                      d="M19.5 12h-15m0 0v1.5m0-1.5v-1.5m15 1.5v1.5m0-1.5v-1.5m-12 1.5v-1.5m3 1.5v-1.5m3 1.5v-1.5m3 1.5v-1.5"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18h12a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3Z"
                     />
                   </svg>
                 </div>
@@ -634,7 +711,7 @@ export default function EditorScreen1({
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                      d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
                     />
                   </svg>
                 </div>
@@ -932,11 +1009,8 @@ export default function EditorScreen1({
               stroke="currentColor"
               className="w-5 h-5"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5" />
             </svg>
           </button>
         </Tooltip1>

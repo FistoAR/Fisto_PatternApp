@@ -1,8 +1,52 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
-export default function UploadsPopup({ onUpload, uploadedImages }) {
+export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected, onApplyFit, selectedLayer }) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null); // { x: number, y: number, url: string }
+  const [warningMessage, setWarningMessage] = useState('');
+  const warningTimeoutRef = useRef(null);
+
+  const handleApplyFit = (fitType) => {
+    if (!isImageSelected) {
+      setWarningMessage('Please select a frame and image first');
+      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+      warningTimeoutRef.current = setTimeout(() => {
+        setWarningMessage('');
+      }, 5000);
+      return;
+    }
+    onApplyFit(fitType);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClose = () => setContextMenu(null);
+    window.addEventListener('click', handleClose);
+    window.addEventListener('contextmenu', handleClose);
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('contextmenu', handleClose);
+    };
+  }, [contextMenu]);
+
+  const handleContextMenu = (e, url) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Position menu slightly offset to avoid blocking cursor
+    setContextMenu({
+      x: e.clientX + 2,
+      y: e.clientY + 2,
+      url,
+    });
+  };
 
   const processFile = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) return;
@@ -109,14 +153,62 @@ export default function UploadsPopup({ onUpload, uploadedImages }) {
         <p className="text-[10px] text-gray-400 text-center mt-2">Supports PNG, JPG, WEBP, SVG</p>
       </div>
 
+      <div className="px-6 pb-4 border-b border-gray-100 mb-4 shrink-0">
+        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+          Image Formatting
+        </h3>
+        <div className="bg-gray-50 p-1 rounded-xl flex gap-1 border border-gray-100/80">
+          <button
+            onClick={() => handleApplyFit('contain')}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 border-none cursor-pointer transition-all duration-200
+              ${isImageSelected && selectedLayer?.fitType === 'contain'
+                ? 'bg-white text-[#c0623a] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                : 'bg-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
+              }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+              <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
+            </svg>
+            Contain
+          </button>
+          <button
+            onClick={() => handleApplyFit('cover')}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 border-none cursor-pointer transition-all duration-200
+              ${isImageSelected && selectedLayer?.fitType === 'cover'
+                ? 'bg-white text-[#c0623a] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                : 'bg-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
+              }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+              <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
+            </svg>
+            Cover
+          </button>
+        </div>
+        
+        {warningMessage && (
+          <div className="mt-2 text-[11px] text-[#c0623a] bg-[#fff5f0] border border-[#ffebd8] rounded-lg p-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="font-semibold">{warningMessage}</span>
+          </div>
+        )}
+      </div>
+
       <div className="px-6 pb-6 overflow-y-auto flex-1">
         <h3 className="text-[13px] font-bold text-gray-800 mb-3">Custom Material</h3>
         <div className="grid grid-cols-3 gap-3">
           {uploadedImages.map((url, idx) => (
             <button
               key={idx}
-              onClick={() => onUpload(null, url)}
-              className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all"
+              onClick={(e) => {
+                if (e.button === 0) onUpload(null, url);
+              }}
+              onContextMenu={(e) => handleContextMenu(e, url)}
+              className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all relative"
             >
               <img src={url} alt={`Upload ${idx}`} className="w-full h-full object-contain pointer-events-none" />
             </button>
@@ -126,6 +218,47 @@ export default function UploadsPopup({ onUpload, uploadedImages }) {
           )}
         </div>
       </div>
+
+      {contextMenu && (
+        <div
+          className="fixed z-[9999] bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 py-1.5 min-w-[140px] text-left animate-in fade-in zoom-in-95 duration-100"
+          style={{
+            top: `${contextMenu.y}px`,
+            left: `${contextMenu.x}px`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider select-none">
+            Resize &amp; Fit
+          </div>
+          <button
+            onClick={() => {
+              onUpload(null, contextMenu.url, 'contain');
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-2 text-xs font-medium text-gray-700 hover:bg-[#fff5f0] hover:text-[#c0623a] flex items-center gap-2 border-none bg-transparent cursor-pointer text-left transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+              <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
+            </svg>
+            Contain
+          </button>
+          <button
+            onClick={() => {
+              onUpload(null, contextMenu.url, 'cover');
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-2 text-xs font-medium text-gray-700 hover:bg-[#fff5f0] hover:text-[#c0623a] flex items-center gap-2 border-none bg-transparent cursor-pointer text-left transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+              <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
+            </svg>
+            Cover
+          </button>
+        </div>
+      )}
     </div>
   );
 }

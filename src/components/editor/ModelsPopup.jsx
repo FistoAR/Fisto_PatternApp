@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 // Box Images
 import burgerWrapperImage from '../../assets/images/MockupsSection/BurgerWrapper.webp';
@@ -190,6 +190,16 @@ export default function ModelsPopup({ onSelectModel, currentModelUrl }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const activeModelRef = useRef(null);
+
+  useEffect(() => {
+    if (activeModelRef.current) {
+      activeModelRef.current.scrollIntoView({
+        behavior: 'auto',
+        block: 'center'
+      });
+    }
+  }, [currentModelUrl]);
 
   const filteredModels = MODELS.filter(model => {
     const matchesSearch = model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -301,6 +311,7 @@ export default function ModelsPopup({ onSelectModel, currentModelUrl }) {
                   return (
                     <button 
                       key={model.id}
+                      ref={isActive ? activeModelRef : null}
                       onClick={() => onSelectModel(model.modelUrl)}
                       title={model.name}
                       className={`aspect-square rounded-2xl relative overflow-hidden transition-all cursor-pointer border-2 p-0 ${

@@ -1,24 +1,33 @@
-import { useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import EditorScreen1 from '../components/editor/EditorScreen1';
-import EditorScreen2 from '../components/editor/EditorScreen2';
-import sqBox1Url from '../assets/models/box models/sq box/Box-4(Mockup).glb?url';
+import { useState, useRef } from "react";
+import { useLocation } from "react-router-dom";
+import EditorScreen1 from "../components/editor/EditorScreen1";
+import EditorScreen2 from "../components/editor/EditorScreen2";
+import sqBox1Url from "../assets/models/box models/sq box/Box-4(Mockup).glb?url";
 
 export default function EditorPage() {
   const location = useLocation();
   const [currentScreen, setCurrentScreen] = useState(1);
-  const [modelUrl, setModelUrl] = useState(location.state?.initialModelUrl || sqBox1Url);
+  const [modelUrl, setModelUrl] = useState(
+    location.state?.initialModelUrl || sqBox1Url,
+  );
   const [selectedMaterial, setSelectedMaterial] = useState(null);
 
   // Key to force Screen 2 canvas re-mount on reset
   const [canvasResetKey, setCanvasResetKey] = useState(0);
+
+  // Lift activeTab state here to preserve it when switching screens
+  const [activeTab, setActiveTab] = useState(() => {
+    return modelUrl && modelUrl.includes("Box-4(Mockup).glb")
+      ? "models"
+      : "edit";
+  });
 
   // Unified state for size, textures, and colors
   const [editorState, setEditorState] = useState({
     textures: {},
     colors: {},
     customSize: null,
-    lastApplied: {}
+    lastApplied: {},
   });
 
   // History stack
@@ -52,11 +61,16 @@ export default function EditorPage() {
   const canRedo = historyIndex.current < history.current.length - 1;
 
   const handleResetAll = () => {
-    const defaultState = { textures: {}, colors: {}, customSize: null, lastApplied: {} };
+    const defaultState = {
+      textures: {},
+      colors: {},
+      customSize: null,
+      lastApplied: {},
+    };
     setEditorState(defaultState);
     history.current = [defaultState];
     historyIndex.current = 0;
-    setCanvasResetKey(k => k + 1);
+    setCanvasResetKey((k) => k + 1);
   };
 
   // Transition from Screen 1 to Screen 2
@@ -67,11 +81,11 @@ export default function EditorPage() {
 
   // Optional: Transition back to Screen 1
   const handleBackToModelViewer = (textureDataUrl) => {
-    if (typeof textureDataUrl === 'string') {
-      const targetMat = selectedMaterial || 'all';
+    if (typeof textureDataUrl === "string") {
+      const targetMat = selectedMaterial || "all";
       pushHistory({
         textures: { ...editorState.textures, [targetMat]: textureDataUrl },
-        lastApplied: { ...editorState.lastApplied, [targetMat]: 'texture' }
+        lastApplied: { ...editorState.lastApplied, [targetMat]: "texture" },
       });
     }
     setSelectedMaterial(null);
@@ -79,10 +93,10 @@ export default function EditorPage() {
   };
 
   const handleApplyColor = (materialId, colorHex) => {
-    const targetMat = materialId || 'all';
+    const targetMat = materialId || "all";
     pushHistory({
       colors: { ...editorState.colors, [targetMat]: colorHex },
-      lastApplied: { ...editorState.lastApplied, [targetMat]: 'color' }
+      lastApplied: { ...editorState.lastApplied, [targetMat]: "color" },
     });
   };
 
@@ -92,8 +106,10 @@ export default function EditorPage() {
 
   return (
     <div className="w-full h-full overflow-hidden relative">
-      <div className={`absolute inset-0 transition-opacity duration-300 ${currentScreen === 1 ? 'z-10 opacity-100' : '-z-10 opacity-0 pointer-events-none'}`}>
-        <EditorScreen1 
+      <div
+        className={`absolute inset-0 transition-opacity duration-300 ${currentScreen === 1 ? "z-10 opacity-100" : "-z-10 opacity-0 pointer-events-none"}`}
+      >
+        <EditorScreen1
           modelUrl={modelUrl}
           setModelUrl={setModelUrl}
           appliedTextures={editorState.textures}
@@ -111,10 +127,14 @@ export default function EditorPage() {
           canUndo={canUndo}
           canRedo={canRedo}
           isActive={currentScreen === 1}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
         />
       </div>
-      <div className={`absolute inset-0 transition-opacity duration-300 ${currentScreen === 2 ? 'z-10 opacity-100' : '-z-10 opacity-0 pointer-events-none'}`}>
-        <EditorScreen2 
+      <div
+        className={`absolute inset-0 transition-opacity duration-300 ${currentScreen === 2 ? "z-10 opacity-100" : "-z-10 opacity-0 pointer-events-none"}`}
+      >
+        <EditorScreen2
           modelUrl={modelUrl}
           setModelUrl={setModelUrl}
           onBack={handleBackToModelViewer}
