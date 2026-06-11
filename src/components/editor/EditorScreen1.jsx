@@ -7,30 +7,46 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Canvas as R3FCanvas, useThree } from "@react-three/fiber";
+import { Canvas as R3FCanvas, useThree, useLoader } from "@react-three/fiber";
 import {
   OrbitControls,
   useGLTF,
   Html,
   useProgress,
+  Environment,
 } from "@react-three/drei";
 import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+
+function CustomHdriEnvironment({ url, intensity }) {
+  const texture = useLoader(RGBELoader, url);
+  
+  // Apply mapping required for Environment map
+  useEffect(() => {
+    if (texture) {
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+    }
+  }, [texture]);
+
+  return <Environment map={texture} environmentIntensity={intensity} />;
+}
+
 
 import LeftSidebar from "./LeftSidebar";
 import ModelsPopup from "./ModelsPopup";
 import LayoutPopup from "./LayoutPopup";
+import ScenePopup from "./ScenePopup";
 
 import cursorIcon from "../../assets/images/Icons/cursor.webp";
 import handIcon from "../../assets/images/Icons/hand.webp";
 
 // ---- Loading overlay (outside canvas, driven by state or drei's useProgress) ----
 function ModelLoadingOverlay({ isLoading }) {
-  const { progress, active } = useProgress();
-  const showLoader = isLoading || active || progress < 100;
-  if (!showLoader) return null;
+  const { progress } = useProgress();
+  if (!isLoading) return null;
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#e6e2db]/80 backdrop-blur-[2px] pointer-events-none">
       {/* Spinner ring */}
@@ -53,10 +69,22 @@ function ModelLoadingOverlay({ isLoading }) {
   );
 }
 
+function MinorLoadingSpinner({ isLoading }) {
+  const { active } = useProgress();
+  if (isLoading || !active) return null;
+  return (
+    <div className="absolute top-6 right-24 bg-white/90 backdrop-blur-sm px-4 py-3 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.1)] flex items-center gap-3 z-[1000] border border-[#c05520]/20">
+      <div className="w-5 h-5 rounded-full border-2 border-[#c05520]/30 border-t-[#c05520] animate-spin" />
+      <span className="text-sm font-bold text-[#c05520]">Loading Assets...</span>
+    </div>
+  );
+}
+
 function AutoSizedModelWithDimensions({
   modelUrl,
   appliedTextures,
   appliedColors,
+  appliedMaterials,
   appliedLastApplied,
   shadowEnabled,
   customSize,
@@ -209,10 +237,15 @@ function AutoSizedModelWithDimensions({
         if (m.userData.originalColorHex === undefined) {
           m.userData.originalColorHex = m.color ? m.color.getHex() : 0xffffff;
           m.userData.originalMap = m.map;
+          m.userData.originalRoughness = m.roughness;
+          m.userData.originalMetalness = m.metalness;
         }
 
         const colorHex = appliedColors
           ? appliedColors[id] || appliedColors["all"]
+          : null;
+        const materialType = appliedMaterials
+          ? appliedMaterials[id] || appliedMaterials["all"]
           : null;
         let textureUrl = null;
         if (appliedTextures) {
@@ -269,9 +302,31 @@ function AutoSizedModelWithDimensions({
           m.map = m.userData.originalMap;
           m.needsUpdate = true;
         }
+
+        // Apply custom materials properties
+        if (materialType === "kraft") {
+          m.roughness = 0.9;
+          m.metalness = 0.1;
+          if (!textureUrl && last !== "color") m.color.setHex(0xbc9476);
+        } else if (materialType === "glossy") {
+          m.roughness = 0.1;
+          m.metalness = 0.1;
+          if (!textureUrl && last !== "color") m.color.setHex(0xffffff);
+        } else if (materialType === "matte") {
+          m.roughness = 0.8;
+          m.metalness = 0.1;
+          if (!textureUrl && last !== "color") m.color.setHex(0x222222);
+        } else if (materialType === "metallic") {
+          m.roughness = 0.2;
+          m.metalness = 0.9;
+          if (!textureUrl && last !== "color") m.color.setHex(0xaaaaaa);
+        } else {
+          m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.5;
+          m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
+        }
       });
     });
-  }, [clonedScene, appliedTextures, appliedColors, appliedLastApplied]);
+  }, [clonedScene, appliedTextures, appliedColors, appliedMaterials, appliedLastApplied]);
 
   if (!clonedScene) return null;
 
@@ -289,12 +344,14 @@ export default function EditorScreen1({
   setModelUrl,
   appliedTextures,
   appliedColors,
+  appliedMaterials,
   appliedLastApplied,
   appliedCustomSize,
   selectedMaterial,
   setSelectedMaterial,
   onProceed,
   onApplyColor,
+  onApplyMaterial,
   onApplyCustomSize,
   onUndo,
   onRedo,
@@ -315,6 +372,35 @@ export default function EditorScreen1({
   const [pendingModelUrl, setPendingModelUrl] = useState(null);
   const [showSwitchDialog, setShowSwitchDialog] = useState(false);
 
+  // Zoom state
+  const [zoomPercent, setZoomPercent] = useState(100);
+  const [showLegend, setShowLegend] = useState(false);
+
+  // Scene & Environment States
+  const [bgColor, setBgColor] = useState("#e6e2db");
+  const [hdriPreset, setHdriPreset] = useState("studio");
+  const [envIntensity, setEnvIntensity] = useState(0.4);
+  const [ambLight, setAmbLight] = useState(0.3);
+  const [dirLight, setDirLight] = useState(0.8);
+  const [shadowOpacity, setShadowOpacity] = useState(0.25);
+  const [customHdri, setCustomHdri] = useState(null);
+
+  const handleZoom = (step) => {
+    let newPct = zoomPercent + step;
+    if (newPct < 50) newPct = 50;
+    if (newPct > 150) newPct = 150;
+    
+    const controls = orbitControlsRef.current;
+    const camera = cameraRef.current;
+    if (controls && camera) {
+      const newDist = 4 / (newPct / 100);
+      const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+      offset.setLength(newDist);
+      camera.position.copy(controls.target).add(offset);
+      controls.update();
+    }
+  };
+
   // Custom size logic
   const [baseDimensions, setBaseDimensions] = useState(null);
   const [customSizeInput, setCustomSizeInput] = useState({
@@ -327,9 +413,11 @@ export default function EditorScreen1({
   const captureRef = useRef(null);
   const [activeScene, setActiveScene] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportGlbChecked, setExportGlbChecked] = useState(true);
-  const [exportImageChecked, setExportImageChecked] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportGlbChecked, setExportGlbChecked] = useState(false);
+  const [exportPngChecked, setExportPngChecked] = useState(true);
+  const [exportJpgChecked, setExportJpgChecked] = useState(false);
+  const [exportPdfChecked, setExportPdfChecked] = useState(false);
 
   const [isModelLoading, setIsModelLoading] = useState(false);
 
@@ -348,7 +436,7 @@ export default function EditorScreen1({
   };
 
   const handleExport = () => {
-    if (!exportGlbChecked && !exportImageChecked) {
+    if (!exportGlbChecked && !exportPngChecked && !exportJpgChecked && !exportPdfChecked) {
       alert("Please select at least one option to export.");
       return;
     }
@@ -368,7 +456,7 @@ export default function EditorScreen1({
             a.download = `${getModelName()}.glb`;
             a.click();
             URL.revokeObjectURL(url);
-            if (!exportImageChecked) {
+            if (!exportPngChecked && !exportJpgChecked && !exportPdfChecked) {
               setIsExporting(false);
               setShowExportModal(false);
             }
@@ -385,10 +473,14 @@ export default function EditorScreen1({
       }
     }
 
-    if (exportImageChecked) {
+    if (exportPngChecked || exportJpgChecked || exportPdfChecked) {
       setTimeout(() => {
         if (captureRef.current) {
-          captureRef.current.capture();
+          captureRef.current.capture({
+            png: exportPngChecked,
+            jpg: exportJpgChecked,
+            pdf: exportPdfChecked
+          });
         } else {
           alert("Could not capture 3D Canvas screen.");
         }
@@ -517,7 +609,7 @@ export default function EditorScreen1({
   const handleSetToolMode = (mode) => setToolMode(mode);
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#e6e2db] relative">
+    <div className="flex flex-col h-full w-full transition-colors duration-300 relative" style={{ backgroundColor: bgColor }}>
       {/* 3D Canvas Background */}
       <div
         id="three-canvas-container"
@@ -527,13 +619,13 @@ export default function EditorScreen1({
         <R3FCanvas
           camera={{ position: [0, 0.5, 4.5], fov: 45 }}
           dpr={[1, 2]}
-          gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+          gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
           shadows={shadowEnabled ? { type: THREE.PCFShadowMap } : false}
           onCreated={({ gl, camera }) => {
             gl.outputColorSpace = THREE.SRGBColorSpace;
             gl.toneMapping = THREE.ACESFilmicToneMapping;
             gl.toneMappingExposure = 0.9;
-            gl.setClearColor(new THREE.Color("#e6e2db"), 1);
+            gl.setClearColor(new THREE.Color(bgColor), 1);
             if (shadowEnabled) {
               gl.shadowMap.enabled = true;
               gl.shadowMap.type = THREE.PCFShadowMap;
@@ -541,10 +633,11 @@ export default function EditorScreen1({
             cameraRef.current = camera;
           }}
         >
-          <ambientLight intensity={0.3} />
+          <color attach="background" args={[bgColor]} />
+          <ambientLight intensity={ambLight} />
           <directionalLight
             position={[5, 10, 5]}
-            intensity={shadowEnabled ? 0.8 : 0.6}
+            intensity={shadowEnabled ? dirLight : dirLight * 0.75}
             castShadow={shadowEnabled}
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
@@ -564,10 +657,14 @@ export default function EditorScreen1({
               receiveShadow
             >
               <planeGeometry args={[20, 20]} />
-              <shadowMaterial opacity={0.25} />
+              <shadowMaterial opacity={shadowOpacity} />
             </mesh>
           )}
-          <SafeEnvironment preset="studio" environmentIntensity={0.4} />
+          {customHdri ? (
+            <CustomHdriEnvironment url={customHdri} intensity={envIntensity} />
+          ) : (
+            <SafeEnvironment preset={hdriPreset} environmentIntensity={envIntensity} />
+          )}
           <OrbitControls
             ref={orbitControlsRef}
             makeDefault
@@ -575,8 +672,16 @@ export default function EditorScreen1({
             enablePan={toolMode === "hand"}
             enableZoom={true}
             screenSpacePanning={true}
-            minDistance={1.5}
-            maxDistance={8}
+            minDistance={4 / 1.5}
+            maxDistance={4 / 0.5}
+            onChange={(e) => {
+              const controls = e.target;
+              if (controls && controls.object) {
+                const dist = controls.object.position.distanceTo(controls.target);
+                const pct = Math.round((4 / dist) * 100);
+                setZoomPercent(Math.min(150, Math.max(50, pct)));
+              }
+            }}
             rotateSpeed={1}
             panSpeed={1.2}
             zoomSpeed={0.8}
@@ -596,6 +701,7 @@ export default function EditorScreen1({
                 modelUrl={modelUrl}
                 appliedTextures={appliedTextures}
                 appliedColors={appliedColors}
+                appliedMaterials={appliedMaterials}
                 appliedLastApplied={appliedLastApplied}
                 shadowEnabled={shadowEnabled}
                 customSize={appliedCustomSize}
@@ -609,7 +715,7 @@ export default function EditorScreen1({
               />
             )}
           </Suspense>
-          <ScreenshotHelper ref={captureRef} filename={getModelName()} />
+          <ScreenshotHelper ref={captureRef} filename={getModelName()} bgColor={bgColor} />
         </R3FCanvas>
         {/* Loading overlay sits on top of canvas */}
         {modelUrl && <ModelLoadingOverlay isLoading={isModelLoading} />}
@@ -625,7 +731,7 @@ export default function EditorScreen1({
 
         {/* Popups */}
         <div
-          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto ${activeTab === "models" || activeTab === "layout" ? "w-[350px]" : "w-0"}`}
+          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" ? "w-[350px]" : "w-0"}`}
         >
           {activeTab === "models" && (
             <ModelsPopup
@@ -643,7 +749,20 @@ export default function EditorScreen1({
             />
           )}
           {activeTab === "layout" && <LayoutPopup />}
+          {activeTab === "scene" && (
+            <ScenePopup
+              bgColor={bgColor} setBgColor={setBgColor}
+              hdriPreset={hdriPreset} setHdriPreset={setHdriPreset}
+              envIntensity={envIntensity} setEnvIntensity={setEnvIntensity}
+              ambLight={ambLight} setAmbLight={setAmbLight}
+              dirLight={dirLight} setDirLight={setDirLight}
+              shadowOpacity={shadowOpacity} setShadowOpacity={setShadowOpacity}
+              customHdri={customHdri} setCustomHdri={setCustomHdri}
+            />
+          )}
         </div>
+
+
 
         {/* Edit Popup Panel */}
         {activeTab === "edit" && !showCustomSize && (
@@ -684,17 +803,17 @@ export default function EditorScreen1({
 
             <button
               onClick={() => onProceed(selectedMaterial)}
-              className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-between p-4 rounded-2xl border-none bg-[#a94a1c] hover:bg-[#a94a1c] transition-all duration-300 cursor-pointer shadow-[0_4px_12px_rgba(192,85,32,0.25)] hover:shadow-[0_6px_16px_rgba(192,85,32,0.35)] hover:-translate-y-0.5 group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
-                    strokeWidth={1.5}
+                    strokeWidth={1.8}
                     stroke="currentColor"
-                    className="w-5 h-5 text-[#c05520]"
+                    className="w-5 h-5 text-white"
                   >
                     <path
                       strokeLinecap="round"
@@ -703,7 +822,7 @@ export default function EditorScreen1({
                     />
                   </svg>
                 </div>
-                <span className="font-bold text-[#111827] text-sm">
+                <span className="font-bold text-white text-[15px] tracking-wide">
                   Upload Artwork
                 </span>
               </div>
@@ -711,9 +830,9 @@ export default function EditorScreen1({
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
-                strokeWidth={2}
+                strokeWidth={2.5}
                 stroke="currentColor"
-                className="w-4 h-4 text-gray-400"
+                className="w-5 h-5 text-white/90 transition-transform duration-300 group-hover:translate-x-1"
               >
                 <path
                   strokeLinecap="round"
@@ -741,16 +860,16 @@ export default function EditorScreen1({
               </select>
             </div>
 
-            <div className="relative w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer overflow-hidden">
+            <div className="relative w-full flex items-center justify-between p-4 rounded-2xl border-none bg-[#a94a1c] hover:bg-[#a94a1c] transition-all duration-300 cursor-pointer shadow-[0_4px_12px_rgba(192,85,32,0.25)] hover:shadow-[0_6px_16px_rgba(192,85,32,0.35)] hover:-translate-y-0.5 group overflow-hidden">
               <div className="flex items-center gap-3 z-10 pointer-events-none">
-                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="w-5 h-5 text-gray-600"
+                    className="w-5 h-5 text-white"
                   >
                     <path
                       strokeLinecap="round"
@@ -759,7 +878,7 @@ export default function EditorScreen1({
                     />
                   </svg>
                 </div>
-                <span className="font-bold text-[#111827] text-sm">
+                <span className="font-bold text-white text-[15px] tracking-wide">
                   Apply Color
                 </span>
               </div>
@@ -772,7 +891,7 @@ export default function EditorScreen1({
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
               />
               <div
-                className="w-6 h-6 rounded-full border-2 border-white shadow-md z-10 pointer-events-none"
+                className="w-6 h-6 rounded-full border border-[#a94a1c] shadow-lg z-10 pointer-events-none transition-transform duration-300 group-hover:scale-110"
                 style={{
                   backgroundColor:
                     appliedColors?.[selectedMaterial || "all"] || "#ffffff",
@@ -796,12 +915,51 @@ export default function EditorScreen1({
                 />
               </svg>
               <span>
-                Note: Applying a material color will override and replace any
-                custom artwork applied to this face.
+                Select specific material part to apply colors/textures
+                individually, otherwise it applies to entire object!
               </span>
+            </div>
+
+            {/* Default Materials Grid */}
+            <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
+              <label className="text-sm font-semibold text-gray-700">
+                Default Materials
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, "kraft")}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"] === "kraft" ? 'border-[#c05520] bg-orange-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#bc9476] shadow-inner" />
+                  <span className="text-xs font-bold text-gray-700">Kraft Paper</span>
+                </button>
+                <button
+                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, "glossy")}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"] === "glossy" ? 'border-[#c05520] bg-orange-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
+                >
+                  <div className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm" />
+                  <span className="text-xs font-bold text-gray-700">Glossy White</span>
+                </button>
+                <button
+                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, "matte")}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"] === "matte" ? 'border-[#c05520] bg-orange-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#222222] shadow-inner" />
+                  <span className="text-xs font-bold text-gray-700">Matte Black</span>
+                </button>
+                <button
+                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, "metallic")}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"] === "metallic" ? 'border-[#c05520] bg-orange-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 shadow-inner" />
+                  <span className="text-xs font-bold text-gray-700">Metallic</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
+
+        <MinorLoadingSpinner isLoading={isModelLoading} />
 
         {/* Custom Size Editor */}
         {activeTab === "edit" && showCustomSize && (
@@ -981,7 +1139,7 @@ export default function EditorScreen1({
 
         <div className="w-6 h-px bg-gray-200 mx-auto" />
 
-        <Tooltip1 label="Reset View" side="left">
+        <Tooltip1 label="Reset Position" side="left">
           <button
             onClick={() => {
               if (orbitControlsRef.current && cameraRef.current) {
@@ -990,6 +1148,7 @@ export default function EditorScreen1({
                 // let's just reset the pivot target, which fulfills "reset the pivot to 0"
                 orbitControlsRef.current.update();
               }
+              setToolMode("cursor");
             }}
             className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
           >
@@ -1012,6 +1171,7 @@ export default function EditorScreen1({
             onClick={() => {
               if (onResetAll) onResetAll();
               if (baseDimensions) setCustomSizeInput(baseDimensions);
+              setToolMode("cursor");
             }}
             className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-red-50 hover:text-red-500 cursor-pointer text-gray-600 transition-colors"
           >
@@ -1056,6 +1216,25 @@ export default function EditorScreen1({
             </svg>
           </button>
         </Tooltip1>
+
+        <Tooltip1 label="Zoom In" side="left">
+          <button onClick={() => handleZoom(10)} className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+            </svg>
+          </button>
+        </Tooltip1>
+
+        <div className="text-[11px] font-bold text-gray-400 text-center w-full select-none">{zoomPercent}%</div>
+
+        <Tooltip1 label="Zoom Out" side="left">
+          <button onClick={() => handleZoom(-10)} className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6" />
+            </svg>
+          </button>
+        </Tooltip1>
+
         <Tooltip1 label="Redo" side="left">
           <button
             onClick={onRedo}
@@ -1109,12 +1288,88 @@ export default function EditorScreen1({
             </svg>
           </button>
         </Tooltip1>
+
+        <div className="w-6 h-px bg-gray-200 mx-auto" />
+        
+        <Tooltip1 label="Help & Controls" side="left">
+          <button
+            onClick={() => setShowLegend(!showLegend)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+              showLegend
+                ? "bg-gray-900 text-white hover:bg-gray-700"
+                : "bg-transparent text-gray-500 hover:bg-gray-100"
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+            </svg>
+          </button>
+        </Tooltip1>
       </div>
 
-      {/* Export Options Modal */}
+      {/* Help / Legend Panel */}
+      {showLegend && (
+        <>
+          {/* Invisible overlay for click-outside to close */}
+          <div 
+            className="fixed inset-0 z-[999]" 
+            onClick={() => setShowLegend(false)}
+          />
+          <div className="absolute bottom-6 right-24 bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.1)] text-xs text-gray-600 border border-white/60 flex flex-col gap-3 z-[1000]">
+            <div className="font-bold text-gray-800 text-[14px]">Editor Controls</div>
+            <div className="flex gap-6 pointer-events-none">
+             <div className="flex items-start gap-2">
+                <img src={cursorIcon} className="w-4 h-4 opacity-70 mt-0.5" alt="" /> 
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-700">Select Tool</span>
+                  <span className="text-gray-500">Rotate & explore</span>
+                </div>
+             </div>
+             <div className="flex items-start gap-2">
+                <img src={handIcon} className="w-4 h-4 opacity-70 mt-0.5" alt="" /> 
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-700">Hand Tool</span>
+                  <span className="text-gray-500">Pan & move</span>
+                </div>
+             </div>
+             <div className="flex items-start gap-2">
+                <span className="text-[16px] leading-none mt-0.5">⚙️</span> 
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-700">Mouse Wheel</span>
+                  <span className="text-gray-500">Zoom in / out</span>
+                </div>
+             </div>
+          </div>
+          <div className="flex gap-6 pt-3 border-t border-gray-200/60 mt-1">
+             <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 opacity-70 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5" /></svg>
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-700">Reset Position</span>
+                  <span className="text-gray-500">Center view</span>
+                </div>
+             </div>
+             <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 opacity-70 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-700">Reset Edits</span>
+                  <span className="text-gray-500">Clear all designs</span>
+                </div>
+             </div>
+          </div>
+          </div>
+        </>
+      )}
+
+      {/* Export Options Popup */}
       {showExportModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/45 backdrop-blur-[4px]">
-          <div className="bg-white rounded-3xl p-6 w-[340px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col gap-5 relative border border-gray-100">
+        <>
+          {/* Invisible overlay for click-outside to close */}
+          <div 
+            className="fixed inset-0 z-[999]" 
+            onClick={() => setShowExportModal(false)}
+          />
+          <div className="absolute right-[100px] top-6 z-[1000] pointer-events-auto">
+            <div className="bg-white rounded-[15px] p-6 w-[340px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-5 relative border border-gray-100">
             <button
               onClick={() => setShowExportModal(false)}
               className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border-none text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
@@ -1161,20 +1416,53 @@ export default function EditorScreen1({
                   </span>
                 </div>
               </label>
-
               <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
                 <input
                   type="checkbox"
-                  checked={exportImageChecked}
-                  onChange={(e) => setExportImageChecked(e.target.checked)}
+                  checked={exportPngChecked}
+                  onChange={(e) => setExportPngChecked(e.target.checked)}
                   className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
                 />
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-gray-800">
-                    Export as Image
+                    Export as PNG 
                   </span>
                   <span className="text-[11px] text-gray-500">
-                    Download a high-res screenshot of the 3D canvas
+                    High-res image with transparent background
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={exportJpgChecked}
+                  onChange={(e) => setExportJpgChecked(e.target.checked)}
+                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-gray-800">
+                    Export as JPG
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    High-res screenshot with background
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={exportPdfChecked}
+                  onChange={(e) => setExportPdfChecked(e.target.checked)}
+                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-gray-800">
+                    Export as PDF
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    Document containing the 3D model view
                   </span>
                 </div>
               </label>
@@ -1214,6 +1502,7 @@ export default function EditorScreen1({
             </button>
           </div>
         </div>
+        </>
       )}
 
       {/* Bottom Floating Bar removed as requested */}
@@ -1327,22 +1616,54 @@ function Tooltip1({ label, children, side = "left" }) {
   );
 }
 
-const ScreenshotHelper = forwardRef(({ filename }, ref) => {
+const ScreenshotHelper = forwardRef(({ filename, bgColor }, ref) => {
   const { gl, scene, camera } = useThree();
 
   useImperativeHandle(ref, () => ({
-    capture: () => {
+    capture: async ({ png, jpg, pdf }) => {
       const currentPixelRatio = gl.getPixelRatio();
-      gl.setPixelRatio(3); // High-res export multiplier
-      gl.render(scene, camera);
-      const url = gl.domElement.toDataURL("image/png", 1.0);
-      gl.setPixelRatio(currentPixelRatio);
-      gl.render(scene, camera);
+      const currentClearColor = gl.getClearColor(new THREE.Color());
+      const currentClearAlpha = gl.getClearAlpha();
+      const originalBackground = scene.background;
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${filename || "model"}.png`;
-      a.click();
+      gl.setPixelRatio(3); // High-res export multiplier
+
+      const doExport = async (format, transparent) => {
+        if (transparent) {
+          gl.setClearColor(0x000000, 0); // Transparent background
+          scene.background = null;
+        } else {
+          gl.setClearColor(new THREE.Color(bgColor), 1); // Solid background
+          scene.background = new THREE.Color(bgColor);
+        }
+        
+        gl.render(scene, camera);
+        
+        let mimeType = format === "jpg" ? "image/jpeg" : "image/png";
+        const url = gl.domElement.toDataURL(mimeType, 1.0);
+        
+        if (format === "pdf") {
+          const { jsPDF } = await import("jspdf");
+          const pdfDoc = new jsPDF("landscape", "px", [gl.domElement.width, gl.domElement.height]);
+          pdfDoc.addImage(url, 'PNG', 0, 0, gl.domElement.width, gl.domElement.height);
+          pdfDoc.save(`${filename || "model"}.pdf`);
+        } else {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${filename || "model"}.${format}`;
+          a.click();
+        }
+      };
+
+      if (png) await doExport("png", true);
+      if (jpg) await doExport("jpg", false);
+      if (pdf) await doExport("pdf", false);
+
+      // Restore original state
+      scene.background = originalBackground;
+      gl.setPixelRatio(currentPixelRatio);
+      gl.setClearColor(currentClearColor, currentClearAlpha);
+      gl.render(scene, camera);
     },
   }));
 

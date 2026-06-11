@@ -346,7 +346,7 @@ function ProductPlaceholder({ name, index }) {
       className="group cursor-pointer rounded-[8px] border border-transparent bg-white p-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d7c9bd] hover:shadow-[0_18px_34px_rgba(15,23,42,0.16)]"
     >
       <div
-        className={`relative aspect-[1.02] overflow-hidden rounded-[8px] bg-gradient-to-br ${tones[index % tones.length]}`}
+        className={`relative aspect-[5/4] overflow-hidden rounded-[8px] bg-gradient-to-br ${tones[index % tones.length]}`}
       >
         {image ? (
           <img
@@ -377,7 +377,7 @@ function ProductPlaceholder({ name, index }) {
           </svg>
         </button>
       </div>
-      <h3 className="mt-3 truncate text-[15px] font-bold text-[#2b2b2b] transition-colors duration-200 group-hover:text-[#cc6428]">
+      <h3 className="mt-3 truncate text-[17px] font-bold text-[#2b2b2b] transition-colors duration-200 group-hover:text-[#cc6428]">
         {name}
       </h3>
       <button
@@ -415,9 +415,10 @@ function SidebarItem({
   expanded,
   hasChildren,
   parentActive,
+  count,
 }) {
-  const inactiveClass = "bg-transparent text-[#858585] hover:bg-[#f7eee9] hover:text-[#37472F]";
-  const activeClass = "bg-[#D2692B] text-white font-bold";
+  const inactiveClass = "bg-white/50 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-white/60 text-[#858585] hover:bg-white/80 hover:shadow-[0_4px_15px_rgba(0,0,0,0.06)] hover:text-[#37472F]";
+  const activeClass = "bg-[#D2692B] border border-transparent text-white font-bold shadow-[0_4px_12px_rgba(210,105,43,0.25)]";
 
   const finalClass = active || parentActive ? activeClass : inactiveClass;
 
@@ -427,7 +428,7 @@ function SidebarItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] border-none py-3 px-4 transition-all duration-200 ${finalClass} text-[clamp(13px,1.45vw,16px)] font-semibold`}
+      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] py-3 px-4 transition-all duration-300 ${finalClass} text-[clamp(13px,1.45vw,16px)] font-semibold`}
     >
       <div className="flex items-center gap-3">
         <img
@@ -439,6 +440,13 @@ function SidebarItem({
         />
         <span>{label}</span>
       </div>
+      {count !== undefined && count > 0 && (
+        <span className={`text-[14px] px-2.5 py-0.5 rounded-full transition-colors ${
+          active || parentActive ? "bg-white/25 text-white" : "bg-black/5 text-[#6b6b6b]"
+        }`}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }
@@ -542,6 +550,7 @@ export default function ModelsMockupPage() {
                   onClick={() => {
                     setActiveCategory("All");
                   }}
+                  count={catalogSections.reduce((acc, section) => acc + section.products.length, 0)}
                 />
 
                 {categoryGroups.map((group) => {
@@ -549,6 +558,9 @@ export default function ModelsMockupPage() {
                   const isParentActive =
                     group.items.includes(activeCategory) ||
                     activeCategory === group.title;
+                  
+                  const sectionInfo = catalogSections.find(s => s.title === group.title);
+                  const itemCount = sectionInfo ? sectionInfo.products.length : 0;
 
                   return (
                     <div key={group.title} className="flex flex-col gap-1">
@@ -568,6 +580,7 @@ export default function ModelsMockupPage() {
                             setActiveCategory(group.title);
                           }
                         }}
+                        count={itemCount}
                       />
 
                       {isExpanded && group.items.length > 0 && (

@@ -22,10 +22,11 @@ export default function EditorPage() {
       : "edit";
   });
 
-  // Unified state for size, textures, and colors
+  // Unified state for size, textures, colors, and physical materials
   const [editorState, setEditorState] = useState({
     textures: {},
     colors: {},
+    materials: {},
     customSize: null,
     lastApplied: {},
   });
@@ -65,6 +66,7 @@ export default function EditorPage() {
     const defaultState = {
       textures: {},
       colors: {},
+      materials: {},
       customSize: null,
       lastApplied: {},
     };
@@ -101,6 +103,14 @@ export default function EditorPage() {
     });
   };
 
+  const handleApplyMaterial = (materialId, materialType) => {
+    const targetMat = materialId || "all";
+    pushHistory({
+      materials: { ...editorState.materials, [targetMat]: materialType },
+      lastApplied: { ...editorState.lastApplied, [targetMat]: "material" },
+    });
+  };
+
   const handleApplyCustomSize = (size) => {
     pushHistory({ customSize: size });
   };
@@ -115,12 +125,14 @@ export default function EditorPage() {
           setModelUrl={setModelUrl}
           appliedTextures={editorState.textures}
           appliedColors={editorState.colors}
+          appliedMaterials={editorState.materials}
           appliedLastApplied={editorState.lastApplied}
           appliedCustomSize={editorState.customSize}
           selectedMaterial={selectedMaterial}
           setSelectedMaterial={setSelectedMaterial}
           onProceed={handleProceedToTextureEditor}
           onApplyColor={handleApplyColor}
+          onApplyMaterial={handleApplyMaterial}
           onApplyCustomSize={handleApplyCustomSize}
           onUndo={handleUndo}
           onRedo={handleRedo}
