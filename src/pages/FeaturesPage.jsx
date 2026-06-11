@@ -10,7 +10,6 @@ gsap.registerPlugin(ScrollTrigger);
 
 // Icons
 import frameImg from '../assets/images/featureSection/feautureHero.webp';
-import jarIcon from '../assets/images/MockupsSection/Icons/jar.webp';
 import icon50K from '../assets/images/featureSection/Icons/50K.webp';
 import icon100plus from '../assets/images/featureSection/Icons/100plus.webp';
 import ratingIcon from '../assets/images/featureSection/Icons/rating.webp';

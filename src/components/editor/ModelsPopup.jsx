@@ -205,7 +205,28 @@ export default function ModelsPopup({ onSelectModel, currentModelUrl }) {
   return (
     <div className="w-[350px] h-[600px] shrink-0 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
       <div className="p-5 border-b border-gray-100 flex flex-col gap-3">
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Select Model</h2>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xl font-bold text-gray-900 m-0">Select Model</h2>
+          <label className="cursor-pointer bg-[#c05520] hover:bg-[#a94a1c] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+            </svg>
+            Import
+            <input 
+              type="file" 
+              accept=".glb" 
+              className="hidden" 
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const url = URL.createObjectURL(file);
+                  onSelectModel(url);
+                  e.target.value = '';
+                }
+              }}
+            />
+          </label>
+        </div>
         
         <div className="relative">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">

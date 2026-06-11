@@ -2,31 +2,18 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Footer from "../components/Footer";
 import ReadyMockupBanner from "../components/ReadyMockupBanner";
-import bagIcon from "../assets/images/MockupsSection/Icons/bag.webp";
-import boxIcon from "../assets/images/MockupsSection/Icons/box.webp";
-import boxAltIcon from "../assets/images/MockupsSection/Icons/box2.webp";
-import jarIcon from "../assets/images/MockupsSection/Icons/jar.webp";
-import shirtIcon from "../assets/images/MockupsSection/Icons/t-shirt.webp";
-import bottleIcon from "../assets/images/MockupsSection/Icons/Bottle.webp";
-import burgerIcon from "../assets/images/MockupsSection/Icons/Burger.webp";
-import foodBoxIcon from "../assets/images/MockupsSection/Icons/FoodBox.webp";
-import glassBottleIcon from "../assets/images/MockupsSection/Icons/GlassBottle.webp";
-import hoodieIcon from "../assets/images/MockupsSection/Icons/Hoodie.webp";
-import icecreamIcon from "../assets/images/MockupsSection/Icons/Icecream.webp";
-import paperBagIcon from "../assets/images/MockupsSection/Icons/PaperBag.webp";
-import paperCupIcon from "../assets/images/MockupsSection/Icons/PaperCup.webp";
-import pizzaIcon from "../assets/images/MockupsSection/Icons/Pizza.webp";
-import plasticBagIcon from "../assets/images/MockupsSection/Icons/PlasticBag.webp";
-import plasticBoxIcon from "../assets/images/MockupsSection/Icons/PlasticBox.webp";
-import rectangleContainerIcon from "../assets/images/MockupsSection/Icons/RectangleContainer.webp";
-import roundContainerIcon from "../assets/images/MockupsSection/Icons/RoundContainer.webp";
-import roundSquareContainerIcon from "../assets/images/MockupsSection/Icons/RoundSquareContainer.webp";
-import sweetBoxIcon from "../assets/images/MockupsSection/Icons/SweetBox.webp";
-import tShirtIcon from "../assets/images/MockupsSection/Icons/TShirt.webp";
-import tumblerIcon from "../assets/images/MockupsSection/Icons/Tumbler.webp";
-import waterCanIcon from "../assets/images/MockupsSection/Icons/WaterCan.webp";
-import waterbottleIcon from "../assets/images/MockupsSection/Icons/Waterbottle.webp";
+
 import mockupBanner from "../assets/images/MockupsSection/banner.svg";
+
+// New Icons
+import packagingTapesIcon from "../assets/images/MockupsSection/Icons/PakagingTapes.webp";
+import drinkWareIcon from "../assets/images/MockupsSection/Icons/drinkWare.webp";
+import ecoFriendlyBagsIcon from "../assets/images/MockupsSection/Icons/eco-freindlyBags.webp";
+import fashionIcon from "../assets/images/MockupsSection/Icons/fashion.webp";
+import foodContainerNewIcon from "../assets/images/MockupsSection/Icons/foodContainer.webp";
+import foodPackingIcon from "../assets/images/MockupsSection/Icons/foodPacking.webp";
+import cartonBox from "../assets/images/MockupsSection/Icons/cartonbox.webp"
+import allProducts from "../assets/images/MockupsSection/Icons/all.webp"
 
 // Box Models
 import sqBox1Url from "../assets/models/box models/sq box/squareBox1.glb?url";
@@ -141,234 +128,81 @@ import tshirt2Img from "../assets/models/Tshirt/tShirt2.webp";
 import hoodie1Img from "../assets/models/Tshirt/hoodie.webp";
 
 const modelMappings = {
-  "Square Box 1": sqBox1Url,
-  "Square Box 2": sqBox2Url,
-  "Plastic Box 1": plasticBox1Url,
-  "Plastic Box 2": plasticBox2Url,
-  "Food Box 1": foodBox1Url,
-  "Food Box 2": foodBox2Url,
-
-  "Paper Bag 1": paperBag1Url,
-  "Paper Bag 2": paperBag1Url,
-  "Paper Bag 3": paperBag1Url,
-  "Plastic Bag 1": plasticBag1Url,
-  "Plastic Bag 2": plasticBag2Url,
-  "Plastic Bag 3": plasticBag3Url,
-  "Plastic Bag 4": plasticBag4Url,
-
-  "Water Bottle 1": waterBottle1Url,
-  "Water Bottle 2": waterBottle2Url,
-  "Water Bottle 3": waterBottle3Url,
-  "Water Bottle 4": waterBottle4Url,
-
-  "Oil Bottle 1": oilBottle1Url,
-  "Oil Bottle 2": oilBottle2Url,
-
-  "Glass Bottle 1": glassBottle1Url,
-  "Glass Bottle 2": glassBottle2Url,
-
-  "Water can 1": waterCan1Url,
-  "Water can 2": waterCan2Url,
-  "Water can 3": waterCan3Url,
-
-  "Tumbler 1": tumbler1Url,
-  "Tumbler 2": tumbler2Url,
-
-  "Cup 1": cup1Url,
-  "Cup 2": cup2Url,
-  "Cup 3": cup3Url,
-  "Cup 4": cup4Url,
-
-  "Round Container 1": roundContainer1Url,
-  "Round Container 2": roundContainer2Url,
-
-  "Round Square Container 1": roundSquare1Url,
-  "Round Square Container 2": roundSquare2Url,
-
-  "Rectangle Container 1": rectContainer1Url,
-  "Rectangle Container 2": rectContainer2Url,
-
-  "Sweet box 1": sweetBox1Url,
-  "Sweet box 2": sweetBox2Url,
-
-  "Ice Cream 1": iceCream1Url,
-  "Ice Cream 2": iceCream2Url,
-
-  "Burger Wrap 1": burgerWrap1Url,
-  "Burger Wrap 2": burgerWrap2Url,
-
-  "Pizza Box 1": pizzaBox1Url,
-  "Pizza Box 2": pizzaBox2Url,
-
-  "T-shirt 1": tshirt1Url,
-  "T-shirt 2": tshirt2Url,
-  "Hoodies 1": hoodie1Url,
+  "Round Container": roundContainer1Url,
+  "Tamper Evident Container": roundSquare1Url,
+  "Oval Containers": rectContainer1Url,
+  
+  "Zip Lock Pouches": plasticBag1Url,
+  "Kraft Paper Pouches": paperBag1Url,
+  
+  "Plastic Water Bottle": waterBottle1Url,
+  "Glass Water Bottle": glassBottle1Url,
+  "Soft Drink Bottles": waterCan1Url,
+  
+  "Folding Carton Box": sqBox1Url,
+  "Die-Cut Carton Box": foodBox1Url,
+  
+  "Paper Bags": paperBag1Url,
+  "Biodegradable Bags": plasticBag3Url,
+  
+  "Box Sealing Tape": plasticBox1Url,
+  
+  "T-Shirts": tshirt1Url,
+  "Hoodies": hoodie1Url,
 };
 
 const categoryGroups = [
-  {
-    title: "Boxes",
-    items: ["Square Box", "Food Box", "Plastic Box"],
-  },
-  {
-    title: "Bottle",
-    items: ["Water Bottle", "Oil Bottle", "Glass Bottle", "Water can"],
-  },
-  {
-    title: "Container",
-    items: [
-      "Tumbler",
-      "Cup",
-      "Round Container",
-      "Round Square Container",
-      "Rectangle Container",
-      "Sweet box",
-    ],
-  },
-  {
-    title: "Food Packaging",
-    items: ["Ice Cream", "Burger Wrap", "Pizza Box"],
-  },
-  {
-    title: "Bag",
-    items: ["Paper Bag", "Plastic Bag"],
-  },
-  {
-    title: "T- shirt",
-    items: ["T-shirt", "Hoodies"],
-  },
+  { title: "Food Containers", items: [] },
+  { title: "Food Packaging", items: [] },
+  { title: "Drinkware Bottles", items: [] },
+  { title: "Carton Boxes", items: [] },
+  { title: "Eco-Friendly Bags", items: [] },
+  { title: "Packaging Tapes", items: [] },
+  { title: "Fashion Wear", items: [] },
 ];
 
 const catalogSections = [
   {
-    title: "Square Box",
-    icon: "box",
-    sidebarLabels: ["Square Box", "Boxes"],
-    products: ["Square Box 1", "Square Box 2"],
+    title: "Food Containers",
+    icon: "container",
+    sidebarLabels: ["Food Containers"],
+    products: ["Round Container", "Tamper Evident Container", "Oval Containers"],
   },
   {
-    title: "Food Box",
-    icon: "box",
-    sidebarLabels: ["Food Box", "Boxes"],
-    products: ["Food Box 1", "Food Box 2"],
-  },
-  {
-    title: "Plastic Box",
-    icon: "box",
-    sidebarLabels: ["Plastic Box", "Boxes"],
-    products: ["Plastic Box 1", "Plastic Box 2"],
-  },
-  {
-    title: "Water Bottle",
-    icon: "bottle",
-    sidebarLabels: ["Water Bottle", "Bottle"],
-    products: [
-      "Water Bottle 1",
-      "Water Bottle 2",
-      "Water Bottle 3",
-      "Water Bottle 4",
-    ],
-  },
-  {
-    title: "Oil Bottle",
-    icon: "bottle",
-    sidebarLabels: ["Oil Bottle", "Bottle"],
-    products: ["Oil Bottle 1", "Oil Bottle 2"],
-  },
-  {
-    title: "Glass Bottle",
-    icon: "bottle",
-    sidebarLabels: ["Glass Bottle", "Bottle"],
-    products: ["Glass Bottle 1", "Glass Bottle 2"],
-  },
-  {
-    title: "Water can",
-    icon: "bottle",
-    sidebarLabels: ["Water can", "Bottle"],
-    products: ["Water can 1", "Water can 2", "Water can 3"],
-  },
-  {
-    title: "Tumbler",
-    icon: "cup",
-    sidebarLabels: ["Tumbler", "Container"],
-    products: ["Tumbler 1", "Tumbler 2"],
-  },
-  {
-    title: "Cup",
-    icon: "cup",
-    sidebarLabels: ["Cup", "Container"],
-    products: ["Cup 1", "Cup 2", "Cup 3", "Cup 4"],
-  },
-  {
-    title: "Round Container",
-    icon: "cup",
-    sidebarLabels: ["Round Container", "Container"],
-    products: ["Round Container 1", "Round Container 2"],
-  },
-  {
-    title: "Round Square Container",
-    icon: "cup",
-    sidebarLabels: ["Round Square Container", "Container"],
-    products: ["Round Square Container 1", "Round Square Container 2"],
-  },
-  {
-    title: "Rectangle Container",
-    icon: "cup",
-    sidebarLabels: ["Rectangle Container", "Container"],
-    products: ["Rectangle Container 1", "Rectangle Container 2"],
-  },
-  {
-    title: "Sweet box",
-    icon: "cup",
-    sidebarLabels: ["Sweet box", "Container"],
-    products: ["Sweet box 1", "Sweet box 2"],
-  },
-  {
-    title: "Ice Cream",
+    title: "Food Packaging",
     icon: "pack",
-    sidebarLabels: ["Ice Cream", "Food Packaging"],
-    products: ["Ice Cream 1", "Ice Cream 2"],
+    sidebarLabels: ["Food Packaging"],
+    products: ["Zip Lock Pouches", "Kraft Paper Pouches"],
   },
   {
-    title: "Burger Wrap",
-    icon: "pack",
-    sidebarLabels: ["Burger Wrap", "Food Packaging"],
-    products: ["Burger Wrap 1", "Burger Wrap 2"],
+    title: "Drinkware Bottles",
+    icon: "bottle",
+    sidebarLabels: ["Drinkware Bottles"],
+    products: ["Plastic Water Bottle", "Glass Water Bottle", "Soft Drink Bottles"],
   },
   {
-    title: "Pizza Box",
-    icon: "pack",
-    sidebarLabels: ["Pizza Box", "Food Packaging"],
-    products: ["Pizza Box 1", "Pizza Box 2"],
+    title: "Carton Boxes",
+    icon: "box",
+    sidebarLabels: ["Carton Boxes"],
+    products: ["Folding Carton Box", "Die-Cut Carton Box"],
   },
   {
-    title: "Paper Bag",
+    title: "Eco-Friendly Bags",
     icon: "bag",
-    sidebarLabels: ["Paper Bag", "Bag"],
-    products: ["Paper Bag 1"],
+    sidebarLabels: ["Eco-Friendly Bags"],
+    products: ["Paper Bags", "Biodegradable Bags"],
   },
   {
-    title: "Plastic Bag",
-    icon: "bag",
-    sidebarLabels: ["Plastic Bag", "Bag"],
-    products: [
-      "Plastic Bag 1",
-      "Plastic Bag 2",
-      "Plastic Bag 3",
-      "Plastic Bag 4",
-    ],
+    title: "Packaging Tapes",
+    icon: "box",
+    sidebarLabels: ["Packaging Tapes"],
+    products: ["Box Sealing Tape"],
   },
   {
-    title: "T-shirt",
+    title: "Fashion Wear",
     icon: "shirt",
-    sidebarLabels: ["T-shirt", "T- shirt"],
-    products: ["T-shirt 1", "T-shirt 2"],
-  },
-  {
-    title: "Hoodies",
-    icon: "shirt",
-    sidebarLabels: ["Hoodies", "T- shirt"],
-    products: ["Hoodies 1"],
+    sidebarLabels: ["Fashion Wear"],
+    products: ["T-Shirts", "Hoodies"],
   },
 ];
 
@@ -439,88 +273,46 @@ function ShirtIcon({ className = "h-6 w-6" }) {
 
 const sidebarIcons = {
   // Generic / Fallback
-  box: boxIcon,
-  bag: bagIcon,
-  bottle: bottleIcon,
-  container: jarIcon,
-  pack: boxAltIcon,
-  shirt: shirtIcon,
-
-  // Group mappings
-  boxes: boxIcon,
-  "food packaging": boxAltIcon,
+  box: cartonBox,
+  bag: ecoFriendlyBagsIcon,
+  bottle: drinkWareIcon,
+  container: foodContainerNewIcon,
+  pack: foodPackingIcon,
+  shirt: fashionIcon,
 
   // Specific Subcategory mappings
-  "square box": boxIcon,
-  "food box": foodBoxIcon,
-  "plastic box": plasticBoxIcon,
-  "water bottle": waterbottleIcon,
-  "oil bottle": bottleIcon,
-  "glass bottle": glassBottleIcon,
-  "water can": waterCanIcon,
-  tumbler: tumblerIcon,
-  cup: paperCupIcon,
-  "round container": roundContainerIcon,
-  "round square container": roundSquareContainerIcon,
-  "rectangle container": rectangleContainerIcon,
-  "sweet box": sweetBoxIcon,
-  "ice cream": icecreamIcon,
-  "burger wrap": burgerIcon,
-  "pizza box": pizzaIcon,
-  "paper bag": paperBagIcon,
-  "plastic bag": plasticBagIcon,
-  "t-shirt": tShirtIcon,
-  "t shirt": tShirtIcon,
-  hoodies: hoodieIcon,
+  "food containers": foodContainerNewIcon,
+  "food packaging": foodPackingIcon,
+  "drinkware bottles": drinkWareIcon,
+  "carton boxes": cartonBox,
+  "eco friendly bags": ecoFriendlyBagsIcon,
+  "packaging tapes": packagingTapesIcon,
+  "fashion wear": fashionIcon,
 };
 
 const productImages = {
   // Exact Specific Models Image Mapping
-  "square box 1": sqBox1Img,
-  "square box 2": sqBox2Img,
-  "plastic box 1": plasticBox1Img,
-  "plastic box 2": plasticBox2Img,
-  "food box 1": foodBox1Img,
-  "food box 2": foodBox2Img,
-  "paper bag 1": paperBag1Img,
-  "plastic bag 1": plasticBag1Img,
-  "plastic bag 2": plasticBag2Img,
-  "plastic bag 3": plasticBag3Img,
-  "plastic bag 4": plasticBag4Img,
-  "water bottle 1": waterBottle1Img,
-  "water bottle 2": waterBottle2Img,
-  "water bottle 3": waterBottle3Img,
-  "water bottle 4": waterBottle4Img,
-  "oil bottle 1": oilBottle1Img,
-  "oil bottle 2": oilBottle2Img,
-  "glass bottle 1": glassBottle1Img,
-  "glass bottle 2": glassBottle2Img,
-  "water can 1": waterCan1Img,
-  "water can 2": waterCan2Img,
-  "water can 3": waterCan3Img,
-  "tumbler 1": tumbler1Img,
-  "tumbler 2": tumbler2Img,
-  "cup 1": cup1Img,
-  "cup 2": cup2Img,
-  "cup 3": cup2Img,
-  "cup 4": cup2Img,
-  "round container 1": roundContainer1Img,
-  "round container 2": roundContainer2Img,
-  "round square container 1": roundSquare1Img,
-  "round square container 2": roundSquare2Img,
-  "rectangle container 1": rectContainer1Img,
-  "rectangle container 2": rectContainer2Img,
-  "sweet box 1": sweetBox1Img,
-  "sweet box 2": sweetBox2Img,
-  "ice cream 1": iceCream1Img,
-  "ice cream 2": iceCream2Img,
-  "burger wrap 1": burgerWrap1Img,
-  "burger wrap 2": burgerWrap2Img,
-  "pizza box 1": pizzaBox1Img,
-  "pizza box 2": pizzaBox2Img,
-  "t shirt 1": tshirt1Img,
-  "t shirt 2": tshirt2Img,
-  "hoodies 1": hoodie1Img,
+  "round container": roundContainer1Img,
+  "tamper evident container": roundSquare1Img,
+  "oval containers": rectContainer1Img,
+  
+  "zip lock pouches": plasticBag1Img,
+  "kraft paper pouches": paperBag1Img,
+  
+  "plastic water bottle": waterBottle1Img,
+  "glass water bottle": glassBottle1Img,
+  "soft drink bottles": waterCan1Img,
+  
+  "folding carton box": sqBox1Img,
+  "die cut carton box": foodBox1Img,
+  
+  "paper bags": paperBag1Img,
+  "biodegradable bags": plasticBag3Img,
+  
+  "box sealing tape": plasticBox1Img,
+  
+  "t shirts": tshirt1Img,
+  "hoodies": hoodie1Img,
 };
 
 function iconFor(type, className) {
@@ -624,56 +416,29 @@ function SidebarItem({
   hasChildren,
   parentActive,
 }) {
-  const inactiveGroupClass =
-    "bg-[#ecebea] text-[#8f8f8f] hover:bg-[#e5e2df] hover:text-[#2b2b2b]";
-  const activeGroupClass = "bg-[#F2B62C] text-[#2b2b2b] font-bold";
-  const inactiveChildClass =
-    "bg-transparent text-[#858585] hover:bg-[#f7eee9] hover:text-[#37472F]";
-  const activeChildClass = "bg-[#D2692B] text-white font-bold";
+  const inactiveClass = "bg-transparent text-[#858585] hover:bg-[#f7eee9] hover:text-[#37472F]";
+  const activeClass = "bg-[#D2692B] text-white font-bold";
 
-  let finalClass = "";
-  if (isGroup) {
-    finalClass = active || parentActive ? activeGroupClass : inactiveGroupClass;
-  } else {
-    finalClass = active ? activeChildClass : inactiveChildClass;
-  }
+  const finalClass = active || parentActive ? activeClass : inactiveClass;
 
-  const iconSrc = sidebarIcons[icon] ?? boxIcon;
+  const iconSrc = sidebarIcons[icon] || (typeof icon === 'string' && icon.includes('/') ? icon : cartonBox);
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] border-none py-3 transition-all duration-200 ${finalClass} ${isGroup ? "px-4 text-[clamp(13px,1.45vw,16px)] font-bold" : "pr-4 pl-10 text-[clamp(12px,1.3vw,14px)] font-semibold"}`}
+      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] border-none py-3 px-4 transition-all duration-200 ${finalClass} text-[clamp(13px,1.45vw,16px)] font-semibold`}
     >
       <div className="flex items-center gap-3">
         <img
           src={iconSrc}
           alt=""
-          className={`${isGroup ? "h-6 w-6" : "h-5 w-5"} shrink-0 object-contain transition-all ${
-            !isGroup && active
-              ? "brightness-0 invert"
-              : isGroup && (active || parentActive)
-                ? "brightness-0"
-                : "opacity-60"
+          className={`h-6 w-6 shrink-0 object-contain transition-all ${
+            active || parentActive ? "brightness-0 invert" : "opacity-60"
           }`}
         />
         <span>{label}</span>
       </div>
-      {isGroup && hasChildren && (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""} ${active || parentActive ? "text-[#2b2b2b]" : "text-[#8f8f8f]"}`}
-        >
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
-      )}
     </button>
   );
 }
@@ -773,7 +538,7 @@ export default function ModelsMockupPage() {
                   parentActive={activeCategory === "All"}
                   expanded={false}
                   hasChildren={false}
-                  icon="box"
+                  icon={allProducts}
                   onClick={() => {
                     setActiveCategory("All");
                   }}

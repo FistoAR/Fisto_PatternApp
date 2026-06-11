@@ -9,12 +9,12 @@ import {
 } from "react";
 import { Canvas as R3FCanvas, useThree } from "@react-three/fiber";
 import {
-  Environment,
   OrbitControls,
   useGLTF,
   Html,
   useProgress,
 } from "@react-three/drei";
+import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
@@ -567,7 +567,7 @@ export default function EditorScreen1({
               <shadowMaterial opacity={0.25} />
             </mesh>
           )}
-          <Environment preset="studio" environmentIntensity={0.4} />
+          <SafeEnvironment preset="studio" environmentIntensity={0.4} />
           <OrbitControls
             ref={orbitControlsRef}
             makeDefault

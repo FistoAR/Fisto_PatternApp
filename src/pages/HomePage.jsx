@@ -48,7 +48,6 @@ export default function HomePage() {
   const [hasAnimatedMount, setHasAnimatedMount] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
 
-
   const slideConfigs = [
     {
       id: 1,
@@ -573,7 +572,7 @@ export default function HomePage() {
             start: "top 85%",
             toggleActions: "play reverse play reverse",
           },
-        }
+        },
       );
 
       // Explore By Category - Cards
@@ -591,7 +590,7 @@ export default function HomePage() {
             start: "top 85%",
             toggleActions: "play reverse play reverse",
           },
-        }
+        },
       );
 
       // How It Works - Header Text
@@ -609,7 +608,7 @@ export default function HomePage() {
             start: "top 85%",
             toggleActions: "play reverse play reverse",
           },
-        }
+        },
       );
 
       // How It Works - Cards
@@ -628,7 +627,7 @@ export default function HomePage() {
             start: "top 85%",
             toggleActions: "play reverse play reverse",
           },
-        }
+        },
       );
 
       // Ready Mockup Banner Text
@@ -646,7 +645,7 @@ export default function HomePage() {
             start: "top 85%",
             toggleActions: "play reverse play reverse",
           },
-        }
+        },
       );
 
       // Ready Mockup Banner Image
@@ -663,7 +662,7 @@ export default function HomePage() {
             start: "top 85%",
             toggleActions: "play reverse play reverse",
           },
-        }
+        },
       );
 
       gsap.utils.toArray(".step-card").forEach((card) => {
@@ -804,23 +803,18 @@ export default function HomePage() {
                     letterSpacing: "0%",
                   }}
                 >
-                  {
-                    slideContents[currentSlide]?.title
-                  }
+                  {slideContents[currentSlide]?.title}
                 </h1>
 
                 <p className="text-lg lg:text-xl text-gray-800 max-w-2xl mb-10 leading-relaxed">
-                  {
-                    slideContents[currentSlide]?.description
-                  }
+                  {slideContents[currentSlide]?.description}
                 </p>
 
                 <button
                   onClick={() => navigate("/editor")}
                   className="hero-btn group flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg shadow-lg hover:opacity-90 border-none cursor-pointer mb-16 "
                   style={{
-                    background:
-                      slideContents[currentSlide]?.buttonBg,
+                    background: slideContents[currentSlide]?.buttonBg,
                   }}
                 >
                   Start Designing
@@ -937,17 +931,36 @@ export default function HomePage() {
             <div className="flex animate-marquee text-white font-bold text-xl md:text-2xl tracking-wide w-max">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="flex items-center whitespace-nowrap">
-                  <span className="mx-8">Burger Boxes</span>
+                  <span className="mx-8">Round Container</span>
                   <span style={{ color: "#C15F27" }}>●</span>
-                  <span className="mx-8">Pizza Boxes</span>
+                  <span className="mx-8">Tamper Evident Container</span>
                   <span style={{ color: "#C15F27" }}>●</span>
-                  <span className="mx-8">Square Box</span>
+                  <span className="mx-8">Oval Containers</span>
                   <span style={{ color: "#C15F27" }}>●</span>
-                  <span className="mx-8">Food box</span>
+                  <span className="mx-8">Zip Lock Pouches</span>
                   <span style={{ color: "#C15F27" }}>●</span>
-                  <span className="mx-8">Plastic Box</span>
+                  <span className="mx-8">Kraft Paper Pouches</span>
                   <span style={{ color: "#C15F27" }}>●</span>
-                  <span className="mx-8">Water bottle</span>
+                  <span className="mx-8">Plastic Water Bottle</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">Glass Water Bottle</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">Soft Drink Bottles</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">Folding Carton Box</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">Die-Cut Carton Box</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">Paper Bags</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">Biodegradable Bags</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">Box Sealing Tape</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">T-Shirts</span>
+                  <span style={{ color: "#C15F27" }}>●</span>
+                  <span className="mx-8">Hoodies</span>
+
                   <span style={{ color: "#C15F27", marginRight: "2rem" }}>
                     ●
                   </span>
@@ -962,7 +975,7 @@ export default function HomePage() {
             className="w-full py-14 px-6 lg:px-12 xl:px-20 flex flex-col items-center bg-white"
           >
             <span
-              className="explore-text text-lg font-bold tracking-widest uppercase mb-4"
+              className="explore-text text-xl font-bold tracking-widest uppercase mb-4"
               style={{ color: "#D89234" }}
             >
               Explore By Category
@@ -978,12 +991,73 @@ export default function HomePage() {
               to life.
             </p>
 
-            <div className="category-cards w-full flex gap-6">
-              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "Box" } })}><AnimatedSvgCard src={card1} index={0} /></div>
-              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "Bottle" } })}><AnimatedSvgCard src={card2} index={1} /></div>
-              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "Container" } })}><AnimatedSvgCard src={card3} index={2} /></div>
-              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "Bag" } })}><AnimatedSvgCard src={card4} index={3} /></div>
-              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "T-shirt" } })}><AnimatedSvgCard src={card5} index={4} /></div>
+            <div className="category-cards w-full flex flex-wrap justify-center gap-6 lg:gap-8 max-w-[1400px] mx-auto">
+              <div
+                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
+                onClick={() =>
+                  navigate("/modelsMockup", {
+                    state: { activeCategory: "Box" },
+                  })
+                }
+              >
+                <AnimatedSvgCard src={card1} index={0} />
+              </div>
+              <div
+                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
+                onClick={() =>
+                  navigate("/modelsMockup", {
+                    state: { activeCategory: "Bottle" },
+                  })
+                }
+              >
+                <AnimatedSvgCard src={card2} index={1} />
+              </div>
+              <div
+                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
+                onClick={() =>
+                  navigate("/modelsMockup", {
+                    state: { activeCategory: "Container" },
+                  })
+                }
+              >
+                <AnimatedSvgCard src={card3} index={2} />
+              </div>
+              <div
+                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
+                onClick={() =>
+                  navigate("/modelsMockup", {
+                    state: { activeCategory: "Bag" },
+                  })
+                }
+              >
+                <AnimatedSvgCard src={card4} index={3} />
+              </div>
+
+              <div
+                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
+                onClick={() =>
+                  navigate("/modelsMockup", {
+                    state: { activeCategory: "T-shirt" },
+                  })
+                }
+              >
+                <AnimatedSvgCard src={card5} index={4} />
+              </div>
+
+              <div className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] opacity-60 cursor-not-allowed">
+                <div className="w-full h-full min-h-[300px] bg-gray-50 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
+                  <span className="text-gray-400 font-semibold text-lg">
+                    Coming Soon
+                  </span>
+                </div>
+              </div>
+              <div className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] opacity-60 cursor-not-allowed">
+                <div className="w-full h-full min-h-[300px] bg-gray-50 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
+                  <span className="text-gray-400 font-semibold text-lg">
+                    Coming Soon
+                  </span>
+                </div>
+              </div>
             </div>
 
             <button
@@ -1016,20 +1090,16 @@ export default function HomePage() {
             className="w-full pb-10 px-6 lg:px-12 xl:px-20 flex flex-col items-center bg-white font-Outfit"
           >
             <span
-              className="how-text text-md font-bold tracking-widest uppercase mb-4"
+              className="how-text text-2xl font-bold tracking-widest uppercase mb-4"
               style={{ color: "#D89234" }}
             >
               How it Works
             </span>
-            <h2
-              className="how-text text-4xl lg:text-5xl font-bold text-black mb-16 text-center"
-            >
+            <h2 className="how-text text-4xl lg:text-5xl font-bold text-black mb-16 text-center">
               Simple Steps, Stunning Results
             </h2>
 
-            <div
-              className="w-full  mx-auto flex  items-center justify-between gap-6 xl:gap-4"
-            >
+            <div className="w-full  mx-auto flex  items-center justify-between gap-6 xl:gap-4">
               {/* Step 1 */}
               <div className="how-card step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
                 <div

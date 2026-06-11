@@ -11,6 +11,15 @@ export default function Navbar({ onTogglePanel }) {
   const navigate = useNavigate();
   const navRef = useRef(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -43,7 +52,7 @@ export default function Navbar({ onTogglePanel }) {
   };
 
   return (
-    <nav ref={navRef} className="w-full bg-white z-[99] relative shrink-0 border-b border-transparent sticky top-0 shadow-sm lg:shadow-none">
+    <nav ref={navRef} className={`w-full bg-white z-[99] relative shrink-0 border-b border-transparent sticky top-0 transition-shadow duration-300 ${isScrolled ? 'shadow-md' : 'shadow-none'}`}>
       <div className="w-full flex items-center justify-between px-6 lg:px-12 xl:px-20 py-2 lg:py-2">
         
         {/* Logo */}

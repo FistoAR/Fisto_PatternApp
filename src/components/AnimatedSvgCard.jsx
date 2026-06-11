@@ -6,6 +6,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 export default function AnimatedSvgCard({ src, index = 0 }) {
   const containerRef = useRef(null);
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -15,10 +16,11 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
     fetch(src)
       .then(res => res.text())
       .then(svg => {
-        if (!isMounted || !containerRef.current) return;
+        if (!isMounted || !containerRef.current || !wrapperRef.current) return;
         containerRef.current.innerHTML = svg;
         
         const container = containerRef.current;
+        const wrapper = wrapperRef.current;
         const svgElement = container.querySelector('svg');
         if (svgElement) {
           svgElement.style.width = '100%';
@@ -26,7 +28,7 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
         }
 
         const enter = () => {
-          gsap.to(container, {
+          gsap.to(wrapper, {
             y: -14,
             scale: 1.045,
             rotate: index % 2 === 0 ? -1.2 : 1.2,
@@ -41,7 +43,7 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
         };
 
         const leave = () => {
-          gsap.to(container, {
+          gsap.to(wrapper, {
             y: 0,
             scale: 1,
             rotate: 0,
@@ -55,11 +57,11 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
           });
         };
 
-        container.addEventListener('mouseenter', enter);
-        container.addEventListener('mouseleave', leave);
+        wrapper.addEventListener('mouseenter', enter);
+        wrapper.addEventListener('mouseleave', leave);
         cleanupHandlers.push(() => {
-          container.removeEventListener('mouseenter', enter);
-          container.removeEventListener('mouseleave', leave);
+          wrapper.removeEventListener('mouseenter', enter);
+          wrapper.removeEventListener('mouseleave', leave);
         });
 
         const productImage = container.querySelector('rect[fill^="url("]');
@@ -85,9 +87,16 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
   }, [index, src]);
 
   return (
-    <div 
-      ref={containerRef} 
-      className="category-card w-full flex-1 justify-center cursor-pointer will-change-transform" 
-    />
+    <div ref={wrapperRef} className="relative group category-wrapper w-full flex-1 justify-center cursor-pointer will-change-transform">
+      <div 
+        ref={containerRef} 
+        className="category-card w-full h-full" 
+      />
+      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(0,0,0,0.08)] border border-gray-100 text-gray-700 transition-colors duration-300 group-hover:bg-[#C15F27] group-hover:text-white group-hover:border-[#C15F27] z-10 pointer-events-none">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+        </svg>
+      </div>
+    </div>
   );
 }

@@ -8,7 +8,8 @@ import {
   useState,
 } from "react";
 import { Canvas as R3FCanvas, useThree } from "@react-three/fiber";
-import { Environment, OrbitControls, useGLTF } from "@react-three/drei";
+import { OrbitControls, useGLTF } from "@react-three/drei";
+import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -344,7 +345,7 @@ export default function RightPanel({
             }}
           >
             <ambientLight intensity={0.7} />
-            <Environment preset="city" />
+            <SafeEnvironment preset="city" />
             <directionalLight position={[4, 5, 4]} intensity={0.8} />
             <directionalLight position={[-4, 3, -4]} intensity={0.3} />
             <Suspense fallback={null}>
