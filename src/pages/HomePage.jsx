@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import fistoLogo from "../assets/images/fisto-logo.png";
 import packagingIcon from "../assets/images/Home/packaging.webp";
 import realistic3dIcon from "../assets/images/Home/realistic3d.webp";
 import fasteasyIcon from "../assets/images/Home/fasteasy.webp";
@@ -45,6 +46,7 @@ export default function HomePage() {
   const [bannersContent, setBannersContent] = useState([]);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasAnimatedMount, setHasAnimatedMount] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
 
 
   const slideConfigs = [
@@ -307,10 +309,38 @@ export default function HomePage() {
     },
   ];
 
-  // No need to fetch SVGs anymore, we use direct image imports
+  // Preload images
   useEffect(() => {
-    // Just trigger the initial animation sequence when component mounts
-    setBannersContent(slideConfigs);
+    const imageUrls = [];
+    slideConfigs.forEach((config) => {
+      if (config.bg) imageUrls.push(config.bg);
+      if (config.prod?.src) imageUrls.push(config.prod.src);
+      if (config.label?.src) imageUrls.push(config.label.src);
+    });
+
+    let loadedCount = 0;
+    const totalImages = imageUrls.length;
+
+    if (totalImages === 0) {
+      setImagesLoaded(true);
+      setBannersContent(slideConfigs);
+      return;
+    }
+
+    const handleImageLoad = () => {
+      loadedCount++;
+      if (loadedCount === totalImages) {
+        setImagesLoaded(true);
+        setBannersContent(slideConfigs);
+      }
+    };
+
+    imageUrls.forEach((url) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = handleImageLoad;
+      img.onerror = handleImageLoad;
+    });
   }, []);
 
   const changeSlide = (nextIndex) => {
@@ -711,6 +741,16 @@ export default function HomePage() {
             id="home"
             className="hero-section relative w-[100vw] h-[100vh] flex flex-col justify-center overflow-hidden"
           >
+            {/* Loading Overlay */}
+            {!imagesLoaded && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#EEE2D3]">
+                <img
+                  src={fistoLogo}
+                  alt="Loading..."
+                  className="w-48 h-auto animate-pulse drop-shadow-xl"
+                />
+              </div>
+            )}
             {/* Background & Right-Side SVG Banner Fade (Fade In / Fade Out) */}
             <div className="hero-svg-wrapper absolute inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-[#EEE2D3]">
               <div className="hero-svg-wrapper-inner relative w-[100vw] h-full">
