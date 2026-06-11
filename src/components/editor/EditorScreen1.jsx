@@ -728,7 +728,7 @@ export default function EditorScreen1({
                 Target Material
               </label>
               <select
-                value={selectedMaterial}
+                value={selectedMaterial || ""}
                 onChange={(e) => setSelectedMaterial(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium outline-none focus:border-[#c05520] focus:ring-1 focus:ring-[#c05520] transition-all"
               >

@@ -45,7 +45,7 @@ export default function HomePage() {
   const [bannersContent, setBannersContent] = useState([]);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasAnimatedMount, setHasAnimatedMount] = useState(false);
-  const [noTransition, setNoTransition] = useState(false);
+
 
   const slideConfigs = [
     {
@@ -316,15 +316,11 @@ export default function HomePage() {
   const changeSlide = (nextIndex) => {
     if (isTransitioning) return;
 
-    // Ignore click if it's the same logical slide
-    const logicalCurrent = currentSlide >= 0 ? currentSlide % 6 : 5;
-    const logicalNext = nextIndex >= 0 ? nextIndex % 6 : 5;
-    if (
-      logicalCurrent === logicalNext &&
-      currentSlide !== -1 &&
-      currentSlide !== 6
-    )
-      return;
+    let logicalNext = nextIndex;
+    if (nextIndex >= 6) logicalNext = 0;
+    if (nextIndex < 0) logicalNext = 5;
+
+    if (currentSlide === logicalNext) return;
 
     setIsTransitioning(true);
 
@@ -338,29 +334,11 @@ export default function HomePage() {
         stagger: 0.1,
         ease: "power2.inOut",
         onComplete: () => {
-          setCurrentSlide(nextIndex);
+          setCurrentSlide(logicalNext);
 
           setTimeout(() => {
             // Unlock early so users can rapidly click next/prev without waiting for text to finish animating in!
             setIsTransitioning(false);
-
-            // Handle seamless looping snap-back
-            if (nextIndex === 6) {
-              setNoTransition(true);
-              setCurrentSlide(0);
-              // Force reflow
-              document.body.offsetHeight;
-              setTimeout(() => {
-                setNoTransition(false);
-              }, 50);
-            } else if (nextIndex === -1) {
-              setNoTransition(true);
-              setCurrentSlide(5);
-              document.body.offsetHeight;
-              setTimeout(() => {
-                setNoTransition(false);
-              }, 50);
-            }
 
             gsap.fromTo(
               leftContent.children,
@@ -377,7 +355,7 @@ export default function HomePage() {
         },
       });
     } else {
-      setCurrentSlide(nextIndex);
+      setCurrentSlide(logicalNext);
       setIsTransitioning(false);
     }
   };
@@ -417,7 +395,7 @@ export default function HomePage() {
     )[currentSlide];
     if (!activeSlideEl) return;
 
-    const logicalSlide = currentSlide % 6;
+    const logicalSlide = currentSlide;
     const config = slideConfigs[logicalSlide];
     const product = activeSlideEl.querySelector(config.productSelector);
     const labels = config.labelSelector
@@ -733,52 +711,42 @@ export default function HomePage() {
             id="home"
             className="hero-section relative w-[100vw] h-[100vh] flex flex-col justify-center overflow-hidden"
           >
-            {/* Background & Right-Side SVG Banner Carousel (Horizontal Slide) */}
-            <div className="hero-svg-wrapper absolute inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
-              <div
-                className={`hero-svg-wrapper-inner flex h-full will-change-transform ${noTransition ? "" : "transition-transform duration-700 ease-in-out"}`}
-                style={{
-                  width: "700vw",
-                  transform: `translate3d(${-currentSlide * (100 / 7)}%, 0, 0)`,
-                }}
-              >
-                {Array.from({ length: 7 }).map((_, index) => {
-                  const logicalIndex = index % 6;
+            {/* Background & Right-Side SVG Banner Fade (Fade In / Fade Out) */}
+            <div className="hero-svg-wrapper absolute inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-[#EEE2D3]">
+              <div className="hero-svg-wrapper-inner relative w-[100vw] h-full">
+                {bannersContent.map((banner, index) => {
+                  const isActive = currentSlide === index;
                   return (
                     <div
                       key={index}
-                      className="w-[100vw] h-full relative flex justify-center items-center select-none"
+                      className={`absolute inset-0 transition-opacity duration-700 ease-in-out flex justify-center items-center select-none ${isActive ? "opacity-100 z-10" : "opacity-0 z-0"}`}
                     >
-                      {bannersContent[logicalIndex] ? (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vh] min-w-[177.777vh] min-h-[56.25vw]">
-                          {/* Background */}
-                          <img
-                            src={bannersContent[logicalIndex].bg}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            alt="Background"
-                          />
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vh] min-w-[177.777vh] min-h-[56.25vw]">
+                        {/* Background */}
+                        <img
+                          src={banner.bg}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          alt="Background"
+                        />
 
-                          {/* Product */}
-                          <img
-                            src={bannersContent[logicalIndex].prod.src}
-                            style={bannersContent[logicalIndex].prod.css}
-                            className="absolute banner-prod drop-shadow-2xl will-change-transform"
-                            alt="Product"
-                          />
+                        {/* Product */}
+                        <img
+                          src={banner.prod.src}
+                          style={banner.prod.css}
+                          className="absolute banner-prod drop-shadow-2xl will-change-transform"
+                          alt="Product"
+                        />
 
-                          {/* Label (if exists) */}
-                          {bannersContent[logicalIndex].label && (
-                            <img
-                              src={bannersContent[logicalIndex].label.src}
-                              style={bannersContent[logicalIndex].label.css}
-                              className="absolute banner-label drop-shadow-xl will-change-transform"
-                              alt="Label"
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-full h-full bg-[#EEE2D3]" />
-                      )}
+                        {/* Label (if exists) */}
+                        {banner.label && (
+                          <img
+                            src={banner.label.src}
+                            style={banner.label.css}
+                            className="absolute banner-label drop-shadow-xl will-change-transform"
+                            alt="Label"
+                          />
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -797,15 +765,13 @@ export default function HomePage() {
                   }}
                 >
                   {
-                    slideContents[currentSlide >= 0 ? currentSlide % 6 : 5]
-                      ?.title
+                    slideContents[currentSlide]?.title
                   }
                 </h1>
 
                 <p className="text-lg lg:text-xl text-gray-800 max-w-2xl mb-10 leading-relaxed">
                   {
-                    slideContents[currentSlide >= 0 ? currentSlide % 6 : 5]
-                      ?.description
+                    slideContents[currentSlide]?.description
                   }
                 </p>
 
@@ -814,8 +780,7 @@ export default function HomePage() {
                   className="hero-btn group flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg shadow-lg hover:opacity-90 border-none cursor-pointer mb-16 "
                   style={{
                     background:
-                      slideContents[currentSlide >= 0 ? currentSlide % 6 : 5]
-                        ?.buttonBg,
+                      slideContents[currentSlide]?.buttonBg,
                   }}
                 >
                   Start Designing
@@ -837,17 +802,13 @@ export default function HomePage() {
 
                 {/* 3 Features */}
                 <div className="flex flex-wrap items-center gap-6 lg:gap-10">
-                  {slideContents[
-                    currentSlide >= 0 ? currentSlide % 6 : 5
-                  ]?.features.map((feature, idx) => (
+                  {slideContents[currentSlide]?.features.map((feature, idx) => (
                     <div key={idx} className="flex items-center gap-4">
                       <div
                         className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300"
                         style={{
                           backgroundColor:
-                            slideContents[
-                              currentSlide >= 0 ? currentSlide % 6 : 5
-                            ]?.themeColor,
+                            slideContents[currentSlide]?.themeColor,
                         }}
                       >
                         <img
@@ -917,7 +878,7 @@ export default function HomePage() {
                   key={index}
                   onClick={() => changeSlide(index)}
                   className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    (currentSlide >= 0 ? currentSlide % 6 : 5) === index
+                    currentSlide === index
                       ? "w-8 bg-[#C15F27]"
                       : "w-2.5 bg-black/20 hover:bg-black/40"
                   }`}
