@@ -78,7 +78,9 @@ class DraggableImage {
       copy.filteredCanvas = document.createElement("canvas");
       copy.filteredCanvas.width = this.filteredCanvas.width;
       copy.filteredCanvas.height = this.filteredCanvas.height;
-      copy.filteredCtx = copy.filteredCanvas.getContext("2d", { willReadFrequently: true });
+      copy.filteredCtx = copy.filteredCanvas.getContext("2d", {
+        willReadFrequently: true,
+      });
       copy.filteredCtx.drawImage(this.filteredCanvas, 0, 0);
     }
     return copy;
@@ -89,11 +91,18 @@ class DraggableImage {
       this.filteredCanvas = document.createElement("canvas");
       this.filteredCanvas.width = this.img.width;
       this.filteredCanvas.height = this.img.height;
-      this.filteredCtx = this.filteredCanvas.getContext("2d", { willReadFrequently: true });
+      this.filteredCtx = this.filteredCanvas.getContext("2d", {
+        willReadFrequently: true,
+      });
       this.filteredCtx.drawImage(this.img, 0, 0);
     }
 
-    const imgData = this.filteredCtx.getImageData(0, 0, this.filteredCanvas.width, this.filteredCanvas.height);
+    const imgData = this.filteredCtx.getImageData(
+      0,
+      0,
+      this.filteredCanvas.width,
+      this.filteredCanvas.height,
+    );
     const data = imgData.data;
 
     for (let i = 0; i < data.length; i += 4) {
@@ -105,9 +114,7 @@ class DraggableImage {
       const pb = data[i + 2];
 
       const dist = Math.sqrt(
-        (pr - r) * (pr - r) +
-        (pg - g) * (pg - g) +
-        (pb - b) * (pb - b)
+        (pr - r) * (pr - r) + (pg - g) * (pg - g) + (pb - b) * (pb - b),
       );
 
       if (dist <= tolerance) {
@@ -633,7 +640,7 @@ function drawUVs(
   ctx.setLineDash([4, 4]);
 
   const shouldDrawFull = drawFull || !components || components.length === 0;
-  
+
   if (shouldDrawFull) {
     ctx.beginPath();
     const drawLine = (idx1, idx2) => {
@@ -1268,17 +1275,6 @@ const Canvas = forwardRef(
 
           if (width && height) {
             foundSize = { width, height };
-            if (toolMode === "cursor" || toolMode === "multiselect" || toolMode === "eraser") {
-              for (let i = images.length - 1; i >= 0; i--) {
-                const img = images[i];
-                const hit = img.hitTest(mx, my, scale);
-                if (hit !== HANDLE.NONE) {
-                  clickedImage = img;
-                  hitHandle = hit;
-                  break;
-                }
-              }
-            }
             break;
           }
         }
@@ -2011,28 +2007,40 @@ const Canvas = forwardRef(
         }
       }
 
-      if (toolMode === "eraser" && clickedImage && clickedImage instanceof DraggableImage) {
+      if (
+        toolMode === "eraser" &&
+        clickedImage &&
+        clickedImage instanceof DraggableImage
+      ) {
         const sel = clickedImage;
         const { lx, ly } = sel._toLocal(mx, my, scale);
         const hw = sel.width / scale / 2;
         const hh = sel.height / scale / 2;
-        
+
         if (lx >= -hw && lx <= hw && ly >= -hh && ly <= hh) {
-          const imgX = Math.floor(((lx + hw) / (sel.width / scale)) * sel.img.width);
-          const imgY = Math.floor(((ly + hh) / (sel.height / scale)) * sel.img.height);
-          
-          const sourceCanvas = sel.filteredCanvas || (() => {
-            const c = document.createElement("canvas");
-            c.width = sel.img.width;
-            c.height = sel.img.height;
-            const ctx = c.getContext("2d", { willReadFrequently: true });
-            ctx.drawImage(sel.img, 0, 0);
-            return c;
-          })();
-          
-          const ctx = sourceCanvas.getContext("2d", { willReadFrequently: true });
+          const imgX = Math.floor(
+            ((lx + hw) / (sel.width / scale)) * sel.img.width,
+          );
+          const imgY = Math.floor(
+            ((ly + hh) / (sel.height / scale)) * sel.img.height,
+          );
+
+          const sourceCanvas =
+            sel.filteredCanvas ||
+            (() => {
+              const c = document.createElement("canvas");
+              c.width = sel.img.width;
+              c.height = sel.img.height;
+              const ctx = c.getContext("2d", { willReadFrequently: true });
+              ctx.drawImage(sel.img, 0, 0);
+              return c;
+            })();
+
+          const ctx = sourceCanvas.getContext("2d", {
+            willReadFrequently: true,
+          });
           const pixel = ctx.getImageData(imgX, imgY, 1, 1).data;
-          
+
           if (pixel[3] > 0) {
             sel.removeColor(pixel[0], pixel[1], pixel[2], eraserTolerance);
             pushHistoryState();
@@ -3094,29 +3102,55 @@ const Canvas = forwardRef(
                     onClick={() => setToolMode("eraser")}
                     className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "eraser" ? "bg-gray-100" : "bg-transparent hover:bg-gray-50"}`}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 opacity-80 hover:opacity-100 text-gray-800">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0 0 12 2.25ZM9 12h.008v.008H9V12Zm3 0h.008v.008H12V12Zm3 0h.008v.008H15V12Z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m13.5 15-3 3" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 15 3 3" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="w-5 h-5 opacity-80 hover:opacity-100 text-gray-800"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0 0 12 2.25ZM9 12h.008v.008H9V12Zm3 0h.008v.008H12V12Zm3 0h.008v.008H15V12Z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m13.5 15-3 3"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m10.5 15 3 3"
+                      />
                     </svg>
                   </button>
                 </Tooltip>
                 {toolMode === "eraser" && (
                   <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 p-4 w-64 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Eraser Tolerance</span>
-                      <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">{eraserTolerance}</span>
+                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Eraser Tolerance
+                      </span>
+                      <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                        {eraserTolerance}
+                      </span>
                     </div>
                     <input
                       type="range"
                       min="0"
                       max="150"
                       value={eraserTolerance}
-                      onChange={(e) => setEraserTolerance(Number(e.target.value))}
+                      onChange={(e) =>
+                        setEraserTolerance(Number(e.target.value))
+                      }
                       className="w-full accent-[#c0623a]"
                     />
                     <p className="text-[10px] text-gray-400 mt-2 leading-relaxed">
-                      Click on any color in the selected image to erase it. Higher tolerance removes similar colors.
+                      Click on any color in the selected image to erase it.
+                      Higher tolerance removes similar colors.
                     </p>
                   </div>
                 )}
