@@ -5,12 +5,26 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import packagingIcon from "../assets/images/Home/packaging.webp";
 import realistic3dIcon from "../assets/images/Home/realistic3d.webp";
 import fasteasyIcon from "../assets/images/Home/fasteasy.webp";
-import banner1 from "../assets/images/Home/Hero/banner1.svg";
-import banner2 from "../assets/images/Home/Hero/banner2.svg";
-import banner3 from "../assets/images/Home/Hero/banner3.svg";
-import banner4 from "../assets/images/Home/Hero/banner4.svg";
-import banner5 from "../assets/images/Home/Hero/banner5.svg";
-import banner6 from "../assets/images/Home/Hero/banner6.svg";
+import bg1 from "../assets/images/Home/Hero/banner1/background.webp";
+import prod1 from "../assets/images/Home/Hero/banner1/product.webp";
+
+import bg2 from "../assets/images/Home/Hero/banner2/background.webp";
+import prod2 from "../assets/images/Home/Hero/banner2/product.webp";
+import label2 from "../assets/images/Home/Hero/banner2/label.webp";
+
+import bg3 from "../assets/images/Home/Hero/banner3/background.webp";
+import prod3 from "../assets/images/Home/Hero/banner3/product.webp";
+import label3 from "../assets/images/Home/Hero/banner3/label.webp";
+
+import bg4 from "../assets/images/Home/Hero/banner4/background.webp";
+import prod4 from "../assets/images/Home/Hero/banner4/product.webp";
+import label4 from "../assets/images/Home/Hero/banner4/label.webp";
+
+import bg5 from "../assets/images/Home/Hero/banner5/background.webp";
+import prod5 from "../assets/images/Home/Hero/banner5/product.webp";
+
+import bg6 from "../assets/images/Home/Hero/banner6/background.webp";
+import prod6 from "../assets/images/Home/Hero/banner6/product.webp";
 import AnimatedSvgCard from "../components/AnimatedSvgCard";
 import card1 from "../assets/images/Home/card1.svg?url";
 import card2 from "../assets/images/Home/card2.svg?url";
@@ -31,32 +45,130 @@ export default function HomePage() {
   const [bannersContent, setBannersContent] = useState([]);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasAnimatedMount, setHasAnimatedMount] = useState(false);
+  const [noTransition, setNoTransition] = useState(false);
 
   const slideConfigs = [
     {
-      productSelector: 'rect[fill*="pattern1_2127_41"]',
+      id: 1,
+      bg: bg1,
+      productSelector: ".banner-prod",
       labelSelector: null,
+      prod: {
+        src: prod1,
+        css: {
+          left: "46.1979%",
+          top: "37.5618%",
+          width: "40.1262%",
+          height: "49.1919%",
+          transformOrigin: "top left",
+          transform: "rotate(-10.7475deg)",
+        },
+      },
+      label: null,
     },
     {
-      productSelector: 'rect[fill*="pattern1_2118_2"]',
+      id: 2,
+      bg: bg2,
+      productSelector: ".banner-prod",
+      labelSelector: ".banner-label",
+      prod: {
+        src: prod2,
+        css: {
+          left: "47.5%",
+          top: "25.2777%",
+          width: "31.5625%",
+          height: "57.7777%",
+        },
+      },
+      label: {
+        src: label2,
+        css: {
+          left: "47.7604%",
+          top: "44.4444%",
+          width: "29.6354%",
+          height: "35.1851%",
+        },
+      },
+    },
+    {
+      id: 3,
+      bg: bg3,
+      productSelector: ".banner-prod",
+      labelSelector: ".banner-label",
+      prod: {
+        src: prod3,
+        css: {
+          left: "58.9692%",
+          top: "23.5185%",
+          width: "26.1577%",
+          height: "55.8173%",
+        },
+      },
+      label: {
+        src: label3,
+        css: {
+          left: "55.1041%",
+          top: "45.3703%",
+          width: "34.2187%",
+          height: "24.6296%",
+        },
+      },
+    },
+    {
+      id: 4,
+      bg: bg4,
+      productSelector: ".banner-prod",
+      labelSelector: ".banner-label",
+      prod: {
+        src: prod4,
+        css: {
+          left: "51.25%",
+          top: "16.9444%",
+          width: "32.552%",
+          height: "72.3148%",
+        },
+      },
+      label: {
+        src: label4,
+        css: {
+          left: "49.4791%",
+          top: "32.4074%",
+          width: "36.4062%",
+          height: "45.2777%",
+        },
+      },
+    },
+    {
+      id: 5,
+      bg: bg5,
+      productSelector: ".banner-prod",
       labelSelector: null,
+      prod: {
+        src: prod5,
+        css: {
+          left: "39.7395%",
+          top: "6.3888%",
+          width: "42.9166%",
+          height: "84.9074%",
+        },
+      },
+      label: null,
     },
     {
-      productSelector: 'rect[fill*="pattern2_2112_30"]',
-      labelSelector:
-        'rect[fill*="pattern3_2112_30"], rect[fill*="pattern4_2112_30"]',
-    },
-    {
-      productSelector: 'rect[fill*="pattern1_2112_74"]',
-      labelSelector: 'rect[fill*="pattern2_2112_74"]',
-    },
-    {
-      productSelector: 'rect[fill*="pattern1_2112_115"]',
+      id: 6,
+      bg: bg6,
+      productSelector: ".banner-prod",
       labelSelector: null,
-    },
-    {
-      productSelector: 'rect[fill*="pattern1_2118_43"]',
-      labelSelector: null,
+      prod: {
+        src: prod6,
+        css: {
+          left: "49.1666%",
+          top: "14.3518%",
+          width: "39.0104%",
+          height: "79.9074%",
+        },
+      },
+      label: null,
     },
   ];
 
@@ -195,69 +307,72 @@ export default function HomePage() {
     },
   ];
 
+  // No need to fetch SVGs anymore, we use direct image imports
   useEffect(() => {
-    const fetchBanners = async () => {
-      try {
-        const urls = [banner1, banner2, banner3, banner4, banner5, banner6];
-        const contents = await Promise.all(
-          urls.map((url) => fetch(url).then((res) => res.text())),
-        );
-
-        // Inject preserveAspectRatio and explicit 100% width/height to make them scale to fill width/height
-        const adjustedContents = contents.map((text) => {
-          return text.replace(/<svg([^>]*)/, (match, group) => {
-            let res = group;
-            res = res.replace(/width="[^"]*"/, 'width="100%"');
-            res = res.replace(/height="[^"]*"/, 'height="100%"');
-            if (res.includes("preserveAspectRatio")) {
-              res = res.replace(
-                /preserveAspectRatio="[^"]*"/,
-                'preserveAspectRatio="xMidYMid slice"',
-              );
-            } else {
-              res = `${res} preserveAspectRatio="xMidYMid slice"`;
-            }
-            return `<svg${res}`;
-          });
-        });
-
-        setBannersContent(adjustedContents);
-      } catch (err) {
-        console.error("Error fetching banners:", err);
-      }
-    };
-    fetchBanners();
+    // Just trigger the initial animation sequence when component mounts
+    setBannersContent(slideConfigs);
   }, []);
 
   const changeSlide = (nextIndex) => {
     if (isTransitioning) return;
+
+    // Ignore click if it's the same logical slide
+    const logicalCurrent = currentSlide >= 0 ? currentSlide % 6 : 5;
+    const logicalNext = nextIndex >= 0 ? nextIndex % 6 : 5;
+    if (
+      logicalCurrent === logicalNext &&
+      currentSlide !== -1 &&
+      currentSlide !== 6
+    )
+      return;
+
     setIsTransitioning(true);
 
     const leftContent = pageRef.current?.querySelector(".hero-left-content");
 
-    if (leftContent) {
-      // 1. Animate left content down & fade out
-      gsap.to(leftContent, {
-        y: 60,
+    if (leftContent && leftContent.children) {
+      gsap.to(leftContent.children, {
+        y: 40,
         opacity: 0,
-        duration: 0.4,
-        ease: "power2.in",
+        duration: 0.4, // Speed up text exit so it feels more responsive
+        stagger: 0.1,
+        ease: "power2.inOut",
         onComplete: () => {
-          // 2. Change state (updates content and lets CSS slide the wrapper!)
           setCurrentSlide(nextIndex);
 
-          // Wait for CSS slide transition (700ms)
           setTimeout(() => {
-            // 3. Animate left content back up
-            gsap.to(leftContent, {
-              y: 0,
-              opacity: 1,
-              duration: 0.6,
-              ease: "power3.out",
-              onComplete: () => {
-                setIsTransitioning(false);
+            // Unlock early so users can rapidly click next/prev without waiting for text to finish animating in!
+            setIsTransitioning(false);
+
+            // Handle seamless looping snap-back
+            if (nextIndex === 6) {
+              setNoTransition(true);
+              setCurrentSlide(0);
+              // Force reflow
+              document.body.offsetHeight;
+              setTimeout(() => {
+                setNoTransition(false);
+              }, 50);
+            } else if (nextIndex === -1) {
+              setNoTransition(true);
+              setCurrentSlide(5);
+              document.body.offsetHeight;
+              setTimeout(() => {
+                setNoTransition(false);
+              }, 50);
+            }
+
+            gsap.fromTo(
+              leftContent.children,
+              { y: 200, opacity: 0 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 1.0,
+                stagger: 0.15,
+                ease: "power3.out",
               },
-            });
+            );
           }, 700);
         },
       });
@@ -269,49 +384,56 @@ export default function HomePage() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      changeSlide((currentSlide + 1) % 6);
-    }, 2000);
+      changeSlide(currentSlide + 1);
+    }, 2000); // Increased interval time so the new slower animations can play
     return () => clearInterval(timer);
   }, [currentSlide, isTransitioning]);
 
   useEffect(() => {
     if (bannersContent.length === 0 || hasAnimatedMount) return;
 
-    gsap.fromTo(
-      ".hero-left-content",
-      { opacity: 0, y: 40 },
-      { opacity: 1, y: 0, duration: 1.0, ease: "power3.out" },
-    );
+    const leftContent = pageRef.current?.querySelector(".hero-left-content");
+    if (leftContent && leftContent.children) {
+      gsap.fromTo(
+        leftContent.children,
+        { opacity: 0, y: 80 },
+        { opacity: 1, y: 0, duration: 1.0, stagger: 0.15, ease: "power3.out" },
+      );
+      // Reveal the container itself to avoid CSS hidden
+      gsap.set(leftContent, { opacity: 1 });
+    }
     setHasAnimatedMount(true);
   }, [bannersContent, hasAnimatedMount]);
 
   useEffect(() => {
-    if (bannersContent.length === 0 || !bannersContent[currentSlide]) return;
+    // Only run if banners are loaded. If currentSlide is briefly -1, don't run animation on non-existent element
+    if (bannersContent.length === 0 || currentSlide < 0) return;
 
     const container = pageRef.current?.querySelector(".hero-svg-wrapper");
     if (!container) return;
 
-    // Find the active slide's container to query only within it
     const activeSlideEl = container.querySelectorAll(
       ".hero-svg-wrapper-inner > div",
     )[currentSlide];
     if (!activeSlideEl) return;
 
-    const config = slideConfigs[currentSlide];
+    const logicalSlide = currentSlide % 6;
+    const config = slideConfigs[logicalSlide];
     const product = activeSlideEl.querySelector(config.productSelector);
     const labels = config.labelSelector
       ? activeSlideEl.querySelectorAll(config.labelSelector)
       : null;
-    const background = activeSlideEl.querySelector('rect[fill*="pattern0_"]');
+    const background = activeSlideEl.querySelector('img[alt="Background"]');
 
     const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
 
     if (background) {
-      tl.fromTo(background, { opacity: 0 }, { opacity: 1, duration: 1.0 }, 0);
+      tl.fromTo(background, { opacity: 0.5 }, { opacity: 1, duration: 1.0 }, 0);
     }
 
     if (product) {
-      if (currentSlide === 0) {
+      // Section 1: Initial load and all slider changes product scale 0 to 1
+      if (logicalSlide === 0) {
         tl.fromTo(
           product,
           {
@@ -320,40 +442,52 @@ export default function HomePage() {
             transformOrigin: "50% 50%",
             opacity: 0,
           },
-          { scale: 1, rotate: -10.7475, opacity: 1, duration: 2.0 },
-          0.1,
+          {
+            scale: 1,
+            rotate: -10.7475,
+            opacity: 1,
+            duration: 2.5,
+            ease: "back.out(0.5)",
+          },
+          0.2,
         );
-      } else if (currentSlide === 4) {
+      }
+      // Section 2, 3, 4: Product from right, label from left
+      else if (logicalSlide === 1 || logicalSlide === 2 || logicalSlide === 3) {
+        tl.fromTo(
+          product,
+          { x: 550, opacity: 0 },
+          { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+          0.2,
+        );
+        if (labels && labels.length > 0) {
+          gsap.set(labels, { opacity: 0, x: -450 });
+          tl.fromTo(
+            labels,
+            { x: -450, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.8, // Delays label so it comes after the bottle
+          );
+        }
+      }
+      // Section 5: Product fade in from top
+      else if (logicalSlide === 4) {
         tl.fromTo(
           product,
           { y: -300, opacity: 0 },
-          { y: 0, opacity: 1, duration: 2.0 },
-          0.1,
-        );
-      } else if (currentSlide === 5) {
-        tl.fromTo(
-          product,
-          { x: 350, opacity: 0 },
-          { x: 0, opacity: 1, duration: 2.0 },
-          0.1,
-        );
-      } else {
-        tl.fromTo(
-          product,
-          { x: 200, opacity: 0 },
-          { x: 0, opacity: 1, duration: 2.0 },
-          0.1,
+          { y: 0, opacity: 1, duration: 2, ease: "power3.out" },
+          0.2,
         );
       }
-    }
-
-    if (labels && labels.length > 0) {
-      tl.fromTo(
-        labels,
-        { x: -50, opacity: 0 },
-        { x: 0, opacity: 1, duration: 2.0 },
-        0.1,
-      );
+      // Section 6: Product fade in from left
+      else if (logicalSlide === 5) {
+        tl.fromTo(
+          product,
+          { x: -500, opacity: 0 },
+          { x: 0, opacity: 1, duration: 2, ease: "power3.out" },
+          0.2,
+        );
+      }
     }
   }, [currentSlide, bannersContent]);
 
@@ -415,6 +549,114 @@ export default function HomePage() {
       revealOnScroll("[data-scroll-fade]", { autoAlpha: 0, y: 34 });
       revealOnScroll("[data-scroll-left]", { autoAlpha: 0, x: -54 });
       revealOnScroll("[data-scroll-right]", { autoAlpha: 0, x: 54 });
+
+      // Explore By Category - Header Text Reveal
+      gsap.fromTo(
+        ".explore-text",
+        { autoAlpha: 0, y: 30 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.8,
+          stagger: 0.15,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: "#features",
+            start: "top 85%",
+            toggleActions: "play reverse play reverse",
+          },
+        }
+      );
+
+      // Explore By Category - Cards
+      gsap.fromTo(
+        ".explore-card",
+        { autoAlpha: 0, x: -50 },
+        {
+          autoAlpha: 1,
+          x: 0,
+          duration: 0.8,
+          stagger: 0.15,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: ".category-cards",
+            start: "top 85%",
+            toggleActions: "play reverse play reverse",
+          },
+        }
+      );
+
+      // How It Works - Header Text
+      gsap.fromTo(
+        ".how-text",
+        { autoAlpha: 0, y: 30 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.8,
+          stagger: 0.15,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: "#mockups",
+            start: "top 85%",
+            toggleActions: "play reverse play reverse",
+          },
+        }
+      );
+
+      // How It Works - Cards
+      gsap.fromTo(
+        ".how-card",
+        { autoAlpha: 0, y: 30, scale: 0.95 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.8,
+          stagger: 0.2,
+          ease: "back.out(1.2)",
+          scrollTrigger: {
+            trigger: "#mockups > div:nth-child(3)",
+            start: "top 85%",
+            toggleActions: "play reverse play reverse",
+          },
+        }
+      );
+
+      // Ready Mockup Banner Text
+      gsap.fromTo(
+        ".frame-text",
+        { autoAlpha: 0, y: 30 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.8,
+          stagger: 0.15,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: ".frame-banner",
+            start: "top 85%",
+            toggleActions: "play reverse play reverse",
+          },
+        }
+      );
+
+      // Ready Mockup Banner Image
+      gsap.fromTo(
+        ".frame-product",
+        { autoAlpha: 0, x: 50 },
+        {
+          autoAlpha: 1,
+          x: 0,
+          duration: 0.8,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: ".frame-banner",
+            start: "top 85%",
+            toggleActions: "play reverse play reverse",
+          },
+        }
+      );
 
       gsap.utils.toArray(".step-card").forEach((card) => {
         const enter = () =>
@@ -494,29 +736,52 @@ export default function HomePage() {
             {/* Background & Right-Side SVG Banner Carousel (Horizontal Slide) */}
             <div className="hero-svg-wrapper absolute inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
               <div
-                className="hero-svg-wrapper-inner flex h-full transition-transform duration-700 ease-in-out"
+                className={`hero-svg-wrapper-inner flex h-full will-change-transform ${noTransition ? "" : "transition-transform duration-700 ease-in-out"}`}
                 style={{
-                  width: "600vw",
-                  transform: `translateX(${-currentSlide * (100 / 6)}%)`,
+                  width: "700vw",
+                  transform: `translate3d(${-currentSlide * (100 / 7)}%, 0, 0)`,
                 }}
               >
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="w-[100vw] h-full relative flex justify-center items-center select-none"
-                  >
-                    {bannersContent[index] ? (
-                      <div
-                        className="w-full h-full [&>svg]:w-full [&>svg]:h-full [&>svg]:object-cover"
-                        dangerouslySetInnerHTML={{
-                          __html: bannersContent[index],
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#EEE2D3]" />
-                    )}
-                  </div>
-                ))}
+                {Array.from({ length: 7 }).map((_, index) => {
+                  const logicalIndex = index % 6;
+                  return (
+                    <div
+                      key={index}
+                      className="w-[100vw] h-full relative flex justify-center items-center select-none"
+                    >
+                      {bannersContent[logicalIndex] ? (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vh] min-w-[177.777vh] min-h-[56.25vw]">
+                          {/* Background */}
+                          <img
+                            src={bannersContent[logicalIndex].bg}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            alt="Background"
+                          />
+
+                          {/* Product */}
+                          <img
+                            src={bannersContent[logicalIndex].prod.src}
+                            style={bannersContent[logicalIndex].prod.css}
+                            className="absolute banner-prod drop-shadow-2xl will-change-transform"
+                            alt="Product"
+                          />
+
+                          {/* Label (if exists) */}
+                          {bannersContent[logicalIndex].label && (
+                            <img
+                              src={bannersContent[logicalIndex].label.src}
+                              style={bannersContent[logicalIndex].label.css}
+                              className="absolute banner-label drop-shadow-xl will-change-transform"
+                              alt="Label"
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-[#EEE2D3]" />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -531,17 +796,27 @@ export default function HomePage() {
                     letterSpacing: "0%",
                   }}
                 >
-                  {slideContents[currentSlide]?.title}
+                  {
+                    slideContents[currentSlide >= 0 ? currentSlide % 6 : 5]
+                      ?.title
+                  }
                 </h1>
 
                 <p className="text-lg lg:text-xl text-gray-800 max-w-2xl mb-10 leading-relaxed">
-                  {slideContents[currentSlide]?.description}
+                  {
+                    slideContents[currentSlide >= 0 ? currentSlide % 6 : 5]
+                      ?.description
+                  }
                 </p>
 
                 <button
                   onClick={() => navigate("/editor")}
-                  className="hero-btn group flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg shadow-lg hover:opacity-90 border-none cursor-pointer mb-16 transition-all duration-300"
-                  style={{ background: slideContents[currentSlide]?.buttonBg }}
+                  className="hero-btn group flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg shadow-lg hover:opacity-90 border-none cursor-pointer mb-16 "
+                  style={{
+                    background:
+                      slideContents[currentSlide >= 0 ? currentSlide % 6 : 5]
+                        ?.buttonBg,
+                  }}
                 >
                   Start Designing
                   <svg
@@ -550,7 +825,7 @@ export default function HomePage() {
                     viewBox="0 0 24 24"
                     strokeWidth={2.5}
                     stroke="currentColor"
-                    className="w-5 h-5 transition-transform duration-300 ease-out group-hover:translate-x-1.5"
+                    className="w-5 h-5 transition-transform group-hover:translate-x-1.5"
                   >
                     <path
                       strokeLinecap="round"
@@ -562,13 +837,17 @@ export default function HomePage() {
 
                 {/* 3 Features */}
                 <div className="flex flex-wrap items-center gap-6 lg:gap-10">
-                  {slideContents[currentSlide]?.features.map((feature, idx) => (
+                  {slideContents[
+                    currentSlide >= 0 ? currentSlide % 6 : 5
+                  ]?.features.map((feature, idx) => (
                     <div key={idx} className="flex items-center gap-4">
                       <div
                         className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300"
                         style={{
                           backgroundColor:
-                            slideContents[currentSlide]?.themeColor,
+                            slideContents[
+                              currentSlide >= 0 ? currentSlide % 6 : 5
+                            ]?.themeColor,
                         }}
                       >
                         <img
@@ -589,7 +868,9 @@ export default function HomePage() {
 
             {/* Carousel Navigation Arrows */}
             <button
-              onClick={() => changeSlide((currentSlide - 1 + 6) % 6)}
+              onClick={() =>
+                changeSlide(currentSlide === 0 ? -1 : currentSlide - 1)
+              }
               className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/15 hover:bg-black/30 border border-white/20 text-white flex items-center justify-center cursor-pointer z-20 backdrop-blur-sm transition-all hover:scale-105"
               aria-label="Previous slide"
             >
@@ -609,7 +890,7 @@ export default function HomePage() {
               </svg>
             </button>
             <button
-              onClick={() => changeSlide((currentSlide + 1) % 6)}
+              onClick={() => changeSlide(currentSlide + 1)}
               className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/15 hover:bg-black/30 border border-white/20 text-white flex items-center justify-center cursor-pointer z-20 backdrop-blur-sm transition-all hover:scale-105"
               aria-label="Next slide"
             >
@@ -636,7 +917,7 @@ export default function HomePage() {
                   key={index}
                   onClick={() => changeSlide(index)}
                   className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    currentSlide === index
+                    (currentSlide >= 0 ? currentSlide % 6 : 5) === index
                       ? "w-8 bg-[#C15F27]"
                       : "w-2.5 bg-black/20 hover:bg-black/40"
                   }`}
@@ -680,28 +961,28 @@ export default function HomePage() {
             className="w-full py-14 px-6 lg:px-12 xl:px-20 flex flex-col items-center bg-white"
           >
             <span
-              className="text-lg font-bold tracking-widest uppercase mb-4"
+              className="explore-text text-lg font-bold tracking-widest uppercase mb-4"
               style={{ color: "#D89234" }}
             >
               Explore By Category
             </span>
             <h2
-              className="text-4xl lg:text-5xl font-semibold  mb-4 text-center"
+              className="explore-text text-4xl lg:text-5xl font-semibold  mb-4 text-center"
               style={{ color: "#111827" }}
             >
               Mockups For Every Need
             </h2>
-            <p className="text-gray-500 text-xl text-center  mb-12">
+            <p className="explore-text text-gray-500 text-xl text-center  mb-12">
               Choose from a wide range of packaging mockups and bring your ideas
               to life.
             </p>
 
             <div className="category-cards w-full flex gap-6">
-              <AnimatedSvgCard src={card1} index={0} />
-              <AnimatedSvgCard src={card2} index={1} />
-              <AnimatedSvgCard src={card3} index={2} />
-              <AnimatedSvgCard src={card4} index={3} />
-              <AnimatedSvgCard src={card5} index={4} />
+              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "Box" } })}><AnimatedSvgCard src={card1} index={0} /></div>
+              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "Bottle" } })}><AnimatedSvgCard src={card2} index={1} /></div>
+              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "Container" } })}><AnimatedSvgCard src={card3} index={2} /></div>
+              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "Bag" } })}><AnimatedSvgCard src={card4} index={3} /></div>
+              <div className="explore-card flex-1 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate("/modelsMockup", { state: { activeCategory: "T-shirt" } })}><AnimatedSvgCard src={card5} index={4} /></div>
             </div>
 
             <button
@@ -734,25 +1015,22 @@ export default function HomePage() {
             className="w-full pb-10 px-6 lg:px-12 xl:px-20 flex flex-col items-center bg-white font-Outfit"
           >
             <span
-              data-scroll-text
-              className="text-md font-bold tracking-widest uppercase mb-4"
+              className="how-text text-md font-bold tracking-widest uppercase mb-4"
               style={{ color: "#D89234" }}
             >
               How it Works
             </span>
             <h2
-              data-scroll-text="right"
-              className="text-4xl lg:text-5xl font-bold text-black mb-16 text-center"
+              className="how-text text-4xl lg:text-5xl font-bold text-black mb-16 text-center"
             >
               Simple Steps, Stunning Results
             </h2>
 
             <div
-              data-scroll-fade
               className="w-full  mx-auto flex  items-center justify-between gap-6 xl:gap-4"
             >
               {/* Step 1 */}
-              <div className="step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
+              <div className="how-card step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl mb-4"
                   style={{ backgroundColor: "#E4EADF", color: "#37472F" }}
@@ -768,7 +1046,7 @@ export default function HomePage() {
               </div>
 
               {/* Arrow */}
-              <div className="text-[#6B7280]">
+              <div className="how-card text-[#6B7280]">
                 <svg
                   width="40"
                   height="20"
@@ -786,7 +1064,7 @@ export default function HomePage() {
               </div>
 
               {/* Step 2 */}
-              <div className="step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
+              <div className="how-card step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl mb-4"
                   style={{ backgroundColor: "#E4EADF", color: "#37472F" }}
@@ -802,7 +1080,7 @@ export default function HomePage() {
               </div>
 
               {/* Arrow */}
-              <div className="text-[#6B7280]">
+              <div className="how-card text-[#6B7280]">
                 <svg
                   width="40"
                   height="20"
@@ -820,7 +1098,7 @@ export default function HomePage() {
               </div>
 
               {/* Step 3 */}
-              <div className="step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
+              <div className="how-card step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl mb-4"
                   style={{ backgroundColor: "#E4EADF", color: "#37472F" }}
@@ -836,7 +1114,7 @@ export default function HomePage() {
               </div>
 
               {/* Arrow */}
-              <div className="text-[#6B7280]">
+              <div className="how-card text-[#6B7280]">
                 <svg
                   width="40"
                   height="20"
@@ -854,7 +1132,7 @@ export default function HomePage() {
               </div>
 
               {/* Step 4 */}
-              <div className="step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
+              <div className="how-card step-card bg-[#FAF8F8] border-2 border-white shadow-xl rounded-[32px] p-8 w-full max-w-[300px] h-[220px] flex flex-col justify-center cursor-pointer will-change-transform">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl mb-4"
                   style={{ backgroundColor: "#E4EADF", color: "#37472F" }}

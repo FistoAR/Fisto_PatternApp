@@ -81,7 +81,7 @@
 <rect width="1920" height="1080" fill="white" transform="translate(4)"/>
 </clipPath>
 <image id="image0_2112_30" width="1863" height="844" preserveAspectRatio="none" xlink:href="/Hero/banner3/background.webp"/>
-<image id="image1_2112_30" width="2048" height="2074" preserveAspectRatio="none" xlink:href="/Hero/banner3/label.webp"/>
-<image id="image2_2112_30" width="1569" height="1003" preserveAspectRatio="none" xlink:href="/Hero/banner3/product.webp"/>
+<image id="image1_2112_30" width="2048" height="2074" preserveAspectRatio="none" xlink:href="/Hero/banner3/product.webp"/>
+<image id="image2_2112_30" width="1569" height="1003" preserveAspectRatio="none" xlink:href="/Hero/banner3/label.webp"/>
 </defs>
 </svg>

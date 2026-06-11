@@ -34,10 +34,9 @@ export default function ReadyMockupBanner({
       style={{ backgroundColor: '#294A26' }}
     >
       <div className={`frame-copy relative z-10 w-full max-w-[700px] text-left ${compact ? 'lg:pl-[2%]' : ''}`}>
-        <div className="mb-3 flex items-center gap-4">
+        <div className="frame-text mb-3 flex items-center gap-4">
           <div className="h-[2px] w-6" style={{ backgroundColor: '#F2B62C' }} />
           <span
-            data-scroll-text={animated ? true : undefined}
             className="text-[11px] font-bold uppercase leading-none tracking-[0.16em]"
             style={{ color: '#F2B62C' }}
           >
@@ -45,22 +44,20 @@ export default function ReadyMockupBanner({
           </span>
         </div>
         <h2
-          data-scroll-text={animated ? 'right' : undefined}
-          className="mb-3 text-[clamp(31px,2.7vw,38px)] font-bold leading-[1.28] text-white"
+          className="frame-text mb-3 text-[clamp(31px,2.7vw,38px)] font-bold leading-[1.28] text-white"
         >
           {renderedTitle}
         </h2>
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:flex-wrap sm:gap-12">
           <p
-            data-scroll-text={animated ? true : undefined}
-            className="max-w-[395px] text-[15px] font-medium leading-[1.65] text-white shrink-0"
+            className="frame-text max-w-[395px] text-[15px] font-medium leading-[1.65] text-white shrink-0"
           >
             {subtitle}
           </p>
           {showButton && (
             <button
               onClick={() => navigate(target)}
-              className="group flex h-[51px] w-fit min-w-[207px] items-center justify-center gap-7 rounded-[10px] border-none px-4 text-[16px] font-bold text-[#20391E] transition-opacity hover:opacity-90 cursor-pointer"
+              className="frame-text group flex h-[51px] w-fit min-w-[207px] items-center justify-center gap-7 rounded-[10px] border-none px-4 text-[16px] font-bold text-[#20391E] transition-opacity hover:opacity-90 cursor-pointer"
               style={{ background: '#F2B62C' }}
             >
               {buttonText}

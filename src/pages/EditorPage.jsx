@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import EditorScreen1 from "../components/editor/EditorScreen1";
 import EditorScreen2 from "../components/editor/EditorScreen2";
-import sqBox1Url from "../assets/models/box models/sq box/Box-4(Mockup).glb?url";
+import sqBox1Url from "../assets/models/box models/sq box/squareBox1.glb?url";
 
 export default function EditorPage() {
   const location = useLocation();
@@ -17,7 +17,7 @@ export default function EditorPage() {
 
   // Lift activeTab state here to preserve it when switching screens
   const [activeTab, setActiveTab] = useState(() => {
-    return modelUrl && modelUrl.includes("Box-4(Mockup).glb")
+    return modelUrl && modelUrl.includes("squareBox1.glb")
       ? "models"
       : "edit";
   });
@@ -35,12 +35,13 @@ export default function EditorPage() {
   const historyIndex = useRef(0);
 
   const pushHistory = (newStateUpdates) => {
-    const nextState = { ...editorState, ...newStateUpdates };
-    // Truncate future history if we're branching off an undo
-    history.current = history.current.slice(0, historyIndex.current + 1);
-    history.current.push(nextState);
-    historyIndex.current = history.current.length - 1;
-    setEditorState(nextState);
+    setEditorState((prevState) => {
+      const nextState = { ...prevState, ...newStateUpdates };
+      history.current = history.current.slice(0, historyIndex.current + 1);
+      history.current.push(nextState);
+      historyIndex.current = history.current.length - 1;
+      return nextState;
+    });
   };
 
   const handleUndo = () => {

@@ -7,27 +7,31 @@ import FeaturesPage from './pages/FeaturesPage'
 import ContactPage from './pages/ContactPage'
 import Navbar from './components/Navbar'
 
-function ScrollToTop({ containerRef }) {
+function ScrollToTop() {
   const { pathname } = useLocation();
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTo(0, 0);
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
     }
-  }, [pathname, containerRef]);
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return null;
 }
 
 function AppContent() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const isEditor = pathname === '/editor';
 
   return (
-    <>
+    <div className={`flex flex-col w-screen bg-white ${isEditor ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       <Navbar />
       <div className={`flex-1 flex flex-col min-h-0 relative ${isEditor ? '' : '-mt-[5vh]'}`}>
-        <Routes>
+        <Routes location={location}>
           <Route path="/" element={<HomePage />} />
           <Route path="/modelsMockup" element={<ModelsMockupPage />} />
           <Route path="/features" element={<FeaturesPage />} />
@@ -35,19 +39,15 @@ function AppContent() {
           <Route path="/editor" element={<EditorPage />} />
         </Routes>
       </div>
-    </>
+    </div>
   );
 }
 
 function App() {
-  const scrollContainerRef = useRef(null);
-
   return (
     <BrowserRouter>
-      <ScrollToTop containerRef={scrollContainerRef} />
-      <div ref={scrollContainerRef} className="flex flex-col h-screen w-screen overflow-x-hidden bg-white">
-        <AppContent />
-      </div>
+      <ScrollToTop />
+      <AppContent />
     </BrowserRouter>
   )
 }

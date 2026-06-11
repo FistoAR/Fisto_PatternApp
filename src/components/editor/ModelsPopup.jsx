@@ -1,178 +1,164 @@
 import { useState, useRef, useEffect } from 'react';
 
-// Box Images
-import burgerWrapperImage from '../../assets/images/MockupsSection/BurgerWrapper.webp';
-import foodBoxImage from '../../assets/images/MockupsSection/Food Box.webp';
-import iceCreamImage from '../../assets/images/MockupsSection/IceCream.webp';
-import paperBagImage from '../../assets/images/MockupsSection/PaperBag.webp';
-import pizzaBoxImage from '../../assets/images/MockupsSection/PizzaBox.webp';
-import plasticBagImage from '../../assets/images/MockupsSection/PlasticBag.webp';
-import squareBoxImage from '../../assets/images/MockupsSection/Square Box.webp';
-import bulkCanImage from '../../assets/images/MockupsSection/bulkCan.webp';
-import glassBottleImage from '../../assets/images/MockupsSection/glassBottle.webp';
-import hoodieImage from '../../assets/images/MockupsSection/hoodie.webp';
-import oilBottleImage from '../../assets/images/MockupsSection/oilBottle.webp';
-import paperCupImage from '../../assets/images/MockupsSection/paperCup.webp';
-import plasticBoxImage from '../../assets/images/MockupsSection/plasticBox.webp';
-import plasticCupImage from '../../assets/images/MockupsSection/plasticCup.webp';
-import rectangleBoxImage from '../../assets/images/MockupsSection/RectangleBox.webp';
-import roundContainerImage from '../../assets/images/MockupsSection/roundContainer.webp';
-import roundSquareContainerImage from '../../assets/images/MockupsSection/roundSquareContainer.webp';
-import sweetBoxImage from '../../assets/images/MockupsSection/sweetBox.webp';
-import tshirtImage from '../../assets/images/MockupsSection/t-shirt.webp';
-import tumblerImage from '../../assets/images/MockupsSection/tumbler.webp';
-import waterBottleImage from '../../assets/images/MockupsSection/waterBottle.webp';
-
 // Box Models
-import sqBox1Url from "../../assets/models/box models/sq box/Box-4(Mockup).glb?url";
-import sqBox2Url from "../../assets/models/box models/sq box/Perfume box-1.glb?url";
-import plasticBox1Url from "../../assets/models/box models/plastic box/750 Biriyani Rectangular.glb?url";
-import plasticBox2Url from "../../assets/models/box models/plastic box/Plasticbox-Mockup.glb?url";
-import foodBox1Url from "../../assets/models/box models/food box/Food packaging mockup.glb?url";
-import foodBox2Url from "../../assets/models/box models/food box/plastic food container-Mockup2.glb?url";
+import sqBox1Url from "../../assets/models/box models/sq box/squareBox1.glb?url";
+import sqBox2Url from "../../assets/models/box models/sq box/squareBox2.glb?url";
+import plasticBox1Url from "../../assets/models/box models/plastic box/PlasticBox1.glb?url";
+import plasticBox2Url from "../../assets/models/box models/plastic box/PlasticBox2.glb?url";
+import foodBox1Url from "../../assets/models/box models/food box/Food Box1.glb?url";
+import foodBox2Url from "../../assets/models/box models/food box/Food Box2.glb?url";
 
 // Bag Models
-import paperBag1Url from "../../assets/models/Bag/Paper.glb?url";
-import plasticBag1Url from "../../assets/models/Bag/Plastic1.glb?url";
-import plasticBag2Url from "../../assets/models/Bag/Plastic2.glb?url";
-import plasticBag3Url from "../../assets/models/Bag/Plastic3.glb?url";
-import plasticBag4Url from "../../assets/models/Bag/Plastic4.glb?url";
+import paperBag1Url from "../../assets/models/Bag/paperBag.glb?url";
+import plasticBag1Url from "../../assets/models/Bag/plasticBag1.glb?url";
+import plasticBag2Url from "../../assets/models/Bag/plasticBag2.glb?url";
+import plasticBag3Url from "../../assets/models/Bag/plasticBag3.glb?url";
+import plasticBag4Url from "../../assets/models/Bag/plasticBag4.glb?url";
 
 // Bottle Models
-import waterBottle1Url from "../../assets/models/Bottle/2.bottle-water bottle/01.Round 300ml ltr.glb?url";
-import waterBottle2Url from "../../assets/models/Bottle/2.bottle-water bottle/02.water bottle Mockup.glb?url";
-import waterBottle3Url from "../../assets/models/Bottle/2.bottle-water bottle/03.small water bottle M.glb?url";
-import waterBottle4Url from "../../assets/models/Bottle/2.bottle-water bottle/04 .glb?url";
+import waterBottle1Url from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle1.glb?url";
+import waterBottle2Url from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle2.glb?url";
+import waterBottle3Url from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle3.glb?url";
+import waterBottle4Url from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle4.glb?url";
 
-import oilBottle1Url from "../../assets/models/Bottle/2.bottle-oil bottle/01.Oil bottle.glb?url";
-import oilBottle2Url from "../../assets/models/Bottle/2.bottle-oil bottle/02.oil CrimsonMockup.glb?url";
+import oilBottle1Url from "../../assets/models/Bottle/2.bottle-oil bottle/oilBottle1.glb?url";
+import oilBottle2Url from "../../assets/models/Bottle/2.bottle-oil bottle/oilBottle2.glb?url";
 
-import glassBottle1Url from "../../assets/models/Bottle/2.bottle-glass bottle/01.oil glass bottle-M.glb?url";
-import glassBottle2Url from "../../assets/models/Bottle/2.bottle-glass bottle/02.Glass bottle Mockup.glb?url";
+import glassBottle1Url from "../../assets/models/Bottle/2.bottle-glass bottle/glassBottle1.glb?url";
+import glassBottle2Url from "../../assets/models/Bottle/2.bottle-glass bottle/glassBottle2.glb?url";
 
-import waterCan1Url from "../../assets/models/Bottle/2.bottl- water can/01.glb?url";
-import waterCan2Url from "../../assets/models/Bottle/2.bottl- water can/02.glb?url";
-import waterCan3Url from "../../assets/models/Bottle/2.bottl- water can/03.glb?url";
+import waterCan1Url from "../../assets/models/Bottle/2.bottl- water can/waterCan1.glb?url";
+import waterCan2Url from "../../assets/models/Bottle/2.bottl- water can/waterCan2.glb?url";
+import waterCan3Url from "../../assets/models/Bottle/2.bottl- water can/waterCan3.glb?url";
 
 // Container Models
-import tumbler1Url from "../../assets/models/Container/Tumbler/01.Paper tumbler .glb?url";
-import tumbler2Url from "../../assets/models/Container/Tumbler/02.glb?url";
+import tumbler1Url from "../../assets/models/Container/Tumbler/tumbler1.glb?url";
+import tumbler2Url from "../../assets/models/Container/Tumbler/tumbler2.glb?url";
 
-import cup1Url from "../../assets/models/Container/cup/01-M.glb?url";
-import cup2Url from "../../assets/models/Container/cup/02.glb?url";
-import cup3Url from "../../assets/models/Container/cup/03.R 250 M.glb?url";
-import cup4Url from "../../assets/models/Container/cup/04.R 750 ML .glb?url";
+import cup1Url from "../../assets/models/Container/cup/papercup1.glb?url";
+import cup2Url from "../../assets/models/Container/cup/papercup2.glb?url";
+import cup3Url from "../../assets/models/Container/cup/plasticCup1.glb?url";
+import cup4Url from "../../assets/models/Container/cup/plasticCup2.glb?url";
 
-import roundContainer1Url from "../../assets/models/Container/Food Conatiner/Round Container/01.R 500 ML.glb?url";
-import roundContainer2Url from "../../assets/models/Container/Food Conatiner/Round Container/02.R 1000 ML .glb?url";
+import roundContainer1Url from "../../assets/models/Container/Food Conatiner/Round Container/roundCont1.glb?url";
+import roundContainer2Url from "../../assets/models/Container/Food Conatiner/Round Container/roundCont2.glb?url";
 
-import roundSquare1Url from "../../assets/models/Container/Food Conatiner/Round Square/01.120 dessert cup.glb?url";
-import roundSquare2Url from "../../assets/models/Container/Food Conatiner/Round Square/02.RS.glb?url";
+import roundSquare1Url from "../../assets/models/Container/Food Conatiner/Round Square/roundSquareCont1.glb?url";
+import roundSquare2Url from "../../assets/models/Container/Food Conatiner/Round Square/roundSquareCont2.glb?url";
 
-import rectContainer1Url from "../../assets/models/Container/Food Conatiner/Rectangle Container/01.650 BT.glb?url";
-import rectContainer2Url from "../../assets/models/Container/Food Conatiner/Rectangle Container/02.1000 BT.glb?url";
+import rectContainer1Url from "../../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont1.glb?url";
+import rectContainer2Url from "../../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont2.glb?url";
 
-import sweetBox1Url from "../../assets/models/Container/Food Conatiner/Sweet Box/01.SB 250 .glb?url";
-import sweetBox2Url from "../../assets/models/Container/Food Conatiner/Sweet Box/02.SB TE 500 .glb?url";
+import sweetBox1Url from "../../assets/models/Container/Food Conatiner/Sweet Box/sweetBox1.glb?url";
+import sweetBox2Url from "../../assets/models/Container/Food Conatiner/Sweet Box/sweetBox2.glb?url";
 
 // Food Packaging Models
-import iceCream1Url from "../../assets/models/Food/Ice cream/01.glb?url";
-import iceCream2Url from "../../assets/models/Food/Ice cream/02.glb?url";
+import iceCream1Url from "../../assets/models/Food/Ice cream/iceCream1.glb?url";
+import iceCream2Url from "../../assets/models/Food/Ice cream/iceCream2.glb?url";
 
-import burgerWrap1Url from "../../assets/models/Food/Burger/01.glb?url";
-import burgerWrap2Url from "../../assets/models/Food/Burger/02.glb?url";
+import burgerWrap1Url from "../../assets/models/Food/Burger/burger1.glb?url";
+import burgerWrap2Url from "../../assets/models/Food/Burger/burger2.glb?url";
 
-import pizzaBox1Url from "../../assets/models/Food/pIZZA/01.glb?url";
-import pizzaBox2Url from "../../assets/models/Food/pIZZA/02.glb?url";
+import pizzaBox1Url from "../../assets/models/Food/pIZZA/pizza1.glb?url";
+import pizzaBox2Url from "../../assets/models/Food/pIZZA/pizza2.glb?url";
 
 // Tshirt Models
-import tshirt1Url from "../../assets/models/Tshirt/t-shirt.glb?url";
-import tshirt2Url from "../../assets/models/Tshirt/t-shirt1.glb?url";
-import hoodie1Url from "../../assets/models/Tshirt/Hoodie.glb?url";
+import tshirt1Url from "../../assets/models/Tshirt/tShirt1.glb?url";
+import tshirt2Url from "../../assets/models/Tshirt/tShirt2.glb?url";
+import hoodie1Url from "../../assets/models/Tshirt/hoodie.glb?url";
+
+// Specific Webp Image Imports
+import sqBox1Img from "../../assets/models/box models/sq box/squareBox1.webp";
+import sqBox2Img from "../../assets/models/box models/sq box/squareBox2.webp";
+import plasticBox1Img from "../../assets/models/box models/plastic box/Plastic Box1.webp";
+import plasticBox2Img from "../../assets/models/box models/plastic box/Plastic Box2.webp";
+import foodBox1Img from "../../assets/models/box models/food box/Food Box1.webp";
+import foodBox2Img from "../../assets/models/box models/food box/Food Box2.webp";
+import paperBag1Img from "../../assets/models/Bag/plasticBag1.webp";
+import plasticBag1Img from "../../assets/models/Bag/plasticBag1.webp";
+import plasticBag2Img from "../../assets/models/Bag/plasticBag2.webp";
+import plasticBag3Img from "../../assets/models/Bag/plasticBag3.webp";
+import plasticBag4Img from "../../assets/models/Bag/plasticBag4.webp";
+import waterBottle1Img from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle1.webp";
+import waterBottle2Img from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle1.webp";
+import waterBottle3Img from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle3.webp";
+import waterBottle4Img from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle4.webp";
+import oilBottle1Img from "../../assets/models/Bottle/2.bottle-oil bottle/oilBottle1.webp";
+import oilBottle2Img from "../../assets/models/Bottle/2.bottle-oil bottle/oilBottle1.webp";
+import glassBottle1Img from "../../assets/models/Bottle/2.bottle-glass bottle/glassBottle1.webp";
+import glassBottle2Img from "../../assets/models/Bottle/2.bottle-glass bottle/glassBottle1.webp";
+import waterCan1Img from "../../assets/models/Bottle/2.bottl- water can/waterCan1.webp";
+import waterCan2Img from "../../assets/models/Bottle/2.bottl- water can/waterCan1.webp";
+import waterCan3Img from "../../assets/models/Bottle/2.bottl- water can/waterCan3.webp";
+import tumbler1Img from "../../assets/models/Container/Tumbler/tumbler1.webp";
+import tumbler2Img from "../../assets/models/Container/Tumbler/tumbler2.webp";
+import cup1Img from "../../assets/models/Container/cup/papercup1.webp";
+import cup2Img from "../../assets/models/Container/cup/papercup2.webp";
+import roundContainer1Img from "../../assets/models/Container/Food Conatiner/Round Container/roundCont1.webp";
+import roundContainer2Img from "../../assets/models/Container/Food Conatiner/Round Container/roundCont2.webp";
+import roundSquare1Img from "../../assets/models/Container/Food Conatiner/Round Square/roundSquareCont1.webp";
+import roundSquare2Img from "../../assets/models/Container/Food Conatiner/Round Square/roundSquareCont2.webp";
+import rectContainer1Img from "../../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont1.webp";
+import rectContainer2Img from "../../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont2.webp";
+import sweetBox1Img from "../../assets/models/Container/Food Conatiner/Sweet Box/sweetBox1.webp";
+import sweetBox2Img from "../../assets/models/Container/Food Conatiner/Sweet Box/sweetBox2.webp";
+import iceCream1Img from "../../assets/models/Food/Ice cream/iceCream1.webp";
+import iceCream2Img from "../../assets/models/Food/Ice cream/iceCream2.webp";
+import burgerWrap1Img from "../../assets/models/Food/Burger/burger1.webp";
+import burgerWrap2Img from "../../assets/models/Food/Burger/burger2.webp";
+import pizzaBox1Img from "../../assets/models/Food/pIZZA/pizza1.webp";
+import pizzaBox2Img from "../../assets/models/Food/pIZZA/pizza2.webp";
+import tshirt1Img from "../../assets/models/Tshirt/tShirt1.webp";
+import tshirt2Img from "../../assets/models/Tshirt/tShirt2.webp";
+import hoodie1Img from "../../assets/models/Tshirt/hoodie.webp";
 
 const MODELS = [
-  // Box Models
-  { id: 'sq-box-1', name: 'Square Box 1', modelUrl: sqBox1Url, category: 'Boxes', imageKey: 'square box' },
-  { id: 'sq-box-2', name: 'Square Box 2', modelUrl: sqBox2Url, category: 'Boxes', imageKey: 'square box' },
-  { id: 'plastic-box-1', name: 'Plastic Box 1', modelUrl: plasticBox1Url, category: 'Boxes', imageKey: 'plastic box' },
-  { id: 'plastic-box-2', name: 'Plastic Box 2', modelUrl: plasticBox2Url, category: 'Boxes', imageKey: 'plastic box' },
-  { id: 'food-box-1', name: 'Food Box 1', modelUrl: foodBox1Url, category: 'Boxes', imageKey: 'food box' },
-  { id: 'food-box-2', name: 'Food Box 2', modelUrl: foodBox2Url, category: 'Boxes', imageKey: 'food box' },
-
-  // Bag Models
-  { id: 'paper-bag-1', name: 'Paper Bag 1', modelUrl: paperBag1Url, category: 'Bag', imageKey: 'paper bag' },
-  { id: 'plastic-bag-1', name: 'Plastic Bag 1', modelUrl: plasticBag1Url, category: 'Bag', imageKey: 'plastic bag' },
-  { id: 'plastic-bag-2', name: 'Plastic Bag 2', modelUrl: plasticBag2Url, category: 'Bag', imageKey: 'plastic bag' },
-  { id: 'plastic-bag-3', name: 'Plastic Bag 3', modelUrl: plasticBag3Url, category: 'Bag', imageKey: 'plastic bag' },
-  { id: 'plastic-bag-4', name: 'Plastic Bag 4', modelUrl: plasticBag4Url, category: 'Bag', imageKey: 'plastic bag' },
-
-  // Bottle Models
-  { id: 'water-bottle-1', name: 'Water Bottle 1', modelUrl: waterBottle1Url, category: 'Bottle', imageKey: 'water bottle' },
-  { id: 'water-bottle-2', name: 'Water Bottle 2', modelUrl: waterBottle2Url, category: 'Bottle', imageKey: 'water bottle' },
-  { id: 'water-bottle-3', name: 'Water Bottle 3', modelUrl: waterBottle3Url, category: 'Bottle', imageKey: 'water bottle' },
-  { id: 'water-bottle-4', name: 'Water Bottle 4', modelUrl: waterBottle4Url, category: 'Bottle', imageKey: 'water bottle' },
-  { id: 'oil-bottle-1', name: 'Oil Bottle 1', modelUrl: oilBottle1Url, category: 'Bottle', imageKey: 'oil bottle' },
-  { id: 'oil-bottle-2', name: 'Oil Bottle 2', modelUrl: oilBottle2Url, category: 'Bottle', imageKey: 'oil bottle' },
-  { id: 'glass-bottle-1', name: 'Glass Bottle 1', modelUrl: glassBottle1Url, category: 'Bottle', imageKey: 'glass bottle' },
-  { id: 'glass-bottle-2', name: 'Glass Bottle 2', modelUrl: glassBottle2Url, category: 'Bottle', imageKey: 'glass bottle' },
-  { id: 'water-can-1', name: 'Water can 1', modelUrl: waterCan1Url, category: 'Bottle', imageKey: 'water can' },
-  { id: 'water-can-2', name: 'Water can 2', modelUrl: waterCan2Url, category: 'Bottle', imageKey: 'water can' },
-  { id: 'water-can-3', name: 'Water can 3', modelUrl: waterCan3Url, category: 'Bottle', imageKey: 'water can' },
-
-  // Container Models
-  { id: 'tumbler-1', name: 'Tumbler 1', modelUrl: tumbler1Url, category: 'Container', imageKey: 'tumbler' },
-  { id: 'tumbler-2', name: 'Tumbler 2', modelUrl: tumbler2Url, category: 'Container', imageKey: 'tumbler' },
-  { id: 'cup-1', name: 'Cup 1', modelUrl: cup1Url, category: 'Container', imageKey: 'cup' },
-  { id: 'cup-2', name: 'Cup 2', modelUrl: cup2Url, category: 'Container', imageKey: 'cup' },
-  { id: 'cup-3', name: 'Cup 3', modelUrl: cup3Url, category: 'Container', imageKey: 'cup' },
-  { id: 'cup-4', name: 'Cup 4', modelUrl: cup4Url, category: 'Container', imageKey: 'cup' },
-  { id: 'round-container-1', name: 'Round Container 1', modelUrl: roundContainer1Url, category: 'Container', imageKey: 'round container' },
-  { id: 'round-container-2', name: 'Round Container 2', modelUrl: roundContainer2Url, category: 'Container', imageKey: 'round container' },
-  { id: 'round-square-1', name: 'Round Square Container 1', modelUrl: roundSquare1Url, category: 'Container', imageKey: 'round square container' },
-  { id: 'round-square-2', name: 'Round Square Container 2', modelUrl: roundSquare2Url, category: 'Container', imageKey: 'round square container' },
-  { id: 'rect-container-1', name: 'Rectangle Container 1', modelUrl: rectContainer1Url, category: 'Container', imageKey: 'rectangle container' },
-  { id: 'rect-container-2', name: 'Rectangle Container 2', modelUrl: rectContainer2Url, category: 'Container', imageKey: 'rectangle container' },
-  { id: 'sweet-box-1', name: 'Sweet box 1', modelUrl: sweetBox1Url, category: 'Container', imageKey: 'sweet box' },
-  { id: 'sweet-box-2', name: 'Sweet box 2', modelUrl: sweetBox2Url, category: 'Container', imageKey: 'sweet box' },
-
-  // Food Packaging Models
-  { id: 'ice-cream-1', name: 'Ice Cream 1', modelUrl: iceCream1Url, category: 'Food Packaging', imageKey: 'ice cream' },
-  { id: 'ice-cream-2', name: 'Ice Cream 2', modelUrl: iceCream2Url, category: 'Food Packaging', imageKey: 'ice cream' },
-  { id: 'burger-wrap-1', name: 'Burger Wrap 1', modelUrl: burgerWrap1Url, category: 'Food Packaging', imageKey: 'burger wrap' },
-  { id: 'burger-wrap-2', name: 'Burger Wrap 2', modelUrl: burgerWrap2Url, category: 'Food Packaging', imageKey: 'burger wrap' },
-  { id: 'pizza-box-1', name: 'Pizza Box 1', modelUrl: pizzaBox1Url, category: 'Food Packaging', imageKey: 'pizza box' },
-  { id: 'pizza-box-2', name: 'Pizza Box 2', modelUrl: pizzaBox2Url, category: 'Food Packaging', imageKey: 'pizza box' },
-
-  // Tshirt Models
-  { id: 't-shirt-1', name: 'T-shirt 1', modelUrl: tshirt1Url, category: 'T-shirt', imageKey: 't shirt' },
-  { id: 't-shirt-2', name: 'T-shirt 2', modelUrl: tshirt2Url, category: 'T-shirt', imageKey: 't shirt' },
-  { id: 'hoodie-1', name: 'Hoodies 1', modelUrl: hoodie1Url, category: 'T-shirt', imageKey: 'hoodies' },
+  { id: 'sq-box-1', name: 'Square Box 1', modelUrl: sqBox1Url, category: 'Boxes', imageUrl: sqBox1Img },
+  { id: 'sq-box-2', name: 'Square Box 2', modelUrl: sqBox2Url, category: 'Boxes', imageUrl: sqBox2Img },
+  { id: 'plastic-box-1', name: 'Plastic Box 1', modelUrl: plasticBox1Url, category: 'Boxes', imageUrl: plasticBox1Img },
+  { id: 'plastic-box-2', name: 'Plastic Box 2', modelUrl: plasticBox2Url, category: 'Boxes', imageUrl: plasticBox2Img },
+  { id: 'food-box-1', name: 'Food Box 1', modelUrl: foodBox1Url, category: 'Boxes', imageUrl: foodBox1Img },
+  { id: 'food-box-2', name: 'Food Box 2', modelUrl: foodBox2Url, category: 'Boxes', imageUrl: foodBox2Img },
+  { id: 'paper-bag-1', name: 'Paper Bag 1', modelUrl: paperBag1Url, category: 'Bag', imageUrl: paperBag1Img },
+  { id: 'plastic-bag-1', name: 'Plastic Bag 1', modelUrl: plasticBag1Url, category: 'Bag', imageUrl: plasticBag1Img },
+  { id: 'plastic-bag-2', name: 'Plastic Bag 2', modelUrl: plasticBag2Url, category: 'Bag', imageUrl: plasticBag2Img },
+  { id: 'plastic-bag-3', name: 'Plastic Bag 3', modelUrl: plasticBag3Url, category: 'Bag', imageUrl: plasticBag3Img },
+  { id: 'plastic-bag-4', name: 'Plastic Bag 4', modelUrl: plasticBag4Url, category: 'Bag', imageUrl: plasticBag4Img },
+  { id: 'water-bottle-1', name: 'Water Bottle 1', modelUrl: waterBottle1Url, category: 'Bottle', imageUrl: waterBottle1Img },
+  { id: 'water-bottle-2', name: 'Water Bottle 2', modelUrl: waterBottle2Url, category: 'Bottle', imageUrl: waterBottle2Img },
+  { id: 'water-bottle-3', name: 'Water Bottle 3', modelUrl: waterBottle3Url, category: 'Bottle', imageUrl: waterBottle3Img },
+  { id: 'water-bottle-4', name: 'Water Bottle 4', modelUrl: waterBottle4Url, category: 'Bottle', imageUrl: waterBottle4Img },
+  { id: 'oil-bottle-1', name: 'Oil Bottle 1', modelUrl: oilBottle1Url, category: 'Bottle', imageUrl: oilBottle1Img },
+  { id: 'oil-bottle-2', name: 'Oil Bottle 2', modelUrl: oilBottle2Url, category: 'Bottle', imageUrl: oilBottle2Img },
+  { id: 'glass-bottle-1', name: 'Glass Bottle 1', modelUrl: glassBottle1Url, category: 'Bottle', imageUrl: glassBottle1Img },
+  { id: 'glass-bottle-2', name: 'Glass Bottle 2', modelUrl: glassBottle2Url, category: 'Bottle', imageUrl: glassBottle2Img },
+  { id: 'water-can-1', name: 'Water can 1', modelUrl: waterCan1Url, category: 'Bottle', imageUrl: waterCan1Img },
+  { id: 'water-can-2', name: 'Water can 2', modelUrl: waterCan2Url, category: 'Bottle', imageUrl: waterCan2Img },
+  { id: 'water-can-3', name: 'Water can 3', modelUrl: waterCan3Url, category: 'Bottle', imageUrl: waterCan3Img },
+  { id: 'tumbler-1', name: 'Tumbler 1', modelUrl: tumbler1Url, category: 'Container', imageUrl: tumbler1Img },
+  { id: 'tumbler-2', name: 'Tumbler 2', modelUrl: tumbler2Url, category: 'Container', imageUrl: tumbler2Img },
+  { id: 'cup-1', name: 'Cup 1', modelUrl: cup1Url, category: 'Container', imageUrl: cup1Img },
+  { id: 'cup-2', name: 'Cup 2', modelUrl: cup2Url, category: 'Container', imageUrl: cup2Img },
+  { id: 'cup-3', name: 'Cup 3', modelUrl: cup3Url, category: 'Container', imageUrl: cup2Img },
+  { id: 'cup-4', name: 'Cup 4', modelUrl: cup4Url, category: 'Container', imageUrl: cup2Img },
+  { id: 'round-container-1', name: 'Round Container 1', modelUrl: roundContainer1Url, category: 'Container', imageUrl: roundContainer1Img },
+  { id: 'round-container-2', name: 'Round Container 2', modelUrl: roundContainer2Url, category: 'Container', imageUrl: roundContainer2Img },
+  { id: 'round-square-1', name: 'Round Square Container 1', modelUrl: roundSquare1Url, category: 'Container', imageUrl: roundSquare1Img },
+  { id: 'round-square-2', name: 'Round Square Container 2', modelUrl: roundSquare2Url, category: 'Container', imageUrl: roundSquare2Img },
+  { id: 'rect-container-1', name: 'Rectangle Container 1', modelUrl: rectContainer1Url, category: 'Container', imageUrl: rectContainer1Img },
+  { id: 'rect-container-2', name: 'Rectangle Container 2', modelUrl: rectContainer2Url, category: 'Container', imageUrl: rectContainer2Img },
+  { id: 'sweet-box-1', name: 'Sweet box 1', modelUrl: sweetBox1Url, category: 'Container', imageUrl: sweetBox1Img },
+  { id: 'sweet-box-2', name: 'Sweet box 2', modelUrl: sweetBox2Url, category: 'Container', imageUrl: sweetBox2Img },
+  { id: 'ice-cream-1', name: 'Ice Cream 1', modelUrl: iceCream1Url, category: 'Food Packaging', imageUrl: iceCream1Img },
+  { id: 'ice-cream-2', name: 'Ice Cream 2', modelUrl: iceCream2Url, category: 'Food Packaging', imageUrl: iceCream2Img },
+  { id: 'burger-wrap-1', name: 'Burger Wrap 1', modelUrl: burgerWrap1Url, category: 'Food Packaging', imageUrl: burgerWrap1Img },
+  { id: 'burger-wrap-2', name: 'Burger Wrap 2', modelUrl: burgerWrap2Url, category: 'Food Packaging', imageUrl: burgerWrap2Img },
+  { id: 'pizza-box-1', name: 'Pizza Box 1', modelUrl: pizzaBox1Url, category: 'Food Packaging', imageUrl: pizzaBox1Img },
+  { id: 'pizza-box-2', name: 'Pizza Box 2', modelUrl: pizzaBox2Url, category: 'Food Packaging', imageUrl: pizzaBox2Img },
+  { id: 't-shirt-1', name: 'T-shirt 1', modelUrl: tshirt1Url, category: 'T-shirt', imageUrl: tshirt1Img },
+  { id: 't-shirt-2', name: 'T-shirt 2', modelUrl: tshirt2Url, category: 'T-shirt', imageUrl: tshirt2Img },
+  { id: 'hoodie-1', name: 'Hoodies 1', modelUrl: hoodie1Url, category: 'T-shirt', imageUrl: hoodie1Img },
 ];
-
-const productImages = {
-  "plastic bag": plasticBagImage,
-  "burger wrap": burgerWrapperImage,
-  "food box": foodBoxImage,
-  "ice cream": iceCreamImage,
-  "glass bottle": glassBottleImage,
-  "water can": bulkCanImage,
-  "oil bottle": oilBottleImage,
-  "t shirt": tshirtImage,
-  "paper bag": paperBagImage,
-  "pizza box": pizzaBoxImage,
-  "plastic box": plasticBoxImage,
-  "plastic cup": plasticCupImage,
-  "hoodies": hoodieImage,
-  "square box": squareBoxImage,
-  "sweet box": sweetBoxImage,
-  "water bottle": waterBottleImage,
-  "rectangle container": rectangleBoxImage,
-  "round container": roundContainerImage,
-  "round square container": roundSquareContainerImage,
-  "paper cup": paperCupImage,
-  "cup": paperCupImage,
-  "tumbler": tumblerImage,
-};
 
 const CATEGORIES = ['Boxes', 'Bag', 'Bottle', 'Container', 'Food Packaging', 'T-shirt'];
 
@@ -307,7 +293,7 @@ export default function ModelsPopup({ onSelectModel, currentModelUrl }) {
               <div className="grid grid-cols-2 gap-3">
                 {catModels.map((model) => {
                   const isActive = currentModelUrl === model.modelUrl;
-                  const img = productImages[model.imageKey];
+                  const img = model.imageUrl;
                   return (
                     <button 
                       key={model.id}

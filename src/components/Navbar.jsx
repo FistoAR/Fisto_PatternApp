@@ -2,7 +2,7 @@ import fistoLogo from '../assets/images/fisto-logo.png';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
-import sqBox1Url from '../assets/models/box models/sq box/Box-4(Mockup).glb?url';
+import sqBox1Url from '../assets/models/box models/sq box/squareBox1.glb?url';
 
 const navLinks = ['Home','Mockups', 'Features', 'Contact'];
 

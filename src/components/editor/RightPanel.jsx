@@ -38,6 +38,7 @@ export default function RightPanel({
   setBgColor,
   hideExport,
   onSave,
+  customSize,
 }) {
   const [selectedColor, setSelectedColor] = useState("cream");
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -592,6 +593,7 @@ function AutoSizedModel({
   textureCanvasRef,
   textureVersion,
   wireframe,
+  customSize,
 }) {
   const { scene } = useGLTF(modelUrl);
   const { gl } = useThree();
@@ -612,18 +614,34 @@ function AutoSizedModel({
   const appliedTextureVersionRef = useRef(-1);
   const appliedWireframeRef = useRef(null);
 
-  const autoTransform = useMemo(() => {
-    if (!clonedScene) return { scale: 1, offset: [0, 0, 0] };
+  const { autoTransform, baseDims } = useMemo(() => {
+    if (!clonedScene) return { autoTransform: { scale: 1, offset: [0, 0, 0] }, baseDims: null };
     const box = new THREE.Box3().setFromObject(clonedScene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
     const scale = 1.7 / maxDim;
     return {
-      scale,
-      offset: [-center.x * scale, -center.y * scale, -center.z * scale],
+      autoTransform: {
+        scale,
+        offset: [-center.x * scale, -center.y * scale, -center.z * scale],
+      },
+      baseDims: {
+        length: Math.round(size.x * 1000),
+        height: Math.round(size.y * 1000),
+        width: Math.round(size.z * 1000),
+      }
     };
   }, [clonedScene]);
+
+  const customScale = useMemo(() => {
+    if (!baseDims || !customSize) return [1, 1, 1];
+    return [
+      customSize.length ? customSize.length / baseDims.length : 1,
+      customSize.height ? customSize.height / baseDims.height : 1,
+      customSize.width ? customSize.width / baseDims.width : 1,
+    ];
+  }, [baseDims, customSize]);
 
   // Apply texture + wireframe
   useEffect(() => {
@@ -708,7 +726,9 @@ function AutoSizedModel({
       scale={autoTransform.scale}
       rotation={[0, Math.PI / 6, 0]}
     >
-      <primitive object={clonedScene} dispose={null} />
+      <group scale={customScale}>
+        <primitive object={clonedScene} dispose={null} />
+      </group>
     </group>
   );
 }

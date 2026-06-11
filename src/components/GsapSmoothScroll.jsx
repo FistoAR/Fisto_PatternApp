@@ -7,9 +7,6 @@ export default function GsapSmoothScroll({ children }) {
     if (prefersReducedMotion.matches) return undefined;
 
     const root = document.documentElement;
-    const previousScrollBehavior = root.style.scrollBehavior;
-    root.style.scrollBehavior = 'smooth';
-
     const refresh = window.requestAnimationFrame(() => {
       ScrollTrigger.refresh();
     });
@@ -20,7 +17,6 @@ export default function GsapSmoothScroll({ children }) {
     return () => {
       window.cancelAnimationFrame(refresh);
       window.removeEventListener('load', handleLoad);
-      root.style.scrollBehavior = previousScrollBehavior;
     };
   }, []);
 

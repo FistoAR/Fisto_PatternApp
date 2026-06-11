@@ -2,20 +2,20 @@ import { useState } from 'react';
 
 const tools = [
   {
-    id: 'edit',
-    label: 'EDIT',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-[22px] h-[22px]">
-        <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32L19.513 8.2Z" />
-      </svg>
-    ),
-  },
-  {
     id: 'models',
     label: 'MODELS',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-[22px] h-[22px]">
         <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+      </svg>
+    ),
+  },
+  {
+    id: 'edit',
+    label: 'Edit',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-[22px] h-[22px]">
+        <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32L19.513 8.2Z" />
       </svg>
     ),
   },
@@ -48,10 +48,10 @@ export default function LeftSidebar({ active, setActive, items }) {
       {displayTools.map((tool) => (
         <button
           key={tool.id}
-          onClick={() => setActive(active === tool.id ? 'edit' : tool.id)}
+          onClick={() => setActive(active === tool.id ? null : tool.id)}
           className={`
             relative flex flex-col items-center justify-center gap-2 border-none cursor-pointer bg-transparent
-            transition-all duration-200 text-[12.5px] font-bold tracking-wider uppercase p-0 w-full py-3
+            transition-all duration-200 text-[12.5px] font-bold p-0 w-full py-3
             max-[640px]:text-[9px]
             ${active === tool.id
               ? 'text-[#C15F27]'
@@ -71,7 +71,7 @@ export default function LeftSidebar({ active, setActive, items }) {
           `}>
             {tool.icon}
           </div>
-          <span>{tool.label}</span>
+          <span className="tracking-[0.1em] pl-[0.1em]">{tool.label}</span>
         </button>
       ))}
     </aside>

@@ -179,10 +179,51 @@ export default function FeaturesPage() {
         { autoAlpha: 1, scale: 1, duration: 0.9, ease: 'power3.out', delay: 0.25 }
       );
 
-      // Staggered trigger animation on features cards
-      gsap.fromTo('.feature-card', 
-        { autoAlpha: 0, y: 30, scale: 0.98 }, 
-        { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.03, ease: 'power3.out' }
+      // Features Section Texts
+      gsap.fromTo(
+        ".features-section-text",
+        { autoAlpha: 0, y: 30 },
+        { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.15, ease: "power2.out", scrollTrigger: { trigger: ".features-grid-container", start: "top 85%", toggleActions: "play reverse play reverse" } }
+      );
+
+      // Staggered trigger animation on features cards (animates as you scroll)
+      gsap.utils.toArray('.feature-card').forEach((card) => {
+        gsap.fromTo(card, 
+          { autoAlpha: 0, y: 30, scale: 0.95 }, 
+          { 
+            autoAlpha: 1, 
+            y: 0, 
+            scale: 1, 
+            duration: 0.6, 
+            ease: 'power3.out', 
+            scrollTrigger: { 
+              trigger: card, 
+              start: "top 90%", 
+              toggleActions: "play reverse play reverse" 
+            } 
+          }
+        );
+      });
+
+      // Stats Bar
+      gsap.fromTo(
+        ".stat-item",
+        { autoAlpha: 0, y: 30 },
+        { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.15, ease: "back.out(1.2)", scrollTrigger: { trigger: ".stats-container", start: "top 85%", toggleActions: "play reverse play reverse" } }
+      );
+
+      // Ready Mockup Banner Text
+      gsap.fromTo(
+        ".frame-text",
+        { autoAlpha: 0, y: 30 },
+        { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.15, ease: "power2.out", scrollTrigger: { trigger: ".frame-banner", start: "top 85%", toggleActions: "play reverse play reverse" } }
+      );
+
+      // Ready Mockup Banner Image
+      gsap.fromTo(
+        ".frame-product",
+        { autoAlpha: 0, x: 50 },
+        { autoAlpha: 1, x: 0, duration: 0.8, ease: "power2.out", scrollTrigger: { trigger: ".frame-banner", start: "top 85%", toggleActions: "play reverse play reverse" } }
       );
     }, pageRef);
 
@@ -214,9 +255,9 @@ export default function FeaturesPage() {
         {/* Features Grid Section */}
         <div className="w-full px-6 lg:px-12 xl:px-20 mb-20 features-grid-container">
           <div className="text-center mb-12">
-            <h3 className="text-xl font-bold tracking-widest uppercase mb-4" style={{ color: '#C15F27' }}>WHY CHOOSE FIST-O</h3>
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Powerful Features For Every Creator</h2>
-            <p className="text-gray-500 text-lg">Everything you need to design, customize and showcase packaging mockups like a pro.</p>
+            <h3 className="features-section-text text-xl font-bold tracking-widest uppercase mb-4" style={{ color: '#C15F27' }}>WHY CHOOSE FIST-O</h3>
+            <h2 className="features-section-text text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Powerful Features For Every Creator</h2>
+            <p className="features-section-text text-gray-500 text-lg">Everything you need to design, customize and showcase packaging mockups like a pro.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -236,9 +277,9 @@ export default function FeaturesPage() {
         </div>
 
         {/* Stats Bar */}
-        <div className="w-full px-6 lg:px-12 xl:px-20 mb-20">
+        <div className="stats-container w-full px-6 lg:px-12 xl:px-20 mb-20">
           <div className="bg-[#344B2D] rounded-[24px] py-10 px-8 flex flex-wrap justify-between items-center text-white gap-8">
-            <div className="flex items-center gap-4">
+            <div className="stat-item flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>
               </div>
@@ -247,8 +288,8 @@ export default function FeaturesPage() {
                 <div className="text-xs text-white/70">Happy Customers</div>
               </div>
             </div>
-            <div className="hidden lg:block w-[1px] h-12 bg-white/20"></div>
-            <div className="flex items-center gap-4">
+            <div className="stat-item hidden lg:block w-[1px] h-12 bg-white/20"></div>
+            <div className="stat-item flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
                 <img src={icon50K} alt="Mockups Created" className="w-6 h-6 object-contain" />
               </div>
@@ -257,8 +298,8 @@ export default function FeaturesPage() {
                 <div className="text-xs text-white/70">Mockups Created</div>
               </div>
             </div>
-            <div className="hidden lg:block w-[1px] h-12 bg-white/20"></div>
-            <div className="flex items-center gap-4">
+            <div className="stat-item hidden lg:block w-[1px] h-12 bg-white/20"></div>
+            <div className="stat-item flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
                 <img src={icon100plus} alt="Countries Served" className="w-6 h-6 object-contain" />
               </div>
@@ -267,8 +308,8 @@ export default function FeaturesPage() {
                 <div className="text-xs text-white/70">Countries Served</div>
               </div>
             </div>
-            <div className="hidden lg:block w-[1px] h-12 bg-white/20"></div>
-            <div className="flex items-center gap-4">
+            <div className="stat-item hidden lg:block w-[1px] h-12 bg-white/20"></div>
+            <div className="stat-item flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
                 <img src={ratingIcon} alt="Customer Rating" className="w-6 h-6 object-contain" />
               </div>
@@ -282,7 +323,7 @@ export default function FeaturesPage() {
 
         {/* Bottom Banner */}
         <div className="w-full px-6 lg:px-12 xl:px-20 pb-16">
-          <ReadyMockupBanner target="/editor" fullWidth />
+          <ReadyMockupBanner target="/editor" fullWidth animated />
         </div>
 
       </main>

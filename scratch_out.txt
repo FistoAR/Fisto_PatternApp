@@ -1,0 +1,138 @@
+No webp found for Cup 3 /Users/fist-o/Downloads/Murugan/Fisto Pattern App/src/assets/models/Container/cup/03.R 250 M.glb
+No webp found for Cup 4 /Users/fist-o/Downloads/Murugan/Fisto Pattern App/src/assets/models/Container/cup/04.R 750 ML .glb
+IMPORTS:
+import sqBox1Img from "../../assets/models/box models/sq box/squareBox1.webp";
+import sqBox2Img from "../../assets/models/box models/sq box/squareBox2.webp";
+import plasticBox1Img from "../../assets/models/box models/plastic box/Plastic Box1.webp";
+import plasticBox2Img from "../../assets/models/box models/plastic box/Plastic Box2.webp";
+import foodBox1Img from "../../assets/models/box models/food box/Food Box1.webp";
+import foodBox2Img from "../../assets/models/box models/food box/Food Box2.webp";
+import paperBag1Img from "../../assets/models/Bag/plasticBag1.webp";
+import plasticBag1Img from "../../assets/models/Bag/plasticBag1.webp";
+import plasticBag2Img from "../../assets/models/Bag/plasticBag2.webp";
+import plasticBag3Img from "../../assets/models/Bag/plasticBag3.webp";
+import plasticBag4Img from "../../assets/models/Bag/plasticBag4.webp";
+import waterBottle1Img from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle1.webp";
+import waterBottle2Img from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle1.webp";
+import waterBottle3Img from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle3.webp";
+import waterBottle4Img from "../../assets/models/Bottle/2.bottle-water bottle/waterBottle4.webp";
+import oilBottle1Img from "../../assets/models/Bottle/2.bottle-oil bottle/oilBottle1.webp";
+import oilBottle2Img from "../../assets/models/Bottle/2.bottle-oil bottle/oilBottle1.webp";
+import glassBottle1Img from "../../assets/models/Bottle/2.bottle-glass bottle/glassBottle1.webp";
+import glassBottle2Img from "../../assets/models/Bottle/2.bottle-glass bottle/glassBottle1.webp";
+import waterCan1Img from "../../assets/models/Bottle/2.bottl- water can/waterCan1.webp";
+import waterCan2Img from "../../assets/models/Bottle/2.bottl- water can/waterCan1.webp";
+import waterCan3Img from "../../assets/models/Bottle/2.bottl- water can/waterCan3.webp";
+import tumbler1Img from "../../assets/models/Container/Tumbler/tumbler1.webp";
+import tumbler2Img from "../../assets/models/Container/Tumbler/tumbler2.webp";
+import cup1Img from "../../assets/models/Container/cup/papercup1.webp";
+import cup2Img from "../../assets/models/Container/cup/papercup2.webp";
+import roundContainer1Img from "../../assets/models/Container/Food Conatiner/Round Container/roundCont1.webp";
+import roundContainer2Img from "../../assets/models/Container/Food Conatiner/Round Container/roundCont2.webp";
+import roundSquare1Img from "../../assets/models/Container/Food Conatiner/Round Square/roundSquareCont1.webp";
+import roundSquare2Img from "../../assets/models/Container/Food Conatiner/Round Square/roundSquareCont2.webp";
+import rectContainer1Img from "../../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont1.webp";
+import rectContainer2Img from "../../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont2.webp";
+import sweetBox1Img from "../../assets/models/Container/Food Conatiner/Sweet Box/sweetBox1.webp";
+import sweetBox2Img from "../../assets/models/Container/Food Conatiner/Sweet Box/sweetBox2.webp";
+import iceCream1Img from "../../assets/models/Food/Ice cream/iceCream1.webp";
+import iceCream2Img from "../../assets/models/Food/Ice cream/iceCream2.webp";
+import burgerWrap1Img from "../../assets/models/Food/Burger/burger1.webp";
+import burgerWrap2Img from "../../assets/models/Food/Burger/burger2.webp";
+import pizzaBox1Img from "../../assets/models/Food/pIZZA/pizza1.webp";
+import pizzaBox2Img from "../../assets/models/Food/pIZZA/pizza2.webp";
+import tshirt1Img from "../../assets/models/Tshirt/tShirt1.webp";
+import tshirt2Img from "../../assets/models/Tshirt/tShirt2.webp";
+import hoodie1Img from "../../assets/models/Tshirt/hoodie.webp";
+
+NEW MODELS POPUP ARRAY:
+  { id: 'sq-box-1', name: 'Square Box 1', modelUrl: sqBox1Url, category: 'Boxes', imageUrl: sqBox1Img },
+  { id: 'sq-box-2', name: 'Square Box 2', modelUrl: sqBox2Url, category: 'Boxes', imageUrl: sqBox2Img },
+  { id: 'plastic-box-1', name: 'Plastic Box 1', modelUrl: plasticBox1Url, category: 'Boxes', imageUrl: plasticBox1Img },
+  { id: 'plastic-box-2', name: 'Plastic Box 2', modelUrl: plasticBox2Url, category: 'Boxes', imageUrl: plasticBox2Img },
+  { id: 'food-box-1', name: 'Food Box 1', modelUrl: foodBox1Url, category: 'Boxes', imageUrl: foodBox1Img },
+  { id: 'food-box-2', name: 'Food Box 2', modelUrl: foodBox2Url, category: 'Boxes', imageUrl: foodBox2Img },
+  { id: 'paper-bag-1', name: 'Paper Bag 1', modelUrl: paperBag1Url, category: 'Bag', imageUrl: paperBag1Img },
+  { id: 'plastic-bag-1', name: 'Plastic Bag 1', modelUrl: plasticBag1Url, category: 'Bag', imageUrl: plasticBag1Img },
+  { id: 'plastic-bag-2', name: 'Plastic Bag 2', modelUrl: plasticBag2Url, category: 'Bag', imageUrl: plasticBag2Img },
+  { id: 'plastic-bag-3', name: 'Plastic Bag 3', modelUrl: plasticBag3Url, category: 'Bag', imageUrl: plasticBag3Img },
+  { id: 'plastic-bag-4', name: 'Plastic Bag 4', modelUrl: plasticBag4Url, category: 'Bag', imageUrl: plasticBag4Img },
+  { id: 'water-bottle-1', name: 'Water Bottle 1', modelUrl: waterBottle1Url, category: 'Bottle', imageUrl: waterBottle1Img },
+  { id: 'water-bottle-2', name: 'Water Bottle 2', modelUrl: waterBottle2Url, category: 'Bottle', imageUrl: waterBottle2Img },
+  { id: 'water-bottle-3', name: 'Water Bottle 3', modelUrl: waterBottle3Url, category: 'Bottle', imageUrl: waterBottle3Img },
+  { id: 'water-bottle-4', name: 'Water Bottle 4', modelUrl: waterBottle4Url, category: 'Bottle', imageUrl: waterBottle4Img },
+  { id: 'oil-bottle-1', name: 'Oil Bottle 1', modelUrl: oilBottle1Url, category: 'Bottle', imageUrl: oilBottle1Img },
+  { id: 'oil-bottle-2', name: 'Oil Bottle 2', modelUrl: oilBottle2Url, category: 'Bottle', imageUrl: oilBottle2Img },
+  { id: 'glass-bottle-1', name: 'Glass Bottle 1', modelUrl: glassBottle1Url, category: 'Bottle', imageUrl: glassBottle1Img },
+  { id: 'glass-bottle-2', name: 'Glass Bottle 2', modelUrl: glassBottle2Url, category: 'Bottle', imageUrl: glassBottle2Img },
+  { id: 'water-can-1', name: 'Water can 1', modelUrl: waterCan1Url, category: 'Bottle', imageUrl: waterCan1Img },
+  { id: 'water-can-2', name: 'Water can 2', modelUrl: waterCan2Url, category: 'Bottle', imageUrl: waterCan2Img },
+  { id: 'water-can-3', name: 'Water can 3', modelUrl: waterCan3Url, category: 'Bottle', imageUrl: waterCan3Img },
+  { id: 'tumbler-1', name: 'Tumbler 1', modelUrl: tumbler1Url, category: 'Container', imageUrl: tumbler1Img },
+  { id: 'tumbler-2', name: 'Tumbler 2', modelUrl: tumbler2Url, category: 'Container', imageUrl: tumbler2Img },
+  { id: 'cup-1', name: 'Cup 1', modelUrl: cup1Url, category: 'Container', imageUrl: cup1Img },
+  { id: 'cup-2', name: 'Cup 2', modelUrl: cup2Url, category: 'Container', imageUrl: cup2Img },
+  { id: 'cup-3', name: 'Cup 3', modelUrl: cup3Url, category: 'Container', imageKey: 'cup' },
+  { id: 'cup-4', name: 'Cup 4', modelUrl: cup4Url, category: 'Container', imageKey: 'cup' },
+  { id: 'round-container-1', name: 'Round Container 1', modelUrl: roundContainer1Url, category: 'Container', imageUrl: roundContainer1Img },
+  { id: 'round-container-2', name: 'Round Container 2', modelUrl: roundContainer2Url, category: 'Container', imageUrl: roundContainer2Img },
+  { id: 'round-square-1', name: 'Round Square Container 1', modelUrl: roundSquare1Url, category: 'Container', imageUrl: roundSquare1Img },
+  { id: 'round-square-2', name: 'Round Square Container 2', modelUrl: roundSquare2Url, category: 'Container', imageUrl: roundSquare2Img },
+  { id: 'rect-container-1', name: 'Rectangle Container 1', modelUrl: rectContainer1Url, category: 'Container', imageUrl: rectContainer1Img },
+  { id: 'rect-container-2', name: 'Rectangle Container 2', modelUrl: rectContainer2Url, category: 'Container', imageUrl: rectContainer2Img },
+  { id: 'sweet-box-1', name: 'Sweet box 1', modelUrl: sweetBox1Url, category: 'Container', imageUrl: sweetBox1Img },
+  { id: 'sweet-box-2', name: 'Sweet box 2', modelUrl: sweetBox2Url, category: 'Container', imageUrl: sweetBox2Img },
+  { id: 'ice-cream-1', name: 'Ice Cream 1', modelUrl: iceCream1Url, category: 'Food Packaging', imageUrl: iceCream1Img },
+  { id: 'ice-cream-2', name: 'Ice Cream 2', modelUrl: iceCream2Url, category: 'Food Packaging', imageUrl: iceCream2Img },
+  { id: 'burger-wrap-1', name: 'Burger Wrap 1', modelUrl: burgerWrap1Url, category: 'Food Packaging', imageUrl: burgerWrap1Img },
+  { id: 'burger-wrap-2', name: 'Burger Wrap 2', modelUrl: burgerWrap2Url, category: 'Food Packaging', imageUrl: burgerWrap2Img },
+  { id: 'pizza-box-1', name: 'Pizza Box 1', modelUrl: pizzaBox1Url, category: 'Food Packaging', imageUrl: pizzaBox1Img },
+  { id: 'pizza-box-2', name: 'Pizza Box 2', modelUrl: pizzaBox2Url, category: 'Food Packaging', imageUrl: pizzaBox2Img },
+  { id: 't-shirt-1', name: 'T-shirt 1', modelUrl: tshirt1Url, category: 'T-shirt', imageUrl: tshirt1Img },
+  { id: 't-shirt-2', name: 'T-shirt 2', modelUrl: tshirt2Url, category: 'T-shirt', imageUrl: tshirt2Img },
+  { id: 'hoodie-1', name: 'Hoodies 1', modelUrl: hoodie1Url, category: 'T-shirt', imageUrl: hoodie1Img },
+
+EXACT IMAGE MAP:
+  "square box 1": sqBox1Img,
+  "square box 2": sqBox2Img,
+  "plastic box 1": plasticBox1Img,
+  "plastic box 2": plasticBox2Img,
+  "food box 1": foodBox1Img,
+  "food box 2": foodBox2Img,
+  "paper bag 1": paperBag1Img,
+  "plastic bag 1": plasticBag1Img,
+  "plastic bag 2": plasticBag2Img,
+  "plastic bag 3": plasticBag3Img,
+  "plastic bag 4": plasticBag4Img,
+  "water bottle 1": waterBottle1Img,
+  "water bottle 2": waterBottle2Img,
+  "water bottle 3": waterBottle3Img,
+  "water bottle 4": waterBottle4Img,
+  "oil bottle 1": oilBottle1Img,
+  "oil bottle 2": oilBottle2Img,
+  "glass bottle 1": glassBottle1Img,
+  "glass bottle 2": glassBottle2Img,
+  "water can 1": waterCan1Img,
+  "water can 2": waterCan2Img,
+  "water can 3": waterCan3Img,
+  "tumbler 1": tumbler1Img,
+  "tumbler 2": tumbler2Img,
+  "cup 1": cup1Img,
+  "cup 2": cup2Img,
+  "round container 1": roundContainer1Img,
+  "round container 2": roundContainer2Img,
+  "round square container 1": roundSquare1Img,
+  "round square container 2": roundSquare2Img,
+  "rectangle container 1": rectContainer1Img,
+  "rectangle container 2": rectContainer2Img,
+  "sweet box 1": sweetBox1Img,
+  "sweet box 2": sweetBox2Img,
+  "ice cream 1": iceCream1Img,
+  "ice cream 2": iceCream2Img,
+  "burger wrap 1": burgerWrap1Img,
+  "burger wrap 2": burgerWrap2Img,
+  "pizza box 1": pizzaBox1Img,
+  "pizza box 2": pizzaBox2Img,
+  "t shirt 1": tshirt1Img,
+  "t shirt 2": tshirt2Img,
+  "hoodies 1": hoodie1Img,

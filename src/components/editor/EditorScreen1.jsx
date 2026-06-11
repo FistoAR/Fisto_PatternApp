@@ -625,7 +625,7 @@ export default function EditorScreen1({
 
         {/* Popups */}
         <div
-          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto ${activeTab !== "edit" ? "w-[350px]" : "w-0"}`}
+          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto ${activeTab === "models" || activeTab === "layout" ? "w-[350px]" : "w-0"}`}
         >
           {activeTab === "models" && (
             <ModelsPopup
@@ -648,10 +648,7 @@ export default function EditorScreen1({
         {/* Edit Popup Panel */}
         {activeTab === "edit" && !showCustomSize && (
           <div className="pointer-events-auto w-[280px] h-fit bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4">
-            <button
-              onClick={() => setShowCustomSize(true)}
-              className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
-            >
+            <div className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
                   <svg
@@ -674,25 +671,16 @@ export default function EditorScreen1({
                     />
                   </svg>
                 </div>
-                <span className="font-bold text-[#111827] text-sm">
-                  Custom size
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-bold text-[#111827] text-sm">
+                    Size
+                  </span>
+                  <span className="text-[11px] font-medium text-gray-500">
+                    {baseDimensions ? `${baseDimensions.length} x ${baseDimensions.width} x ${baseDimensions.height} mm` : 'Loading...'}
+                  </span>
+                </div>
               </div>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-4 h-4 text-gray-400"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                />
-              </svg>
-            </button>
+            </div>
 
             <button
               onClick={() => onProceed(selectedMaterial)}
@@ -963,14 +951,14 @@ export default function EditorScreen1({
             onClick={() => handleSetToolMode("cursor")}
             className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
               toolMode === "cursor"
-                ? "bg-gray-100"
+                ? "bg-gray-900 hover:bg-gray-700"
                 : "bg-transparent hover:bg-gray-100"
             }`}
           >
             <img
               src={cursorIcon}
               alt="Cursor"
-              className="w-5 h-5 object-contain"
+              className={`w-5 h-5 object-contain ${toolMode === "cursor" ? "invert brightness-0 saturate-100" : ""}`}
             />
           </button>
         </Tooltip1>
@@ -979,11 +967,15 @@ export default function EditorScreen1({
             onClick={() => handleSetToolMode("hand")}
             className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
               toolMode === "hand"
-                ? "bg-gray-100"
+                ? "bg-gray-900 hover:bg-gray-700"
                 : "bg-transparent hover:bg-gray-100"
             }`}
           >
-            <img src={handIcon} alt="Hand" className="w-5 h-5 object-contain" />
+            <img
+              src={handIcon}
+              alt="Hand"
+              className={`w-5 h-5 object-contain ${toolMode === "hand" ? "invert brightness-0 saturate-100" : ""}`}
+            />
           </button>
         </Tooltip1>
 
