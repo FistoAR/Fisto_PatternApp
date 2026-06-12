@@ -12,6 +12,10 @@ export default function EditorPage() {
   );
   const [selectedMaterial, setSelectedMaterial] = useState(null);
 
+  // Global scene background state (from Screen 1)
+  const [sceneBgColor, setSceneBgColor] = useState("#e6e2db");
+  const [sceneBgImage, setSceneBgImage] = useState(null);
+
   // Key to force Screen 2 canvas re-mount on reset
   const [canvasResetKey, setCanvasResetKey] = useState(0);
 
@@ -95,20 +99,58 @@ export default function EditorPage() {
     setCurrentScreen(1);
   };
 
+  const colorDebounceRef = useRef(null);
+
   const handleApplyColor = (materialId, colorHex) => {
     const targetMat = materialId || "all";
-    pushHistory({
-      colors: { ...editorState.colors, [targetMat]: colorHex },
-      lastApplied: { ...editorState.lastApplied, [targetMat]: "color" },
+    
+    setEditorState((prevState) => {
+      const nextState = {
+        ...prevState,
+        colors: { ...prevState.colors, [targetMat]: colorHex },
+        lastApplied: { ...prevState.lastApplied, [targetMat]: "color" },
+      };
+
+      if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
+      colorDebounceRef.current = setTimeout(() => {
+        history.current = history.current.slice(0, historyIndex.current + 1);
+        history.current.push(nextState);
+        historyIndex.current = history.current.length - 1;
+      }, 300);
+
+      return nextState;
     });
   };
 
   const handleApplyMaterial = (materialId, materialType) => {
     const targetMat = materialId || "all";
-    pushHistory({
-      materials: { ...editorState.materials, [targetMat]: materialType },
-      lastApplied: { ...editorState.lastApplied, [targetMat]: "material" },
-    });
+    if (materialType === null) {
+      if (targetMat === "all") {
+        pushHistory({
+          materials: {},
+          textures: {},
+          lastApplied: {},
+        });
+      } else {
+        const newMaterials = { ...editorState.materials };
+        delete newMaterials[targetMat];
+        const newTextures = { ...editorState.textures };
+        delete newTextures[targetMat];
+        const newLastApplied = { ...editorState.lastApplied };
+        delete newLastApplied[targetMat];
+        
+        pushHistory({
+          materials: newMaterials,
+          textures: newTextures,
+          lastApplied: newLastApplied,
+        });
+      }
+    } else {
+      pushHistory({
+        materials: { ...editorState.materials, [targetMat]: materialType },
+        lastApplied: { ...editorState.lastApplied, [targetMat]: "material" },
+      });
+    }
   };
 
   const handleApplyCustomSize = (size) => {
@@ -130,6 +172,10 @@ export default function EditorPage() {
           appliedCustomSize={editorState.customSize}
           selectedMaterial={selectedMaterial}
           setSelectedMaterial={setSelectedMaterial}
+          sceneBgColor={sceneBgColor}
+          setSceneBgColor={setSceneBgColor}
+          sceneBgImage={sceneBgImage}
+          setSceneBgImage={setSceneBgImage}
           onProceed={handleProceedToTextureEditor}
           onApplyColor={handleApplyColor}
           onApplyMaterial={handleApplyMaterial}
@@ -153,6 +199,8 @@ export default function EditorPage() {
           onBack={handleBackToModelViewer}
           isActive={currentScreen === 2}
           canvasResetKey={canvasResetKey}
+          sceneBgColor={sceneBgColor}
+          sceneBgImage={sceneBgImage}
         />
       </div>
     </div>

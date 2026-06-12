@@ -74,6 +74,7 @@ class DraggableImage {
     copy.locked = this.locked;
     copy.selectedFaceIds = [...(this.selectedFaceIds || [])];
     copy.fitType = this.fitType;
+    copy.erasedColors = JSON.parse(JSON.stringify(this.erasedColors || []));
     if (this.filteredCanvas) {
       copy.filteredCanvas = document.createElement("canvas");
       copy.filteredCanvas.width = this.filteredCanvas.width;
@@ -87,6 +88,12 @@ class DraggableImage {
   }
 
   removeColor(r, g, b, tolerance = 30) {
+    if (!this.erasedColors) this.erasedColors = [];
+    this.erasedColors.push({ r, g, b, tolerance });
+    this.applyEraser();
+  }
+
+  applyEraser() {
     if (!this.filteredCanvas) {
       this.filteredCanvas = document.createElement("canvas");
       this.filteredCanvas.width = this.img.width;
@@ -94,8 +101,12 @@ class DraggableImage {
       this.filteredCtx = this.filteredCanvas.getContext("2d", {
         willReadFrequently: true,
       });
-      this.filteredCtx.drawImage(this.img, 0, 0);
     }
+
+    this.filteredCtx.clearRect(0, 0, this.filteredCanvas.width, this.filteredCanvas.height);
+    this.filteredCtx.drawImage(this.img, 0, 0);
+
+    if (!this.erasedColors || this.erasedColors.length === 0) return;
 
     const imgData = this.filteredCtx.getImageData(
       0,
@@ -106,19 +117,22 @@ class DraggableImage {
     const data = imgData.data;
 
     for (let i = 0; i < data.length; i += 4) {
-      const pa = data[i + 3];
-      if (pa === 0) continue;
+      if (data[i + 3] === 0) continue;
 
       const pr = data[i];
       const pg = data[i + 1];
       const pb = data[i + 2];
 
-      const dist = Math.sqrt(
-        (pr - r) * (pr - r) + (pg - g) * (pg - g) + (pb - b) * (pb - b),
-      );
-
-      if (dist <= tolerance) {
-        data[i + 3] = 0;
+      for (const color of this.erasedColors) {
+        const dist = Math.sqrt(
+          (pr - color.r) * (pr - color.r) +
+          (pg - color.g) * (pg - color.g) +
+          (pb - color.b) * (pb - color.b)
+        );
+        if (dist <= color.tolerance) {
+          data[i + 3] = 0;
+          break;
+        }
       }
     }
 
@@ -361,10 +375,19 @@ class DraggableText {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     ctx.font = `${this.italic ? "italic " : ""}${this.bold ? "bold " : ""}${this.fontSize}px ${this.fontFamily}`;
-    const metrics = ctx.measureText(this.text);
+    
+    const lines = this.text.split("\n");
+    let maxWidth = 0;
+    lines.forEach(line => {
+      const metrics = ctx.measureText(line);
+      if (metrics.width > maxWidth) {
+        maxWidth = metrics.width;
+      }
+    });
+
     // Add some padding to make selection/dragging easier
-    this.nativeWidth = Math.max(100, metrics.width + 40);
-    this.nativeHeight = this.fontSize * 1.3;
+    this.nativeWidth = Math.max(100, maxWidth + 40);
+    this.nativeHeight = this.fontSize * 1.3 * Math.max(1, lines.length);
 
     this.width = this.nativeWidth;
     this.height = this.nativeHeight;
@@ -431,22 +454,30 @@ class DraggableText {
     ctx.font = `${this.italic ? "italic " : ""}${this.bold ? "bold " : ""}${this.fontSize / scale}px ${this.fontFamily}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(this.text, 0, 0);
 
-    if (this.underline) {
-      const metrics = ctx.measureText(this.text);
-      const textWidth = metrics.width;
-      // Position underline just below the text baseline
-      const underlineY = (this.fontSize / scale) * 0.4;
-      const thickness = Math.max(1, this.fontSize / scale / 15);
+    const lines = this.text.split("\n");
+    const lineHeight = (this.fontSize / scale) * 1.3;
+    const startY = -(lines.length - 1) * lineHeight / 2;
 
-      ctx.beginPath();
-      ctx.strokeStyle = this.color;
-      ctx.lineWidth = thickness;
-      ctx.moveTo(-textWidth / 2, underlineY);
-      ctx.lineTo(textWidth / 2, underlineY);
-      ctx.stroke();
-    }
+    lines.forEach((line, i) => {
+      const lineY = startY + i * lineHeight;
+      ctx.fillText(line, 0, lineY);
+
+      if (this.underline) {
+        const metrics = ctx.measureText(line);
+        const textWidth = metrics.width;
+        // Position underline just below the text baseline
+        const underlineY = lineY + (this.fontSize / scale) * 0.4;
+        const thickness = Math.max(1, this.fontSize / scale / 15);
+
+        ctx.beginPath();
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = thickness;
+        ctx.moveTo(-textWidth / 2, underlineY);
+        ctx.lineTo(textWidth / 2, underlineY);
+        ctx.stroke();
+      }
+    });
 
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -616,14 +647,17 @@ function drawUVs(
 
   // 1. Draw filled components (faces)
   components.forEach((comp) => {
-    if (!comp.path || comp.path.length === 0) return;
+    if (!comp.loops || comp.loops.length === 0) return;
 
     ctx.beginPath();
-    ctx.moveTo(comp.path[0].u * w, comp.path[0].v * h);
-    for (let i = 1; i < comp.path.length; i++) {
-      ctx.lineTo(comp.path[i].u * w, comp.path[i].v * h);
-    }
-    ctx.closePath();
+    comp.loops.forEach(loop => {
+      if (loop.length === 0) return;
+      ctx.moveTo(loop[0].u * w, loop[0].v * h);
+      for (let i = 1; i < loop.length; i++) {
+        ctx.lineTo(loop[i].u * w, loop[i].v * h);
+      }
+      ctx.closePath();
+    });
 
     // Fill face color
     const color = faceColors[comp.id];
@@ -672,13 +706,16 @@ function drawUVs(
   } else {
     // Stroke individual components
     components.forEach((comp) => {
-      if (!comp.path || comp.path.length === 0) return;
+      if (!comp.loops || comp.loops.length === 0) return;
       ctx.beginPath();
-      ctx.moveTo(comp.path[0].u * w, comp.path[0].v * h);
-      for (let i = 1; i < comp.path.length; i++) {
-        ctx.lineTo(comp.path[i].u * w, comp.path[i].v * h);
-      }
-      ctx.closePath();
+      comp.loops.forEach(loop => {
+        if (loop.length === 0) return;
+        ctx.moveTo(loop[0].u * w, loop[0].v * h);
+        for (let i = 1; i < loop.length; i++) {
+          ctx.lineTo(loop[i].u * w, loop[i].v * h);
+        }
+        ctx.closePath();
+      });
       ctx.stroke();
     });
   }
@@ -688,13 +725,16 @@ function drawUVs(
   if (selectedFaces && selectedFaces.size > 0) {
     selectedFaces.forEach((fId) => {
       const comp = components.find((c) => c.id === fId);
-      if (comp && comp.path && comp.path.length > 0) {
+      if (comp && comp.loops && comp.loops.length > 0) {
         ctx.beginPath();
-        ctx.moveTo(comp.path[0].u * w, comp.path[0].v * h);
-        for (let i = 1; i < comp.path.length; i++) {
-          ctx.lineTo(comp.path[i].u * w, comp.path[i].v * h);
-        }
-        ctx.closePath();
+        comp.loops.forEach(loop => {
+          if (loop.length === 0) return;
+          ctx.moveTo(loop[0].u * w, loop[0].v * h);
+          for (let i = 1; i < loop.length; i++) {
+            ctx.lineTo(loop[i].u * w, loop[i].v * h);
+          }
+          ctx.closePath();
+        });
 
         ctx.strokeStyle = "#3b82f6"; // solid blue-500
         ctx.lineWidth = 2;
@@ -723,7 +763,7 @@ function pointInPolygon(point, vs) {
   return inside;
 }
 
-function orderEdgesToPath(edges) {
+function orderEdgesToPaths(edges) {
   if (edges.length === 0) return [];
   const edgeMap = new Map();
   edges.forEach((e) => {
@@ -733,32 +773,34 @@ function orderEdgesToPath(edges) {
     edgeMap.get(e.k2).push(e);
   });
 
-  const path = [];
+  const loops = [];
   const usedEdges = new Set();
 
-  let currentEdge = edges[0];
-  usedEdges.add(currentEdge);
-  path.push(currentEdge.p1);
-  let currentKey = currentEdge.k2;
-
   while (usedEdges.size < edges.length) {
-    // Add the point corresponding to currentKey
-    path.push(currentEdge.k1 === currentKey ? currentEdge.p1 : currentEdge.p2);
+    let startEdge = edges.find(e => !usedEdges.has(e));
+    if (!startEdge) break;
 
-    const connected = edgeMap.get(currentKey);
-    if (!connected) break;
-    const nextEdge = connected.find((e) => !usedEdges.has(e));
-    if (!nextEdge) {
-      // Might be a disconnected sub-island (e.g. holes), but we just break for the main outline
-      break;
+    const path = [];
+    let currentEdge = startEdge;
+    usedEdges.add(currentEdge);
+    path.push(currentEdge.p1);
+    let currentKey = currentEdge.k2;
+
+    while (true) {
+      path.push(currentEdge.k1 === currentKey ? currentEdge.p1 : currentEdge.p2);
+
+      const connected = edgeMap.get(currentKey);
+      if (!connected) break;
+      const nextEdge = connected.find((e) => !usedEdges.has(e));
+      if (!nextEdge) break;
+      
+      currentEdge = nextEdge;
+      usedEdges.add(currentEdge);
+      currentKey = currentEdge.k1 === currentKey ? currentEdge.k2 : currentEdge.k1;
     }
-    usedEdges.add(nextEdge);
-    currentEdge = nextEdge;
-    currentKey =
-      currentEdge.k1 === currentKey ? currentEdge.k2 : currentEdge.k1;
+    loops.push(path);
   }
-
-  return path;
+  return loops;
 }
 
 export function extractUvComponents(mesh, modelUrl) {
@@ -1000,11 +1042,24 @@ export function extractUvComponents(mesh, modelUrl) {
     if (outlineEdges.length < 3) continue;
 
     const area = (maxU - minU) * (maxV - minV);
-    const path = orderEdgesToPath(outlineEdges);
-    if (path.length > 0) {
+    const loops = orderEdgesToPaths(outlineEdges);
+    
+    const validLoops = loops.filter(loop => {
+      if (loop.length < 3) return false;
+      let loopArea = 0;
+      for (let i = 0; i < loop.length; i++) {
+        let p1 = loop[i];
+        let p2 = loop[(i + 1) % loop.length];
+        loopArea += p1.u * p2.v - p2.u * p1.v;
+      }
+      return Math.abs(loopArea / 2) > 0.0001;
+    });
+
+    if (validLoops.length > 0) {
       finalComponents.push({
         id: `face_${faceCounter++}`,
-        path,
+        path: validLoops[0],
+        loops: validLoops,
         minU,
         maxU,
         minV,
@@ -1014,7 +1069,22 @@ export function extractUvComponents(mesh, modelUrl) {
     }
   }
 
-  return finalComponents;
+  // Deduplicate overlapping components (e.g. inner/outer faces of boxes)
+  const deduplicatedComponents = [];
+  for (const comp of finalComponents) {
+    const isDuplicate = deduplicatedComponents.some(
+      (existing) =>
+        Math.abs(existing.minU - comp.minU) < 0.005 &&
+        Math.abs(existing.maxU - comp.maxU) < 0.005 &&
+        Math.abs(existing.minV - comp.minV) < 0.005 &&
+        Math.abs(existing.maxV - comp.maxV) < 0.005
+    );
+    if (!isDuplicate) {
+      deduplicatedComponents.push(comp);
+    }
+  }
+
+  return deduplicatedComponents;
 }
 
 function estimateTextureSizeFromUv(mesh) {
@@ -1159,7 +1229,12 @@ const Canvas = forwardRef(
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [toolMode, setToolMode] = useState("cursor"); // "cursor" | "hand" | "multiselect" | "eraser"
+    const toolModeRef = useRef(toolMode);
+    useEffect(() => {
+      toolModeRef.current = toolMode;
+    }, [toolMode]);
     const [eraserTolerance, setEraserTolerance] = useState(30);
+    const [eraserTargetColor, setEraserTargetColor] = useState(null);
 
     // History State
     const [history, setHistory] = useState([]);
@@ -1319,7 +1394,7 @@ const Canvas = forwardRef(
       });
 
       // Draw controls for selected image LAST (on top)
-      if (selectedImageRef.current) {
+      if (selectedImageRef.current && toolModeRef.current !== "eraser") {
         selectedImageRef.current.drawControls(ctx, scale);
       }
     }, [showUv, fullUv, faceColors, selectedFaces]);
@@ -1805,6 +1880,18 @@ const Canvas = forwardRef(
     }, [redrawDisplay]);
 
     useEffect(() => {
+      const canvas = displayCanvasRef.current;
+      if (!canvas) return;
+      if (toolMode === "eraser") {
+        canvas.style.cursor = "cell";
+      } else if (toolMode === "hand") {
+        canvas.style.cursor = "grab";
+      } else {
+        canvas.style.cursor = "default";
+      }
+    }, [toolMode]);
+
+    useEffect(() => {
       let isActive = true;
       currentMeshRef.current = null;
       if (!modelUrl) {
@@ -2042,12 +2129,15 @@ const Canvas = forwardRef(
           const pixel = ctx.getImageData(imgX, imgY, 1, 1).data;
 
           if (pixel[3] > 0) {
-            sel.removeColor(pixel[0], pixel[1], pixel[2], eraserTolerance);
-            pushHistoryState();
-            redrawDisplay();
-            updateTexture();
+            setEraserTargetColor({ r: pixel[0], g: pixel[1], b: pixel[2] });
           }
         }
+
+        // Ensure the clicked image is selected so the Eraser UI can act on it
+        selectedImageRef.current = clickedImage;
+        setSelectedImage(clickedImage);
+        onSelectedLayerChangeRef.current?.(clickedImage);
+        
         return;
       }
 
@@ -2710,23 +2800,28 @@ const Canvas = forwardRef(
 
             ctx.fillStyle = item.color;
             ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(item.text, 0, 0);
+            const lines = item.text.split("\n");
+            const lineHeight = item.fontSize * 1.3;
+            const startY = -(lines.length - 1) * lineHeight / 2;
 
-            if (item.underline) {
-              const metrics = ctx.measureText(item.text);
-              const textWidth = metrics.width;
-              const underlineY = item.fontSize * 0.4;
-              const thickness = Math.max(1, item.fontSize / 15);
+            lines.forEach((line, i) => {
+              const lineY = startY + i * lineHeight;
+              ctx.fillText(line, 0, lineY);
 
-              ctx.beginPath();
-              ctx.strokeStyle = item.color;
-              ctx.lineWidth = thickness;
-              ctx.moveTo(-textWidth / 2, underlineY);
-              ctx.lineTo(textWidth / 2, underlineY);
-              ctx.stroke();
-            }
+              if (item.underline) {
+                const metrics = ctx.measureText(line);
+                const textWidth = metrics.width;
+                const underlineY = lineY + item.fontSize * 0.4;
+                const thickness = Math.max(1, item.fontSize / 15);
+
+                ctx.beginPath();
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = thickness;
+                ctx.moveTo(-textWidth / 2, underlineY);
+                ctx.lineTo(textWidth / 2, underlineY);
+                ctx.stroke();
+              }
+            });
           } else {
             ctx.drawImage(
               item.img,
@@ -2739,6 +2834,205 @@ const Canvas = forwardRef(
           ctx.restore();
         });
         return exportCanvas.toDataURL("image/png");
+      },
+      exportAsSVG: () => {
+        const width = textureSizeRef.current.width;
+        const height = textureSizeRef.current.height;
+        let svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+        
+        svg += `\n  <g id="Background"><rect width="100%" height="100%" fill="#ffffff" /></g>`;
+
+        if (showUv && currentMeshRef.current) {
+          svg += `\n  <g id="UV_Frame">\n`;
+          const mesh = currentMeshRef.current;
+          const components = uvComponentsRef.current;
+          const shouldDrawFull = fullUv || !components || components.length === 0;
+          const geometry = mesh.geometry;
+          
+          if (geometry && geometry.attributes.uv) {
+            const uvAttr = geometry.attributes.uv;
+            const index = geometry.index;
+            let d = "";
+            
+            if (shouldDrawFull) {
+              const addLine = (idx1, idx2) => {
+                const u1 = uvAttr.getX(idx1);
+                const v1 = uvAttr.getY(idx1);
+                const u2 = uvAttr.getX(idx2);
+                const v2 = uvAttr.getY(idx2);
+                d += `M${(u1 * width).toFixed(2)} ${(v1 * height).toFixed(2)} L${(u2 * width).toFixed(2)} ${(v2 * height).toFixed(2)} `;
+              };
+
+              if (index) {
+                for (let i = 0; i < index.count; i += 3) {
+                  const a = index.getX(i);
+                  const b = index.getX(i + 1);
+                  const c = index.getX(i + 2);
+                  addLine(a, b);
+                  addLine(b, c);
+                  addLine(c, a);
+                }
+              } else {
+                for (let i = 0; i < uvAttr.count; i += 3) {
+                  addLine(i, i + 1);
+                  addLine(i + 1, i + 2);
+                  addLine(i + 2, i);
+                }
+              }
+              svg += `    <path d="${d}" fill="none" stroke="#9ca3af" stroke-width="1" />\n`;
+            } else {
+              components.forEach((comp) => {
+                if (!comp.loops || comp.loops.length === 0) return;
+                let pathD = "";
+                comp.loops.forEach(loop => {
+                  if (loop.length === 0) return;
+                  pathD += `M${(loop[0].u * width).toFixed(2)} ${(loop[0].v * height).toFixed(2)} `;
+                  for (let i = 1; i < loop.length; i++) {
+                    pathD += `L${(loop[i].u * width).toFixed(2)} ${(loop[i].v * height).toFixed(2)} `;
+                  }
+                  pathD += "Z ";
+                });
+                svg += `    <path d="${pathD.trim()}" fill="none" stroke="#9ca3af" stroke-width="1" />\n`;
+              });
+            }
+          }
+          svg += `  </g>`;
+        }
+
+        imagesRef.current.forEach((item, index) => {
+          const layerId = `Layer_${index + 1}`;
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = width;
+          tempCanvas.height = height;
+          const ctx = tempCanvas.getContext("2d");
+          
+          ctx.save();
+          ctx.globalAlpha = item.opacity;
+          ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
+          ctx.rotate(item.rotation);
+          ctx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
+          
+          if (item instanceof DraggableText) {
+            const scaleX = item.width / item.nativeWidth;
+            const scaleY = item.height / item.nativeHeight;
+            ctx.scale(scaleX, scaleY);
+            ctx.fillStyle = item.color;
+            ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
+            const lines = item.text.split("\n");
+            const lineHeight = item.fontSize * 1.3;
+            const startY = -(lines.length - 1) * lineHeight / 2;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            lines.forEach((line, i) => {
+              const lineY = startY + i * lineHeight;
+              ctx.fillText(line, 0, lineY);
+              if (item.underline) {
+                const metrics = ctx.measureText(line);
+                const textWidth = metrics.width;
+                const underlineY = lineY + item.fontSize * 0.4;
+                const thickness = Math.max(1, item.fontSize / 15);
+                ctx.beginPath();
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = thickness;
+                ctx.moveTo(-textWidth / 2, underlineY);
+                ctx.lineTo(textWidth / 2, underlineY);
+                ctx.stroke();
+              }
+            });
+          } else {
+            ctx.drawImage(item.img, -item.width / 2, -item.height / 2, item.width, item.height);
+          }
+          ctx.restore();
+          
+          const base64 = tempCanvas.toDataURL("image/png");
+          svg += `\n  <g id="${layerId}">\n    <image xlink:href="${base64}" href="${base64}" x="0" y="0" width="${width}" height="${height}" />\n  </g>`;
+        });
+        
+        svg += `\n</svg>`;
+        return svg;
+      },
+      exportAsPDF: async () => {
+        const { jsPDF } = await import("jspdf");
+        const width = textureSizeRef.current.width;
+        const height = textureSizeRef.current.height;
+        const pdf = new jsPDF({
+          orientation: width > height ? "landscape" : "portrait",
+          unit: "px",
+          format: [width, height]
+        });
+
+        if (showUv && currentMeshRef.current) {
+          const uvCanvas = document.createElement("canvas");
+          uvCanvas.width = width;
+          uvCanvas.height = height;
+          const uvCtx = uvCanvas.getContext("2d");
+          drawUVs(
+            currentMeshRef.current,
+            uvComponentsRef.current,
+            {},
+            new Set(),
+            uvCtx,
+            width,
+            height,
+            fullUv,
+          );
+          const uvBase64 = uvCanvas.toDataURL("image/png");
+          pdf.addImage(uvBase64, "PNG", 0, 0, width, height);
+        }
+
+        imagesRef.current.forEach((item, index) => {
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = width;
+          tempCanvas.height = height;
+          const ctx = tempCanvas.getContext("2d");
+          
+          ctx.save();
+          ctx.globalAlpha = item.opacity;
+          ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
+          ctx.rotate(item.rotation);
+          ctx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
+          
+          if (item instanceof DraggableText) {
+            const scaleX = item.width / item.nativeWidth;
+            const scaleY = item.height / item.nativeHeight;
+            ctx.scale(scaleX, scaleY);
+            ctx.fillStyle = item.color;
+            ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
+            const lines = item.text.split("\n");
+            const lineHeight = item.fontSize * 1.3;
+            const startY = -(lines.length - 1) * lineHeight / 2;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            lines.forEach((line, i) => {
+              const lineY = startY + i * lineHeight;
+              ctx.fillText(line, 0, lineY);
+              if (item.underline) {
+                const metrics = ctx.measureText(line);
+                const textWidth = metrics.width;
+                const underlineY = lineY + item.fontSize * 0.4;
+                const thickness = Math.max(1, item.fontSize / 15);
+                ctx.beginPath();
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = thickness;
+                ctx.moveTo(-textWidth / 2, underlineY);
+                ctx.lineTo(textWidth / 2, underlineY);
+                ctx.stroke();
+              }
+            });
+          } else {
+            ctx.drawImage(item.img, -item.width / 2, -item.height / 2, item.width, item.height);
+          }
+          ctx.restore();
+          
+          const base64 = tempCanvas.toDataURL("image/png");
+          if (index > 0) {
+            // pdf.addPage(); // Use this if we want actual pages, but layered usually means on same page
+            // wait, user said layered. Multiple overlapping objects on the same page is best.
+          }
+          pdf.addImage(base64, "PNG", 0, 0, width, height);
+        });
+        
+        return pdf.output("bloburl");
       },
     }));
 
@@ -2907,12 +3201,12 @@ const Canvas = forwardRef(
                     position: "fixed",
                     left: editingText.x,
                     top: editingText.y,
-                    width: editingText.w * 1.5,
+                    width: Math.max(editingText.w * 1.5, 200),
                     zIndex: 9999,
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  <input
+                  <textarea
                     autoFocus
                     defaultValue={editingText.layer.text}
                     onFocus={(e) => {
@@ -2934,12 +3228,17 @@ const Canvas = forwardRef(
                       onSelectedLayerChangeRef.current?.(editingText.layer);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") e.target.blur();
+                      // Shift+Enter goes to new line, Enter blurs and saves
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        e.target.blur();
+                      }
                       if (e.key === "Escape") setEditingText(null);
                     }}
                     style={{
                       width: "100%",
-                      padding: "4px 8px",
+                      minHeight: "60px",
+                      padding: "8px",
                       fontSize: 14,
                       fontFamily: editingText.layer.fontFamily,
                       color: editingText.layer.color,
@@ -2948,6 +3247,7 @@ const Canvas = forwardRef(
                       outline: "none",
                       background: "rgba(255,255,255,0.95)",
                       boxShadow: "0 2px 16px rgba(124,92,252,0.2)",
+                      resize: "both",
                     }}
                   />
                 </div>
@@ -3048,31 +3348,31 @@ const Canvas = forwardRef(
               <Tooltip label="Select Tool">
                 <button
                   onClick={() => setToolMode("cursor")}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "cursor" ? "bg-gray-100" : "bg-transparent hover:bg-gray-50"}`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "cursor" ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
                 >
                   <img
                     src={cursorIcon}
                     alt="Cursor"
-                    className="w-6 h-6 object-contain opacity-80 hover:opacity-100"
+                    className={`w-6 h-6 object-contain opacity-80 hover:opacity-100 ${toolMode === "cursor" ? "invert brightness-0" : ""}`}
                   />
                 </button>
               </Tooltip>
               <Tooltip label="Pan Tool">
                 <button
                   onClick={() => setToolMode("hand")}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "hand" ? "bg-gray-100" : "bg-transparent hover:bg-gray-50"}`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "hand" ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
                 >
                   <img
                     src={handIcon}
                     alt="Hand"
-                    className="w-6 h-6 object-contain opacity-80 hover:opacity-100"
+                    className={`w-6 h-6 object-contain opacity-80 hover:opacity-100 ${toolMode === "hand" ? "invert brightness-0" : ""}`}
                   />
                 </button>
               </Tooltip>
               <Tooltip label="Multi-Select Mode">
                 <button
                   onClick={() => setToolMode("multiselect")}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "multiselect" ? "bg-gray-100" : "bg-transparent hover:bg-gray-50"}`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "multiselect" ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -3080,7 +3380,7 @@ const Canvas = forwardRef(
                     viewBox="0 0 24 24"
                     strokeWidth={2}
                     stroke="currentColor"
-                    className="w-5 h-5 opacity-80 hover:opacity-100 text-gray-800"
+                    className={`w-5 h-5 opacity-80 hover:opacity-100 ${toolMode === "multiselect" ? "text-white" : "text-gray-800"}`}
                   >
                     <path
                       strokeLinecap="round"
@@ -3099,8 +3399,15 @@ const Canvas = forwardRef(
               <div className="relative">
                 <Tooltip label="Eraser Tool (Remove Color)">
                   <button
-                    onClick={() => setToolMode("eraser")}
-                    className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "eraser" ? "bg-gray-100" : "bg-transparent hover:bg-gray-50"}`}
+                    onClick={() => {
+                      setToolMode("eraser");
+                      setSelectedImage(null);
+                      selectedImageRef.current = null;
+                      onSelectedLayerChangeRef.current?.(null);
+                      setEraserTargetColor(null);
+                      redrawDisplay();
+                    }}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "eraser" ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -3108,7 +3415,7 @@ const Canvas = forwardRef(
                       viewBox="0 0 24 24"
                       strokeWidth={2}
                       stroke="currentColor"
-                      className="w-5 h-5 opacity-80 hover:opacity-100 text-gray-800"
+                      className={`w-5 h-5 opacity-80 hover:opacity-100 ${toolMode === "eraser" ? "text-white" : "text-gray-800"}`}
                     >
                       <path
                         strokeLinecap="round"
@@ -3130,9 +3437,31 @@ const Canvas = forwardRef(
                 </Tooltip>
                 {toolMode === "eraser" && (
                   <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 p-4 w-64 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="flex justify-between items-center mb-3">
                       <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Eraser Tolerance
+                        Color Eraser
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                      <div 
+                        className="w-8 h-8 rounded border border-gray-200 shadow-sm shrink-0" 
+                        style={{ 
+                          backgroundColor: eraserTargetColor 
+                            ? `rgb(${eraserTargetColor.r}, ${eraserTargetColor.g}, ${eraserTargetColor.b})` 
+                            : 'transparent',
+                          backgroundImage: !eraserTargetColor ? 'radial-gradient(#e5e7eb 1px, transparent 0)' : 'none',
+                          backgroundSize: '4px 4px'
+                        }}
+                      />
+                      <div className="text-xs text-gray-500 font-medium">
+                        {eraserTargetColor ? "Color Selected" : "Click image to select"}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        Tolerance
                       </span>
                       <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">
                         {eraserTolerance}
@@ -3143,15 +3472,40 @@ const Canvas = forwardRef(
                       min="0"
                       max="150"
                       value={eraserTolerance}
-                      onChange={(e) =>
-                        setEraserTolerance(Number(e.target.value))
-                      }
-                      className="w-full accent-[#c0623a]"
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setEraserTolerance(val);
+                        // Update tolerance if already erasing
+                        const img = selectedImageRef.current;
+                        if (img && img.erasedColors && img.erasedColors.length > 0) {
+                          img.erasedColors[img.erasedColors.length - 1].tolerance = val;
+                          img.applyEraser();
+                          redrawDisplay();
+                          bakeTexture();
+                        }
+                      }}
+                      className="w-full accent-[#c0623a] mb-4"
                     />
-                    <p className="text-[10px] text-gray-400 mt-2 leading-relaxed">
-                      Click on any color in the selected image to erase it.
-                      Higher tolerance removes similar colors.
-                    </p>
+
+                    <button
+                      disabled={!eraserTargetColor}
+                      onClick={() => {
+                        const img = selectedImageRef.current;
+                        if (img && eraserTargetColor) {
+                          img.removeColor(eraserTargetColor.r, eraserTargetColor.g, eraserTargetColor.b, eraserTolerance);
+                          saveState();
+                          redrawDisplay();
+                          bakeTexture();
+                          setEraserTargetColor(null);
+                        }
+                      }}
+                      className="w-full py-2 bg-red-50 text-red-600 font-bold text-xs rounded-lg border border-red-100 hover:bg-red-100 hover:border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      </svg>
+                      Remove Color
+                    </button>
                   </div>
                 )}
               </div>

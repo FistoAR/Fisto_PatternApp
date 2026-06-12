@@ -69,11 +69,7 @@ const FEATURES = [
     description: "Optimized for speed and performance to save your time.",
     icon: fastIcon
   },
-  {
-    title: "Dedicated Support",
-    description: "Our support team is always ready to help you with any questions.",
-    icon: supportIcon
-  },
+
   {
     title: "Real-Time 3D Preview",
     description: "Instantly preview your packaging in interactive 3D.",

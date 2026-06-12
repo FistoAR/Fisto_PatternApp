@@ -76,7 +76,7 @@ export default function ContactPage() {
           </div>
 
           {/* Content Section */}
-          <div className="contact-content-section flex flex-col lg:flex-row gap-16 lg:gap-24 mb-24 bg-[#FBF9F6] px-4">
+          <div className="contact-content-section flex flex-col lg:flex-row items-center gap-16 lg:gap-24 mb-24 bg-[#FBF9F6] px-4">
             
             {/* Left Column - Contact Info */}
             <div className="flex flex-col gap-8 w-full lg:w-1/3">
@@ -121,14 +121,14 @@ export default function ContactPage() {
               </div>
 
               {/* Map Image */}
-              <div className="contact-info-block w-full rounded-3xl overflow-hidden shadow-md border border-[#f5e9df] lg:flex-1 lg:min-h-[250px] flex">
-                <img src={mapImg} alt="Location Map" className="w-full h-full min-h-[250px] lg:min-h-0 object-cover block" />
+              <div className="contact-info-block w-full rounded-3xl overflow-hidden shadow-md border border-[#f5e9df] h-[180px] flex shrink-0 mt-4">
+                <img src={mapImg} alt="Location Map" className="w-full h-full object-cover block" />
               </div>
 
             </div>
 
             {/* Right Column - Form */}
-            <div className="contact-form-block w-full lg:w-2/3 max-w-2xl mt-[3vw]  rounded-3xl p-8 lg:p-10 shadow-[0_12px_40px_rgba(0,0,0,0.04)] border border-gray-50 bg-white">
+            <div className="contact-form-block w-full lg:w-2/3 max-w-2xl rounded-3xl p-8 lg:p-10 shadow-[0_12px_40px_rgba(0,0,0,0.04)] border border-gray-50 bg-white">
               <h2 className="text-2xl font-bold text-gray-900 mb-8">Send us a Message</h2>
               
               <form className="flex flex-col gap-6" onSubmit={(e) => e.preventDefault()}>

@@ -23,22 +23,30 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 function CustomHdriEnvironment({ url, intensity }) {
   const texture = useLoader(RGBELoader, url);
-  
-  // Apply mapping required for Environment map
-  useEffect(() => {
-    if (texture) {
-      texture.mapping = THREE.EquirectangularReflectionMapping;
-    }
-  }, [texture]);
-
-  return <Environment map={texture} environmentIntensity={intensity} />;
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  return <Environment map={texture} background={false} environmentIntensity={intensity} />;
 }
 
+function BackgroundImage({ url }) {
+  const { scene } = useThree();
+  const texture = useLoader(THREE.TextureLoader, url);
+  
+  useEffect(() => {
+    if (texture) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      scene.background = texture;
+    }
+    return () => { scene.background = null; }
+  }, [texture, scene]);
+
+  return null;
+}
 
 import LeftSidebar from "./LeftSidebar";
 import ModelsPopup from "./ModelsPopup";
 import LayoutPopup from "./LayoutPopup";
 import ScenePopup from "./ScenePopup";
+import { getTextureLibrary } from "../../utils/TextureLibrary";
 
 import cursorIcon from "../../assets/images/Icons/cursor.webp";
 import handIcon from "../../assets/images/Icons/hand.webp";
@@ -69,13 +77,25 @@ function ModelLoadingOverlay({ isLoading }) {
   );
 }
 
-function MinorLoadingSpinner({ isLoading }) {
+function HdriLoadingOverlay({ isModelLoading }) {
   const { active } = useProgress();
-  if (isLoading || !active) return null;
+  // Show this overlay when Suspense is active but the main model isn't loading
+  // (which happens when HDRI Environments are being downloaded/compiled)
+  if (isModelLoading || !active) return null;
+  
   return (
-    <div className="absolute top-6 right-24 bg-white/90 backdrop-blur-sm px-4 py-3 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.1)] flex items-center gap-3 z-[1000] border border-[#c05520]/20">
-      <div className="w-5 h-5 rounded-full border-2 border-[#c05520]/30 border-t-[#c05520] animate-spin" />
-      <span className="text-sm font-bold text-[#c05520]">Loading Assets...</span>
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#e6e2db]/60 backdrop-blur-[2px] pointer-events-none">
+      <div className="relative w-14 h-14 mb-4">
+        <div className="absolute inset-0 rounded-full border-4 border-[#c05520]/20" />
+        <div
+          className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#c05520] animate-spin"
+          style={{ animationDuration: "1s" }}
+        />
+        <div className="absolute inset-[14px] rounded-full bg-[#c05520]/20" />
+      </div>
+      <p className="text-[#c05520] font-bold text-base tracking-wide">
+        Applying Environment...
+      </p>
     </div>
   );
 }
@@ -220,10 +240,12 @@ function AutoSizedModelWithDimensions({
     ];
   }, [baseDims, customSize]);
 
+  // Optimize texture loader by memoizing it
+  const loader = useMemo(() => new THREE.TextureLoader(), []);
+
   useEffect(() => {
     if (!clonedScene) return;
 
-    const loader = new THREE.TextureLoader();
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || !obj.material) return;
       const mArray = Array.isArray(obj.material)
@@ -260,18 +282,17 @@ function AutoSizedModelWithDimensions({
         // Decide what to render based on last applied action
         if (textureUrl && last === "texture") {
           m.color.setHex(0xffffff); // Neutral white, no blending/tinting
-          m.userData.loadingTextureUrl = textureUrl;
-          loader.load(textureUrl, (texture) => {
-            if (m.userData.loadingTextureUrl === textureUrl) {
+          if (m.userData.currentTextureUrl !== textureUrl) {
+            m.userData.currentTextureUrl = textureUrl;
+            loader.load(textureUrl, (texture) => {
               texture.colorSpace = THREE.SRGBColorSpace;
               texture.flipY = false;
               m.map = texture;
               m.needsUpdate = true;
-              delete m.userData.loadingTextureUrl;
-            }
-          });
+            });
+          }
         } else if (colorHex && last === "color") {
-          m.userData.loadingTextureUrl = null; // Cancel any active texture loads
+          m.userData.currentTextureUrl = null;
           m.color.set(colorHex);
           m.map = null; // Clear the original texture so it doesn't merge/tint
           m.needsUpdate = true;
@@ -279,50 +300,99 @@ function AutoSizedModelWithDimensions({
         // Fallbacks if one exists but last is not set (e.g. initial loads or simple states)
         else if (textureUrl) {
           m.color.setHex(0xffffff);
-          m.userData.loadingTextureUrl = textureUrl;
-          loader.load(textureUrl, (texture) => {
-            if (m.userData.loadingTextureUrl === textureUrl) {
+          if (m.userData.currentTextureUrl !== textureUrl) {
+            m.userData.currentTextureUrl = textureUrl;
+            loader.load(textureUrl, (texture) => {
               texture.colorSpace = THREE.SRGBColorSpace;
               texture.flipY = false;
               m.map = texture;
               m.needsUpdate = true;
-              delete m.userData.loadingTextureUrl;
-            }
-          });
+            });
+          }
         } else if (colorHex) {
-          m.userData.loadingTextureUrl = null;
+          m.userData.currentTextureUrl = null;
           m.color.set(colorHex);
           m.map = null;
           m.needsUpdate = true;
         }
         // Restore Originals (No custom color, no custom texture)
         else {
-          m.userData.loadingTextureUrl = null;
+          m.userData.currentTextureUrl = null;
           m.color.setHex(m.userData.originalColorHex);
           m.map = m.userData.originalMap;
           m.needsUpdate = true;
         }
 
         // Apply custom materials properties
-        if (materialType === "kraft") {
-          m.roughness = 0.9;
-          m.metalness = 0.1;
-          if (!textureUrl && last !== "color") m.color.setHex(0xbc9476);
-        } else if (materialType === "glossy") {
-          m.roughness = 0.1;
-          m.metalness = 0.1;
-          if (!textureUrl && last !== "color") m.color.setHex(0xffffff);
-        } else if (materialType === "matte") {
-          m.roughness = 0.8;
-          m.metalness = 0.1;
-          if (!textureUrl && last !== "color") m.color.setHex(0x222222);
-        } else if (materialType === "metallic") {
-          m.roughness = 0.2;
-          m.metalness = 0.9;
-          if (!textureUrl && last !== "color") m.color.setHex(0xaaaaaa);
+        if (typeof materialType === "string") {
+          // It's a legacy default material
+          if (materialType === "kraft") {
+            m.roughness = 0.9;
+            m.metalness = 0.1;
+            if (!textureUrl && last !== "color") m.color.setHex(0xbc9476);
+          } else if (materialType === "glossy") {
+            m.roughness = 0.1;
+            m.metalness = 0.1;
+            if (!textureUrl && last !== "color") m.color.setHex(0xffffff);
+          } else if (materialType === "matte") {
+            m.roughness = 0.8;
+            m.metalness = 0.1;
+            if (!textureUrl && last !== "color") m.color.setHex(0x222222);
+          } else if (materialType === "metallic") {
+            m.roughness = 0.2;
+            m.metalness = 0.9;
+            if (!textureUrl && last !== "color") m.color.setHex(0xaaaaaa);
+          }
+        } else if (typeof materialType === "object" && materialType !== null) {
+          // It's a PBR texture object from the TextureLibrary
+          if (m.userData.currentPbrId !== materialType.id) {
+            m.userData.currentPbrId = materialType.id;
+            m.userData.currentTextureUrl = null; // Clear active simple texture
+            
+            // Set base color to white so textures show accurately
+            m.color.setHex(0xffffff);
+            
+            // Initialize maps
+            m.map = null;
+            m.normalMap = null;
+            m.roughnessMap = null;
+            m.metalnessMap = null;
+            m.aoMap = null;
+            
+            const loadMap = (url, mapType, isColorSpace) => {
+              if (!url) return;
+              loader.load(url, (texture) => {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                if (isColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
+                m[mapType] = texture;
+                m.needsUpdate = true;
+              });
+            };
+
+            // Load available maps
+            if (materialType.maps.albedo) loadMap(materialType.maps.albedo, 'map', true);
+            if (materialType.maps.normal) loadMap(materialType.maps.normal, 'normalMap', false);
+            if (materialType.maps.roughness) loadMap(materialType.maps.roughness, 'roughnessMap', false);
+            if (materialType.maps.metallic) loadMap(materialType.maps.metallic, 'metalnessMap', false);
+            if (materialType.maps.ao) loadMap(materialType.maps.ao, 'aoMap', false);
+
+            // Set physical properties to full effect to let maps dictate appearance
+            m.roughness = 1.0;
+            m.metalness = 1.0;
+            m.needsUpdate = true;
+          }
         } else {
+          // No material specified, restore originals
+          m.userData.currentPbrId = null;
           m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.5;
           m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
+          
+          // Only clear custom PBR maps if they exist, but leave m.map intact if it came from texture picker
+          m.normalMap = null;
+          m.roughnessMap = null;
+          m.metalnessMap = null;
+          m.aoMap = null;
         }
       });
     });
@@ -360,6 +430,10 @@ export default function EditorScreen1({
   canRedo,
   activeTab,
   setActiveTab,
+  sceneBgColor: bgColor,
+  setSceneBgColor: setBgColor,
+  sceneBgImage: bgImage,
+  setSceneBgImage: setBgImage,
 }) {
   const [showCustomSize, setShowCustomSize] = useState(false);
   const [showCameraViews, setShowCameraViews] = useState(false);
@@ -377,7 +451,6 @@ export default function EditorScreen1({
   const [showLegend, setShowLegend] = useState(false);
 
   // Scene & Environment States
-  const [bgColor, setBgColor] = useState("#e6e2db");
   const [hdriPreset, setHdriPreset] = useState("studio");
   const [envIntensity, setEnvIntensity] = useState(0.4);
   const [ambLight, setAmbLight] = useState(0.3);
@@ -419,6 +492,10 @@ export default function EditorScreen1({
   const [exportJpgChecked, setExportJpgChecked] = useState(false);
   const [exportPdfChecked, setExportPdfChecked] = useState(false);
 
+  const textureLibrary = useMemo(() => getTextureLibrary(), []);
+  const [activeTextureCategory, setActiveTextureCategory] = useState(textureLibrary[0]?.category || "Wood");
+  const [isTextureDropdownOpen, setIsTextureDropdownOpen] = useState(false);
+  
   const [isModelLoading, setIsModelLoading] = useState(false);
 
   useEffect(() => {
@@ -503,7 +580,7 @@ export default function EditorScreen1({
   // Tools state
   const [zoom, setZoom] = useState(1);
   const [toolMode, setToolMode] = useState("cursor");
-  const [shadowEnabled, setShadowEnabled] = useState(true);
+  const [shadowEnabled, setShadowEnabled] = useState(false);
 
   // Sync inputs when applied size changes via undo/redo
   useEffect(() => {
@@ -633,7 +710,12 @@ export default function EditorScreen1({
             cameraRef.current = camera;
           }}
         >
-          <color attach="background" args={[bgColor]} />
+          {!bgImage && <color attach="background" args={[bgColor]} />}
+          {bgImage && (
+            <Suspense fallback={null}>
+              <BackgroundImage url={bgImage} />
+            </Suspense>
+          )}
           <ambientLight intensity={ambLight} />
           <directionalLight
             position={[5, 10, 5]}
@@ -674,7 +756,7 @@ export default function EditorScreen1({
             screenSpacePanning={true}
             minDistance={4 / 1.5}
             maxDistance={4 / 0.5}
-            onChange={(e) => {
+            onEnd={(e) => {
               const controls = e.target;
               if (controls && controls.object) {
                 const dist = controls.object.position.distanceTo(controls.target);
@@ -758,6 +840,7 @@ export default function EditorScreen1({
               dirLight={dirLight} setDirLight={setDirLight}
               shadowOpacity={shadowOpacity} setShadowOpacity={setShadowOpacity}
               customHdri={customHdri} setCustomHdri={setCustomHdri}
+              bgImage={bgImage} setBgImage={setBgImage}
             />
           )}
         </div>
@@ -803,26 +886,26 @@ export default function EditorScreen1({
 
             <button
               onClick={() => onProceed(selectedMaterial)}
-              className="w-full flex items-center justify-between p-4 rounded-2xl border-none bg-[#a94a1c] hover:bg-[#a94a1c] transition-all duration-300 cursor-pointer shadow-[0_4px_12px_rgba(192,85,32,0.25)] hover:shadow-[0_6px_16px_rgba(192,85,32,0.35)] hover:-translate-y-0.5 group"
+              className="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-[#c05520] bg-orange-50 hover:bg-orange-100 transition-all duration-300 cursor-pointer group shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
+                <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center border border-orange-200">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
-                    strokeWidth={1.8}
+                    strokeWidth={2}
                     stroke="currentColor"
-                    className="w-5 h-5 text-white"
+                    className="w-4 h-4 text-[#c05520]"
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
                     />
                   </svg>
                 </div>
-                <span className="font-bold text-white text-[15px] tracking-wide">
+                <span className="font-bold text-[#c05520] text-[15px] tracking-wide">
                   Upload Artwork
                 </span>
               </div>
@@ -832,7 +915,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={2.5}
                 stroke="currentColor"
-                className="w-5 h-5 text-white/90 transition-transform duration-300 group-hover:translate-x-1"
+                className="w-5 h-5 text-[#c05520] transition-transform duration-300 group-hover:translate-x-1"
               >
                 <path
                   strokeLinecap="round"
@@ -843,7 +926,7 @@ export default function EditorScreen1({
             </button>
 
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-semibold text-gray-700">
+              <label className="text-sm font-bold text-gray-700">
                 Target Material
               </label>
               <select
@@ -851,7 +934,8 @@ export default function EditorScreen1({
                 onChange={(e) => setSelectedMaterial(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium outline-none focus:border-[#c05520] focus:ring-1 focus:ring-[#c05520] transition-all"
               >
-                <option value="">All Materials</option>
+                <option value="none">Select Material</option>
+                <option value="all">All Materials</option>
                 {modelMaterials.map((mat) => (
                   <option key={mat.id} value={mat.id}>
                     {mat.name}
@@ -860,106 +944,130 @@ export default function EditorScreen1({
               </select>
             </div>
 
-            <div className="relative w-full flex items-center justify-between p-4 rounded-2xl border-none bg-[#a94a1c] hover:bg-[#a94a1c] transition-all duration-300 cursor-pointer shadow-[0_4px_12px_rgba(192,85,32,0.25)] hover:shadow-[0_6px_16px_rgba(192,85,32,0.35)] hover:-translate-y-0.5 group overflow-hidden">
-              <div className="flex items-center gap-3 z-10 pointer-events-none">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-5 h-5 text-white"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42"
-                    />
+            <div className="flex flex-col gap-3">
+              <label className="text-sm font-bold text-gray-700">Apply Color</label>
+              <div className="flex items-center gap-3 w-full">
+                <div className="relative w-10 h-10 rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0 flex items-center justify-center bg-gray-50 hover:bg-gray-100 group">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500 absolute z-0 group-hover:scale-110 transition-transform">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11.25l1.5 1.5.75-.75V8.758l2.276-.61a3 3 0 10-3.675-3.675l-.61 2.277H12l-.75.75 1.5 1.5M15 11.25v-2.25m0 2.25l-2.25 1.5M7.5 15l-1.5 1.5-.75-.75V12.5l2.25-1.5M7.5 15l1.5 2.25m0-2.25l-2.25-1.5M10.5 18l-1.5 1.5-.75-.75V15.5l2.25-1.5M10.5 18l1.5 2.25m0-2.25l-2.25-1.5" />
                   </svg>
+                  <input
+                    type="color"
+                    value={appliedColors?.[selectedMaterial || "all"] || "#ffffff"}
+                    onChange={(e) =>
+                      onApplyColor && onApplyColor(selectedMaterial, e.target.value)
+                    }
+                    className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0 z-10"
+                  />
                 </div>
-                <span className="font-bold text-white text-[15px] tracking-wide">
-                  Apply Color
-                </span>
+                <div className="flex-1 grid grid-cols-5 gap-2">
+                  {['#e6e2db', '#ffffff', '#1a1a1a', '#2c3e50', '#c05520'].map(color => (
+                    <button
+                      key={color}
+                      onClick={() => onApplyColor && onApplyColor(selectedMaterial, color)}
+                      className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${appliedColors?.[selectedMaterial || "all"] === color ? 'border-[#c05520] shadow-md' : 'border-gray-200'}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
               </div>
-              <input
-                type="color"
-                value={appliedColors?.[selectedMaterial || "all"] || "#ffffff"}
-                onChange={(e) =>
-                  onApplyColor && onApplyColor(selectedMaterial, e.target.value)
-                }
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-              />
-              <div
-                className="w-6 h-6 rounded-full border border-[#a94a1c] shadow-lg z-10 pointer-events-none transition-transform duration-300 group-hover:scale-110"
-                style={{
-                  backgroundColor:
-                    appliedColors?.[selectedMaterial || "all"] || "#ffffff",
-                }}
-              />
             </div>
 
-            <div className="text-[11px] text-[#8a5338] bg-[#fdf8f5] border border-[#f5e3d7] rounded-2xl p-3 flex gap-2.5 leading-relaxed">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-4 h-4 text-[#c05520] shrink-0 mt-0.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <span>
-                Select specific material part to apply colors/textures
-                individually, otherwise it applies to entire object!
-              </span>
-            </div>
-
-            {/* Default Materials Grid */}
+            {/* Texture Library */}
             <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
-              <label className="text-sm font-semibold text-gray-700">
-                Default Materials
-              </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-gray-700">
+                  Texture Library
+                </label>
                 <button
-                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, "kraft")}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"] === "kraft" ? 'border-[#c05520] bg-orange-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
+                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, null)}
+                  className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#bc9476] shadow-inner" />
-                  <span className="text-xs font-bold text-gray-700">Kraft Paper</span>
-                </button>
-                <button
-                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, "glossy")}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"] === "glossy" ? 'border-[#c05520] bg-orange-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm" />
-                  <span className="text-xs font-bold text-gray-700">Glossy White</span>
-                </button>
-                <button
-                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, "matte")}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"] === "matte" ? 'border-[#c05520] bg-orange-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-[#222222] shadow-inner" />
-                  <span className="text-xs font-bold text-gray-700">Matte Black</span>
-                </button>
-                <button
-                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, "metallic")}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"] === "metallic" ? 'border-[#c05520] bg-orange-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 shadow-inner" />
-                  <span className="text-xs font-bold text-gray-700">Metallic</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear
                 </button>
               </div>
+              
+              {/* Category Tabs */}
+              <div className="flex gap-1.5 py-1 items-center justify-between relative">
+                <div className="flex gap-1.5 overflow-hidden flex-wrap max-h-8">
+                  {textureLibrary
+                    .filter((c, i) => i < 3 || c.category === activeTextureCategory)
+                    .map((category) => (
+                    <button
+                      key={category.category}
+                      onClick={() => setActiveTextureCategory(category.category)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTextureCategory === category.category ? 'bg-[#c05520] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
+                      {category.category}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative shrink-0">
+                  <button 
+                    onClick={() => setIsTextureDropdownOpen(!isTextureDropdownOpen)}
+                    className={`p-1.5 rounded-full border text-gray-500 hover:text-gray-900 bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer flex items-center justify-center transition-all ${isTextureDropdownOpen ? 'bg-gray-100 border-gray-300' : ''}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  
+                  {isTextureDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsTextureDropdownOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto py-1.5 flex flex-col">
+                        {textureLibrary.map(category => (
+                          <button
+                            key={category.category}
+                            onClick={() => {
+                              setActiveTextureCategory(category.category);
+                              setIsTextureDropdownOpen(false);
+                            }}
+                            className={`px-4 py-2 text-left text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer ${activeTextureCategory === category.category ? 'text-[#c05520] bg-orange-50/50' : 'text-gray-700'}`}
+                          >
+                            {category.category}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Texture Grid */}
+              <div className="grid grid-cols-3 gap-2 mt-1 max-h-[200px] overflow-y-auto pr-1">
+                {textureLibrary.find(c => c.category === activeTextureCategory)?.textures.map((texture) => (
+                  <button
+                    key={texture.id}
+                    title={texture.name}
+                    onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, texture)}
+                    className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"]?.id === texture.id ? 'border-[#c05520] shadow-md' : 'border-transparent hover:border-gray-200'}`}
+                  >
+                    {texture.preview ? (
+                      <img src={texture.preview} alt={texture.name} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 p-1 text-center font-medium leading-tight">{texture.name}</div>
+                    )}
+                    {appliedMaterials?.[selectedMaterial || "all"]?.id === texture.id && (
+                      <div className="absolute inset-0 bg-[#c05520]/20 flex items-center justify-center backdrop-blur-[1px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white drop-shadow-md">
+                          <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
+
           </div>
         )}
 
-        <MinorLoadingSpinner isLoading={isModelLoading} />
+        <HdriLoadingOverlay isModelLoading={isModelLoading} />
 
         {/* Custom Size Editor */}
         {activeTab === "edit" && showCustomSize && (
@@ -1261,7 +1369,7 @@ export default function EditorScreen1({
         <div className="w-6 h-px bg-gray-200 mx-auto" />
 
         <Tooltip1
-          label={shadowEnabled ? "Shadow On" : "Shadow Off"}
+          label={shadowEnabled ? "Shadow Off" : "Shadow On"}
           side="left"
         >
           <button

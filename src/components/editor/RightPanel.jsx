@@ -7,14 +7,28 @@ import {
   useRef,
   useState,
 } from "react";
-import { Canvas as R3FCanvas, useThree } from "@react-three/fiber";
+import { Canvas as R3FCanvas, useThree, useLoader } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
-// No uvLayout import needed since canvas is exactly 1:1 mapped now
+
+function BackgroundImage({ url }) {
+  const { scene } = useThree();
+  const texture = useLoader(THREE.TextureLoader, url);
+  
+  useEffect(() => {
+    if (texture) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      scene.background = texture;
+    }
+    return () => { scene.background = null; }
+  }, [texture, scene]);
+
+  return null;
+}
 
 const packageColors = [
   { id: "cream", color: "#f5e6d3" },
@@ -36,9 +50,13 @@ export default function RightPanel({
   setShowUv,
   fullUv,
   setFullUv,
+  bgColor,
   setBgColor,
+  sceneBgColor = "#e5e5e5",
+  sceneBgImage = null,
   hideExport,
   onSave,
+  onExportClick,
   customSize,
 }) {
   const [selectedColor, setSelectedColor] = useState("cream");
@@ -69,6 +87,36 @@ export default function RightPanel({
     if (!captureRef.current) return;
     captureRef.current.capture();
     setShowExportMenu(false);
+  };
+
+  const handleExportSVG = () => {
+    if (!canvasRef?.current) return;
+    const svgContent = canvasRef.current.exportAsSVG();
+    const blob = new Blob([svgContent], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "texture-layered.svg";
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  const handleExportPDF = async () => {
+    if (!canvasRef?.current) return;
+    setExporting(true);
+    try {
+      const url = await canvasRef.current.exportAsPDF();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "texture-layered.pdf";
+      a.click();
+    } catch (err) {
+      console.error("PDF Export Error:", err);
+    } finally {
+      setExporting(false);
+      setShowExportMenu(false);
+    }
   };
 
   const handleExportGLB = () => {
@@ -149,159 +197,9 @@ export default function RightPanel({
       className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-auto overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px]"
     >
       <div className="flex gap-2 px-3 pb-2 pt-1">
-        {/* Export Button */}
-        {!hideExport && (
-          <div className="flex-1 relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="w-full h-full flex items-center justify-center gap-1.5 bg-white text-gray-800 py-[10px] rounded-[10px] font-bold text-[13px] border-[1.5px] border-gray-200 cursor-pointer hover:border-gray-300 hover:bg-gray-50 transition-all shadow-sm"
-            >
-              {exporting ? (
-                <span className="flex items-center gap-1.5 text-orange-600">
-                  <svg
-                    className="animate-spin h-4 w-4 text-orange-600"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Exporting...
-                </span>
-              ) : (
-                <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className="w-4 h-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-                    />
-                  </svg>
-                  Export
-                </>
-              )}
-            </button>
-          </div>
-        )}
 
-        {/* Export dropdown */}
-        {showExportMenu && (
-          <div className="absolute left-3 right-3 top-[calc(100%+4px)] z-50 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.14)] border border-gray-100 overflow-hidden">
-            {/* GLB */}
-            <button
-              onClick={handleExportGLB}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-orange-50 transition-colors border-none cursor-pointer bg-transparent text-left"
-            >
-              <span className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="#c0623a"
-                  className="w-4 h-4"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
-                  />
-                </svg>
-              </span>
-              <div>
-                <p className="m-0 leading-tight">Export as .GLB</p>
-                <p className="m-0 text-[10px] text-gray-400 font-normal leading-tight mt-0.5">
-                  3D model with texture baked in
-                </p>
-              </div>
-            </button>
-            <div className="h-px bg-gray-100 mx-3" />
-            {/* Model PNG */}
-            <button
-              onClick={handleExportModelPNG}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-purple-50 transition-colors border-none cursor-pointer bg-transparent text-left"
-            >
-              <span className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="#7c3aed"
-                  className="w-4 h-4"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"
-                  />
-                </svg>
-              </span>
-              <div>
-                <p className="m-0 leading-tight">Model as .PNG</p>
-                <p className="m-0 text-[10px] text-gray-400 font-normal leading-tight mt-0.5">
-                  3D render screenshot with texture
-                </p>
-              </div>
-            </button>
-            <div className="h-px bg-gray-100 mx-3" />
-            {/* Canvas PNG */}
-            <button
-              onClick={handleExportCanvasPNG}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-blue-50 transition-colors border-none cursor-pointer bg-transparent text-left"
-            >
-              <span className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="#3b82f6"
-                  className="w-4 h-4"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-                  />
-                </svg>
-              </span>
-              <div>
-                <p className="m-0 leading-tight">Canvas as .PNG</p>
-                <p className="m-0 text-[10px] text-gray-400 font-normal leading-tight mt-0.5">
-                  Flat texture image (2048×2048)
-                </p>
-              </div>
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* 2 Controls */}
       <div className="px-3 pb-2">
         <div className="flex items-center justify-center gap-3 bg-white border border-gray-100 px-3 py-2 rounded-xl text-[11px] shadow-sm flex-wrap">
           <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-gray-700">
@@ -330,20 +228,26 @@ export default function RightPanel({
       <div className="px-3 pb-2 relative select-none">
         <div
           className="relative rounded-xl overflow-hidden aspect-square"
-          style={{ background: "linear-gradient(145deg, #e5e5e5, #d4d4d4)" }}
+          style={{ background: sceneBgColor }}
         >
           <R3FCanvas
             className="w-full h-full"
             camera={{ position: [0, 0.2, 3.2], fov: 40 }}
             dpr={[1, 2]}
-            gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+            gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
             onCreated={({ gl }) => {
               gl.outputColorSpace = THREE.SRGBColorSpace;
               gl.toneMapping = THREE.NeutralToneMapping;
               gl.toneMappingExposure = 1;
-              gl.setClearColor(new THREE.Color("#e5e5e5"), 1);
+              if (!sceneBgImage) gl.setClearColor(new THREE.Color(sceneBgColor), 1);
             }}
           >
+            {!sceneBgImage && <color attach="background" args={[sceneBgColor]} />}
+            {sceneBgImage && (
+              <Suspense fallback={null}>
+                <BackgroundImage url={sceneBgImage} />
+              </Suspense>
+            )}
             <ambientLight intensity={0.7} />
             <SafeEnvironment preset="city" />
             <directionalLight position={[4, 5, 4]} intensity={0.8} />
@@ -468,6 +372,240 @@ export default function RightPanel({
           Save
         </button>
       </div>
+
+      {/* Export Button (Below Save) */}
+      {!hideExport && (
+        <div className="px-3 pb-2 relative">
+          <button
+            onClick={() => {
+              if (onExportClick) {
+                onExportClick();
+              } else {
+                setShowExportMenu(!showExportMenu);
+              }
+            }}
+            className="w-full py-[11px] rounded-[10px] text-white font-bold text-[15px] border-none cursor-pointer transition-all duration-200 hover:shadow-lg hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-1.5"
+            style={{ background: "#c0623a" }}
+          >
+            {exporting ? (
+              <span className="flex items-center gap-1.5 text-white">
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Exporting...
+              </span>
+            ) : (
+              <>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                  />
+                </svg>
+                Export
+              </>
+            )}
+          </button>
+
+          {/* Export dropdown */}
+          {showExportMenu && !onExportClick && (
+            <div className="absolute right-full bottom-0 mr-3 w-64 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.14)] border border-gray-100 overflow-hidden z-50">
+              {/* GLB */}
+              <button
+                onClick={handleExportGLB}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-orange-50 transition-colors border-none cursor-pointer bg-transparent text-left"
+              >
+                <span className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="#c0623a"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
+                    />
+                  </svg>
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-gray-900 leading-tight mb-0.5">
+                    Export 3D Model
+                  </span>
+                  <span className="text-xs text-gray-500 font-medium">
+                    .glb format
+                  </span>
+                </div>
+              </button>
+
+              <div className="h-px bg-gray-100 mx-4" />
+
+              {/* Model PNG */}
+              <button
+                onClick={handleExportModelPNG}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-purple-50 transition-colors border-none cursor-pointer bg-transparent text-left"
+              >
+                <span className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="#7c3aed"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"
+                    />
+                  </svg>
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-gray-900 leading-tight mb-0.5">
+                    Model as .PNG
+                  </span>
+                  <span className="text-xs text-gray-500 font-medium">
+                    3D render screenshot with texture
+                  </span>
+                </div>
+              </button>
+
+              <div className="h-px bg-gray-100 mx-4" />
+
+              {/* Canvas PNG */}
+              <button
+                onClick={handleExportCanvasPNG}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-blue-50 transition-colors border-none cursor-pointer bg-transparent text-left"
+              >
+                <span className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="#3b82f6"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+                    />
+                  </svg>
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-gray-900 leading-tight mb-0.5">
+                    Canvas as .PNG
+                  </span>
+                  <span className="text-xs text-gray-500 font-medium">
+                    Flat texture image (2048×2048)
+                  </span>
+                </div>
+              </button>
+
+              <div className="h-px bg-gray-100 mx-4" />
+
+              {/* Canvas SVG */}
+              <button
+                onClick={handleExportSVG}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-green-50 transition-colors border-none cursor-pointer bg-transparent text-left"
+              >
+                <span className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="#16a34a"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                    />
+                  </svg>
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-gray-900 leading-tight mb-0.5">
+                    Canvas as .SVG
+                  </span>
+                  <span className="text-xs text-gray-500 font-medium">
+                    Vector layers (for Illustrator)
+                  </span>
+                </div>
+              </button>
+
+              <div className="h-px bg-gray-100 mx-4" />
+
+              {/* Canvas PDF */}
+              <button
+                onClick={handleExportPDF}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-red-50 transition-colors border-none cursor-pointer bg-transparent text-left"
+              >
+                <span className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="#dc2626"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
+                  </svg>
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-gray-900 leading-tight mb-0.5">
+                    Canvas as .PDF
+                  </span>
+                  <span className="text-xs text-gray-500 font-medium">
+                    Layered PDF document
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Package Color */}
       <div className="px-3 pb-3">
@@ -616,7 +754,8 @@ function AutoSizedModel({
   const appliedWireframeRef = useRef(null);
 
   const { autoTransform, baseDims } = useMemo(() => {
-    if (!clonedScene) return { autoTransform: { scale: 1, offset: [0, 0, 0] }, baseDims: null };
+    if (!clonedScene)
+      return { autoTransform: { scale: 1, offset: [0, 0, 0] }, baseDims: null };
     const box = new THREE.Box3().setFromObject(clonedScene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -631,7 +770,7 @@ function AutoSizedModel({
         length: Math.round(size.x * 1000),
         height: Math.round(size.y * 1000),
         width: Math.round(size.z * 1000),
-      }
+      },
     };
   }, [clonedScene]);
 

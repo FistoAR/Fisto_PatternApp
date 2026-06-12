@@ -1,4 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
+
+import bg1 from '../../assets/images/Editor 1/Bg Images/bg1.webp';
+import bg2 from '../../assets/images/Editor 1/Bg Images/bg2.webp';
+import bg3 from '../../assets/images/Editor 1/Bg Images/bg3.webp';
+import bg4 from '../../assets/images/Editor 1/Bg Images/bg4.webp';
+import bg5 from '../../assets/images/Editor 1/Bg Images/bg5.webp';
+import bg6 from '../../assets/images/Editor 1/Bg Images/bg6.webp';
+import bg7 from '../../assets/images/Editor 1/Bg Images/bg7.webp';
+
+const defaultBgImages = [bg1, bg2, bg3, bg4, bg5, bg6, bg7];
 
 const hdriPresets = [
   "studio",
@@ -20,8 +30,11 @@ export default function ScenePopup({
   ambLight, setAmbLight,
   dirLight, setDirLight,
   shadowOpacity, setShadowOpacity,
-  customHdri, setCustomHdri
+  customHdri, setCustomHdri,
+  bgImage, setBgImage
 }) {
+  const [showDefaultBgs, setShowDefaultBgs] = useState(false);
+  const [loadingBgImage, setLoadingBgImage] = useState(null);
   const handleHdriUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -30,8 +43,30 @@ export default function ScenePopup({
       setHdriPreset("custom");
     }
   };
+
+  const handleBgImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setBgImage(url);
+    }
+  };
+
+  const handleApplyDefaultBg = (bg) => {
+    if (bg === bgImage) return;
+    setLoadingBgImage(bg);
+    const img = new Image();
+    img.src = bg;
+    img.onload = () => {
+      setBgImage(bg);
+      setLoadingBgImage(null);
+    };
+    img.onerror = () => {
+      setLoadingBgImage(null);
+    };
+  };
   return (
-    <div className="w-[350px] h-[620px] shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
+    <div className="w-[350px] h-[670px] shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
       <div className="p-5 pb-3 border-b border-gray-100">
         <h2 className="text-xl font-bold text-gray-900 m-0">Environment</h2>
       </div>
@@ -68,6 +103,77 @@ export default function ScenePopup({
             </div>
           </div>
         </div>
+
+        {/* Custom Background Image */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-bold text-gray-700">Background Image</label>
+            <button 
+              onClick={() => setShowDefaultBgs(!showDefaultBgs)}
+              className="text-xs font-bold text-[#c05520] hover:text-orange-700 bg-transparent border-none cursor-pointer p-0"
+            >
+              {showDefaultBgs ? 'Hide default images' : 'Show default images'}
+            </button>
+          </div>
+
+          {showDefaultBgs && (
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              {defaultBgImages.map((bg, index) => (
+                <div 
+                  key={index}
+                  onClick={() => handleApplyDefaultBg(bg)}
+                  className={`relative aspect-square rounded-lg border-2 cursor-pointer overflow-hidden group ${bgImage === bg ? 'border-[#c05520]' : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  <img src={bg} alt={`bg-${index}`} className="w-full h-full object-cover" />
+                  {loadingBgImage === bg && (
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex flex-col items-center justify-center z-10">
+                      <div className="w-4 h-4 rounded-full border-2 border-transparent border-t-[#c05520] animate-spin" />
+                    </div>
+                  )}
+                  {bgImage === bg && loadingBgImage !== bg && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white drop-shadow">
+                        <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 0 1 1.04-.208Z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {bgImage ? (
+            <div className="flex items-center justify-between p-3 rounded-xl border border-[#c05520] bg-orange-50">
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-lg shadow-inner bg-cover bg-center border border-gray-200"
+                  style={{ backgroundImage: `url(${bgImage})` }}
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-gray-800">Custom Image</span>
+                  <span className="text-[11px] font-medium text-gray-500">Active Background</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setBgImage(null)} 
+                className="w-8 h-8 rounded-full bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 flex items-center justify-center border border-gray-200 transition-colors cursor-pointer shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <label className="flex items-center justify-center gap-2 p-2.5 w-full rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-gray-500">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75h19.5m-19.5 0A2.25 2.25 0 012.25 13.5v-9a2.25 2.25 0 012.25-2.25h15A2.25 2.25 0 0121.75 4.5v9a2.25 2.25 0 01-2.25 2.25m-19.5 0v.75c0 .414.336.75.75.75h18a.75.75 0 00.75-.75v-.75m-19.5 0A2.25 2.25 0 004.5 18h15a2.25 2.25 0 002.25-2.25M12 12v-9m0 0l-3 3m3-3l3 3" />
+              </svg>
+              <span className="text-sm font-semibold text-gray-600">Upload Background Image</span>
+              <input type="file" accept="image/*" onChange={handleBgImageUpload} className="hidden" />
+            </label>
+          )}
+        </div>
+
 
         {/* HDRI Preset */}
         <div className="flex flex-col gap-3">

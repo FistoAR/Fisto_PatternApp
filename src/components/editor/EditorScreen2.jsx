@@ -2,6 +2,9 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Canvas from "./Canvas";
 import RightPanel from "./RightPanel";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
+import * as THREE from "three";
 import UploadsPopup from "./UploadsPopup";
 
 // ─── Font options & Loading ───────────────────────────────────────────────────
@@ -200,6 +203,8 @@ export default function EditorScreen2({
   modelUrl,
   setModelUrl,
   canvasResetKey,
+  sceneBgColor,
+  sceneBgImage,
 }) {
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const textureCanvasRef = useRef(null);
@@ -250,6 +255,102 @@ export default function EditorScreen2({
     underline: false,
   });
 
+  // ── Export Modal State ───────────────────────────────────────────────────
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportGlbChecked, setExportGlbChecked] = useState(false);
+  const [exportPngChecked, setExportPngChecked] = useState(false);
+  const [exportSvgChecked, setExportSvgChecked] = useState(true);
+  const [exportPdfChecked, setExportPdfChecked] = useState(false);
+
+  const handleExport = async () => {
+    if (!exportGlbChecked && !exportPngChecked && !exportSvgChecked && !exportPdfChecked) {
+      alert("Please select at least one option to export.");
+      return;
+    }
+    setIsExporting(true);
+
+    try {
+      if (exportGlbChecked) {
+        if (!modelUrl || !textureCanvasRef?.current) return;
+        const loader = new GLTFLoader();
+        loader.load(
+          modelUrl,
+          (gltf) => {
+            const scene = gltf.scene;
+            const texture = new THREE.CanvasTexture(textureCanvasRef.current);
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.flipY = false;
+            texture.needsUpdate = true;
+            scene.traverse((obj) => {
+              if (!obj.isMesh) return;
+              const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+              mats.forEach((mat) => {
+                if (mat && "map" in mat) {
+                  mat.map = texture;
+                  mat.needsUpdate = true;
+                }
+              });
+            });
+            const exporter = new GLTFExporter();
+            exporter.parse(
+              scene,
+              (glb) => {
+                const blob = new Blob([glb], { type: "model/gltf-binary" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "model-export.glb";
+                a.click();
+                URL.revokeObjectURL(url);
+              },
+              (err) => console.error("GLTFExporter error:", err),
+              { binary: true }
+            );
+          }
+        );
+      }
+
+      if (exportPngChecked) {
+        if (canvasRef?.current) {
+          const url = canvasRef.current.exportAsPNG();
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "texture-canvas.png";
+          a.click();
+        }
+      }
+
+      if (exportSvgChecked) {
+        if (canvasRef?.current) {
+          const svgContent = canvasRef.current.exportAsSVG();
+          const blob = new Blob([svgContent], { type: "image/svg+xml" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "texture-layered.svg";
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      }
+
+      if (exportPdfChecked) {
+        if (canvasRef?.current) {
+          const url = await canvasRef.current.exportAsPDF();
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "texture-layered.pdf";
+          a.click();
+        }
+      }
+    } catch (err) {
+      console.error("Export Error:", err);
+    } finally {
+      setIsExporting(false);
+      setShowExportModal(false);
+    }
+  };
+
   const handleSelectedLayerChange = useCallback((layer) => {
     setSelectedLayer(layer);
     if (layer && layer.text !== undefined) {
@@ -292,26 +393,29 @@ export default function EditorScreen2({
       <div className="flex flex-1 overflow-hidden bg-[#f5efe6]">
         {/* ── Left Side Panel ────────────────────────────────────────── */}
         <div className="flex flex-col z-20 h-full py-6 pl-6 pr-0 gap-4 w-[350px] shrink-0">
-          {/* Back button */}
-          <button
-            onClick={onBack}
-            className="w-14 h-12 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex items-center justify-center border-none cursor-pointer hover:bg-gray-50 transition-colors shrink-0"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="w-5 h-5 text-gray-800"
+          {/* Header Actions */}
+          <div className="flex justify-between items-center w-full shrink-0">
+            {/* Back button */}
+            <button
+              onClick={onBack}
+              className="w-14 h-12 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex items-center justify-center border-none cursor-pointer hover:bg-gray-50 transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
-              />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-5 h-5 text-gray-800"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+                />
+              </svg>
+            </button>
+          </div>
 
           {/* Tab switcher */}
           <div className="flex bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-1.5 gap-1 shrink-0">
@@ -592,7 +696,10 @@ export default function EditorScreen2({
               setFullUv={setFullUv}
               bgColor={bgColor}
               setBgColor={setBgColor}
-              hideExport={true}
+              sceneBgColor={sceneBgColor}
+              sceneBgImage={sceneBgImage}
+              hideExport={false}
+              onExportClick={() => setShowExportModal(true)}
               onSave={handleSave}
             />
           </div>
@@ -606,6 +713,153 @@ export default function EditorScreen2({
           />
         )}
       </div>
+
+      {/* Export Options Popup (Left Side) */}
+      {showExportModal && (
+        <>
+          {/* Invisible overlay for click-outside to close */}
+          <div 
+            className="fixed inset-0 z-[999]" 
+            onClick={() => setShowExportModal(false)}
+          />
+          <div className="absolute right-[380px] top-6 z-[1000] pointer-events-auto">
+            <div className="bg-white rounded-[15px] p-6 w-[340px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-5 relative border border-gray-100">
+            <button
+              onClick={() => setShowExportModal(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border-none text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2.5}
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18 18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            <div className="flex flex-col gap-1 pr-6">
+              <h3 className="text-lg font-bold text-gray-900 m-0">
+                Export Design
+              </h3>
+              <p className="text-xs text-gray-500 m-0">
+                Choose your preferred format(s)
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={exportGlbChecked}
+                  onChange={(e) => setExportGlbChecked(e.target.checked)}
+                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-gray-800">
+                    Export as GLB
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    Download the 3D model with your design applied
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={exportPngChecked}
+                  onChange={(e) => setExportPngChecked(e.target.checked)}
+                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-gray-800">
+                    Export as PNG (Texture)
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    High-res image of the flat canvas texture
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={exportSvgChecked}
+                  onChange={(e) => setExportSvgChecked(e.target.checked)}
+                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-gray-800">
+                    Export as SVG
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    Vector graphics with layers & UV wireframe
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={exportPdfChecked}
+                  onChange={(e) => setExportPdfChecked(e.target.checked)}
+                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-gray-800">
+                    Export as PDF
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    Document containing vector layers & UV wireframe
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="w-full py-3.5 rounded-2xl bg-[#c05520] hover:bg-[#a04619] disabled:bg-gray-300 text-white font-bold text-base transition-colors border-none cursor-pointer shadow-md flex items-center justify-center gap-2"
+            >
+              {isExporting ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span>Exporting...</span>
+                </>
+              ) : (
+                <span>Download Now</span>
+              )}
+            </button>
+          </div>
+        </div>
+        </>
+      )}
+
     </div>
   );
 }

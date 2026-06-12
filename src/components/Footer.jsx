@@ -27,19 +27,19 @@ function PinIcon() {
 
 export default function Footer() {
   return (
-    <footer id="contact" className="w-full px-6 py-16 font-['Poppins'] text-black lg:px-12 xl:px-20 bg-[#BDC0B0] border-t border-gray-100">
-      <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-10 md:grid-cols-[1.5fr_1.25fr_1.25fr_1.5fr] md:items-center md:gap-8">
+    <footer id="contact" className="w-full px-6 py-16 font-[poppins] text-black lg:px-12 xl:px-20 bg-[#BDC0B0] border-t border-gray-100">
+      <div className="mx-auto grid w-full  grid-cols-1 gap-10 md:grid-cols-[1.5fr_1.25fr_1.25fr_1.5fr] md:items-center md:gap-8">
         <div className="flex items-center justify-center md:justify-start">
           <img src={fistoLogo} alt="FIST-O Tech Pvt Ltd" className="h-auto w-[190px] object-contain" />
         </div>
 
-        <div className="flex flex-col items-start text-left">
+        <div className="flex flex-col items-start text-left -ml-4">
           <div className="mb-3 flex items-center gap-2 ">
             <MailIcon />
             <h3 className="m-0 text-[17px] text-black font-bold uppercase leading-none tracking-[-0.01em]">Email Support</h3>
           </div>
-          <div className="space-y-2 text-[17px] font-medium leading-tight text-gray-600">
-            <p className="mb-2">Info@fist-o.com</p>
+          <div className="space-y-2 text-[17px] font-medium leading-tight text-gray-600 ml-8">
+            <p className="mb-2">info@fist-o.com</p>
             <p className="m-0">support@fist-o.com</p>
           </div>
         </div>
@@ -49,18 +49,18 @@ export default function Footer() {
             <PhoneIcon />
             <h3 className="m-0 text-[17px] text-black font-bold uppercase leading-none tracking-[-0.01em]">Contact Support</h3>
           </div>
-          <div className="space-y-2 text-[17px] font-medium leading-tight text-gray-600">
+          <div className="space-y-2 text-[17px] font-medium leading-tight text-gray-600 ml-8">
             <p className="mb-2">+91 9994425147</p>
             <p className="m-0">+91 7530025147</p>
           </div>
         </div>
 
-        <div className="flex flex-col items-start text-left">
+        <div className="flex flex-col items-start text-left -ml-4">
           <div className="mb-3 flex items-center gap-2">
             <PinIcon />
             <h3 className="m-0 text-[17px] text-black font-bold uppercase leading-none tracking-[-0.01em]">Address</h3>
           </div>
-          <p className="m-0 max-w-[420px] text-[17px] font-medium leading-[1.4] text-gray-600">
+          <p className="m-0 max-w-[420px] text-[17px] font-medium leading-[1.4] ml-8 text-gray-600">
             10/11, Trichy Rd, Sundaram Brothers Layout, Olympus, Ramanathapuram,
             Coimbatore, Tamil Nadu - 641045
           </p>

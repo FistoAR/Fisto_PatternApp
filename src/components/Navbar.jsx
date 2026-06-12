@@ -73,6 +73,12 @@ export default function Navbar({ onTogglePanel }) {
                 <li key={link} className="nav-animate-item">
                   <Link
                     to={path}
+                    onClick={(e) => {
+                      if (location.pathname === '/editor') {
+                        e.preventDefault();
+                        window.location.href = path;
+                      }
+                    }}
                     className={`text-[14px] lg:text-[16px] transition-colors duration-200 no-underline ${
                       isSelected  
                         ? 'text-black font-bold' 
@@ -135,7 +141,14 @@ export default function Navbar({ onTogglePanel }) {
                 <li key={link}>
                   <Link
                     to={path}
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={(e) => {
+                      if (location.pathname === '/editor') {
+                        e.preventDefault();
+                        window.location.href = path;
+                      } else {
+                        setIsMenuOpen(false);
+                      }
+                    }}
                     className={`block rounded-lg px-4 py-3 text-[16px] no-underline transition-colors ${
                       isSelected
                         ? 'bg-[#f7eee9] text-[#C15F27] font-bold'

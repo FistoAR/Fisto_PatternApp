@@ -6,6 +6,7 @@ import ModelsMockupPage from './pages/ModelsMockupPage'
 import FeaturesPage from './pages/FeaturesPage'
 import ContactPage from './pages/ContactPage'
 import Navbar from './components/Navbar'
+import Testing1Hero from './components/Testing1Hero'
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -37,6 +38,7 @@ function AppContent() {
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/editor" element={<EditorPage />} />
+          <Route path="/testing1" element={<Testing1Hero />} />
         </Routes>
       </div>
     </div>
