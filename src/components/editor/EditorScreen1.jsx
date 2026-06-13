@@ -149,6 +149,7 @@ function AutoSizedModelWithDimensions({
   onSceneLoaded,
 }) {
   const { scene } = useGLTF(modelUrl);
+  const { invalidate } = useThree();
   const clonedScene = useMemo(() => {
     if (!scene) return null;
     const clone = cloneSkeleton(scene);
@@ -282,7 +283,7 @@ function AutoSizedModelWithDimensions({
     if (!clonedScene) return;
 
     clonedScene.traverse((obj) => {
-      if (!obj.isMesh || !obj.material) return;
+      if (!obj.isMesh || !obj.material || obj.userData.isDecal) return;
       const mArray = Array.isArray(obj.material)
         ? obj.material
         : [obj.material];
@@ -314,48 +315,66 @@ function AutoSizedModelWithDimensions({
           ? appliedLastApplied[id] || appliedLastApplied["all"]
           : null;
 
-        // Decide what to render based on last applied action
-        if (textureUrl && last === "texture") {
-          m.color.setHex(0xffffff); // Neutral white, no blending/tinting
-          if (m.userData.currentTextureUrl !== textureUrl) {
-            m.userData.currentTextureUrl = textureUrl;
+        // --- HANDLE DECAL MESH FOR CANVAS EDITS ---
+        if (!m.userData.decalMesh) {
+          const decalMat = new THREE.MeshStandardMaterial({
+            transparent: true,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
+          });
+          const decal = new THREE.Mesh(obj.geometry, decalMat);
+          decal.userData.isDecal = true;
+          decal.scale.set(1.002, 1.002, 1.002);
+          obj.add(decal);
+          m.userData.decalMesh = decal;
+        }
+
+        const decalMat = m.userData.decalMesh.material;
+        if (textureUrl) {
+          m.userData.decalMesh.visible = true;
+          if (decalMat.userData.currentTextureUrl !== textureUrl) {
+            decalMat.userData.currentTextureUrl = textureUrl;
             loader.load(textureUrl, (texture) => {
               texture.colorSpace = THREE.SRGBColorSpace;
               texture.flipY = false;
-              m.map = texture;
-              m.needsUpdate = true;
+              decalMat.map = texture;
+              decalMat.color.setHex(0xffffff);
+              decalMat.needsUpdate = true;
+              invalidate();
             });
           }
-        } else if (colorHex && last === "color") {
-          m.userData.currentTextureUrl = null;
-          m.color.set(colorHex);
-          m.map = null; // Clear the original texture so it doesn't merge/tint
-          m.needsUpdate = true;
+        } else {
+          m.userData.decalMesh.visible = false;
+          decalMat.map = null;
+          decalMat.userData.currentTextureUrl = null;
+          decalMat.needsUpdate = true;
+          invalidate();
         }
-        // Fallbacks if one exists but last is not set (e.g. initial loads or simple states)
-        else if (textureUrl) {
-          m.color.setHex(0xffffff);
-          if (m.userData.currentTextureUrl !== textureUrl) {
-            m.userData.currentTextureUrl = textureUrl;
-            loader.load(textureUrl, (texture) => {
-              texture.colorSpace = THREE.SRGBColorSpace;
-              texture.flipY = false;
-              m.map = texture;
-              m.needsUpdate = true;
-            });
+
+        // --- HANDLE BASE MESH (PBR OR COLOR) ---
+        if (colorHex) {
+          m.color.set(colorHex);
+          // Only clear m.map if it's NOT a PBR material
+          if (!m.userData.currentPbrId) {
+             m.map = null;
           }
-        } else if (colorHex) {
-          m.userData.currentTextureUrl = null;
-          m.color.set(colorHex);
-          m.map = null;
           m.needsUpdate = true;
-        }
-        // Restore Originals (No custom color, no custom texture)
-        else {
-          m.userData.currentTextureUrl = null;
+          invalidate();
+        } else if (!materialType) {
+          // Restore Originals (No custom color, no PBR material)
           m.color.setHex(m.userData.originalColorHex);
+          m.userData.currentPbrId = null;
           m.map = m.userData.originalMap;
+          m.normalMap = null;
+          m.roughnessMap = null;
+          m.metalnessMap = null;
+          m.aoMap = null;
+          m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.5;
+          m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
           m.needsUpdate = true;
+          invalidate();
         }
 
         // Apply custom materials properties
@@ -402,6 +421,7 @@ function AutoSizedModelWithDimensions({
                 if (isColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
                 m[mapType] = texture;
                 m.needsUpdate = true;
+                invalidate();
               });
             };
 
@@ -1052,7 +1072,7 @@ export default function EditorScreen1({
                   <input
                     type="color"
                     value={
-                      appliedColors?.[selectedMaterial || "all"] || "#ffffff"
+                      appliedColors?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"] || "#ffffff"
                     }
                     onChange={(e) =>
                       onApplyColor &&
@@ -1069,7 +1089,7 @@ export default function EditorScreen1({
                         onClick={() =>
                           onApplyColor && onApplyColor(selectedMaterial, color)
                         }
-                        className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${appliedColors?.[selectedMaterial || "all"] === color ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
+                        className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${appliedColors?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"] === color ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
                         style={{ backgroundColor: color }}
                       />
                     ),
@@ -1188,7 +1208,7 @@ export default function EditorScreen1({
                         onApplyMaterial &&
                         onApplyMaterial(selectedMaterial, texture)
                       }
-                      className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
+                      className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center cursor-pointer transition-all ${appliedMaterials?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
                     >
                       {texture.preview ? (
                         <img
@@ -1201,7 +1221,7 @@ export default function EditorScreen1({
                           {texture.name}
                         </div>
                       )}
-                      {appliedMaterials?.[selectedMaterial || "all"]?.id === texture.id && (
+                      {appliedMaterials?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"]?.id === texture.id && (
                         <TextureActiveOverlay />
                       )}
                     </button>
@@ -1477,6 +1497,29 @@ export default function EditorScreen1({
           </button>
         </Tooltip1>
 
+        <Tooltip1 label="Redo" side="left">
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className={`w-10 h-10 rounded-full flex items-center justify-center border-none transition-colors ${canRedo ? "bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600" : "bg-transparent text-gray-300 cursor-not-allowed"}`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.8}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
+              />
+            </svg>
+          </button>
+        </Tooltip1>
+
         <Tooltip1 label="Zoom In" side="left">
           <button
             onClick={() => handleZoom(10)}
@@ -1520,29 +1563,6 @@ export default function EditorScreen1({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6"
-              />
-            </svg>
-          </button>
-        </Tooltip1>
-
-        <Tooltip1 label="Redo" side="left">
-          <button
-            onClick={onRedo}
-            disabled={!canRedo}
-            className={`w-10 h-10 rounded-full flex items-center justify-center border-none transition-colors ${canRedo ? "bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600" : "bg-transparent text-gray-300 cursor-not-allowed"}`}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.8}
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
               />
             </svg>
           </button>

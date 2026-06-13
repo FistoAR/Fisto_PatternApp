@@ -1,4 +1,20 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import img1 from "../../assets/images/Editor 2/images/1.webp";
+import img2 from "../../assets/images/Editor 2/images/2.webp";
+import img3 from "../../assets/images/Editor 2/images/3.webp";
+import img4 from "../../assets/images/Editor 2/images/4.webp";
+import img5 from "../../assets/images/Editor 2/images/5.webp";
+import img6 from "../../assets/images/Editor 2/images/6.webp";
+import img7 from "../../assets/images/Editor 2/images/7.webp";
+import img8 from "../../assets/images/Editor 2/images/8.webp";
+import img9 from "../../assets/images/Editor 2/images/9.webp";
+import img10 from "../../assets/images/Editor 2/images/10.webp";
+import img11 from "../../assets/images/Editor 2/images/11.webp";
+import img12 from "../../assets/images/Editor 2/images/12.webp";
+import img13 from "../../assets/images/Editor 2/images/13.webp";
+import img14 from "../../assets/images/Editor 2/images/14.webp";
+
+const presetImages = [img1, img2, img3, img4, img5, img6, img7, img8, img9, img10, img11, img12, img13, img14];
 
 export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected, onApplyFit, selectedLayer }) {
   const fileInputRef = useRef(null);
@@ -216,6 +232,22 @@ export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected
           {uploadedImages.length === 0 && (
             <p className="col-span-3 text-xs text-gray-400 text-center py-4">No uploaded materials yet.</p>
           )}
+        </div>
+
+        <h3 className="text-[13px] font-bold text-gray-800 mb-3 mt-6">Preset Material</h3>
+        <div className="grid grid-cols-3 gap-3">
+          {presetImages.map((url, idx) => (
+            <button
+              key={`preset-${idx}`}
+              onClick={(e) => {
+                if (e.button === 0) onUpload(null, url);
+              }}
+              onContextMenu={(e) => handleContextMenu(e, url)}
+              className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all relative"
+            >
+              <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-contain pointer-events-none" />
+            </button>
+          ))}
         </div>
       </div>
 

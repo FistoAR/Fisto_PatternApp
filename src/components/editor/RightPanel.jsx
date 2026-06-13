@@ -44,6 +44,7 @@ export default function RightPanel({
   textureCanvasRef,
   textureVersion,
   modelUrl,
+  appliedMaterials,
   wireframe,
   setWireframe,
   showUv,
@@ -58,6 +59,7 @@ export default function RightPanel({
   onSave,
   onExportClick,
   customSize,
+  isActive,
 }) {
   const [selectedColor, setSelectedColor] = useState("cream");
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -200,7 +202,7 @@ export default function RightPanel({
 
       </div>
 
-      <div className="px-3 pb-2">
+      <div className="px-3 pb-2" style={{ display: "none" }}>
         <div className="flex items-center justify-center gap-3 bg-white border border-gray-100 px-3 py-2 rounded-xl text-[11px] shadow-sm flex-wrap">
           <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-gray-700">
             <input
@@ -260,6 +262,8 @@ export default function RightPanel({
                   textureCanvasRef={textureCanvasRef}
                   textureVersion={textureVersion}
                   wireframe={wireframe}
+                  appliedMaterials={appliedMaterials}
+                  isActive={isActive}
                 />
               )}
             </Suspense>
@@ -733,6 +737,8 @@ function AutoSizedModel({
   textureVersion,
   wireframe,
   customSize,
+  appliedMaterials,
+  isActive,
 }) {
   const { scene } = useGLTF(modelUrl);
   const { gl } = useThree();
@@ -752,6 +758,8 @@ function AutoSizedModel({
   const canvasTextureRef = useRef(null);
   const appliedTextureVersionRef = useRef(-1);
   const appliedWireframeRef = useRef(null);
+  const appliedMaterialsRef = useRef(null);
+  const appliedActiveRef = useRef(false);
 
   const { autoTransform, baseDims } = useMemo(() => {
     if (!clonedScene)
@@ -785,9 +793,16 @@ function AutoSizedModel({
 
   // Apply texture + wireframe
   useEffect(() => {
+    if (!isActive) {
+      appliedActiveRef.current = false;
+      return;
+    }
+
     if (
       textureVersion === appliedTextureVersionRef.current &&
-      wireframe === appliedWireframeRef.current
+      wireframe === appliedWireframeRef.current &&
+      appliedMaterials === appliedMaterialsRef.current &&
+      appliedActiveRef.current === true
     )
       return;
     if (!clonedScene || !textureCanvasRef?.current) return;
@@ -810,25 +825,89 @@ function AutoSizedModel({
     canvasTextureRef.current = tex;
 
     clonedScene.traverse((obj) => {
-      if (!obj.isMesh) return;
+      if (!obj.isMesh || obj.userData.isDecal) return;
       const materials = Array.isArray(obj.material)
         ? obj.material
         : [obj.material];
       for (const mat of materials) {
         if (!mat) continue;
-        if ("map" in mat) {
-          mat.map = canvasTextureRef.current;
-          if ("color" in mat) mat.color.set(0xffffff);
-          if ("emissive" in mat) mat.emissive.set(0x000000);
-          mat.transparent = true;
-          mat.needsUpdate = true;
+        
+        // --- OVERLAY CANVAS TEXTURE VIA DECAL MESH ---
+        if (!obj.userData.decalMesh) {
+          const decalMat = new THREE.MeshStandardMaterial({
+            transparent: true,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
+          });
+          const decal = new THREE.Mesh(obj.geometry, decalMat);
+          decal.userData.isDecal = true;
+          // Scale slightly to avoid z-fighting
+          decal.scale.set(1.002, 1.002, 1.002);
+          obj.add(decal);
+          obj.userData.decalMesh = decal;
         }
+        
+        const decalMat = obj.userData.decalMesh.material;
+        decalMat.map = canvasTextureRef.current;
+        decalMat.color.set(0xffffff);
+        decalMat.needsUpdate = true;
+
+        // --- APPLY PBR MATERIALS TO BASE MESH ---
+        const materialType = appliedMaterials
+          ? appliedMaterials[mat.name] || appliedMaterials["all"]
+          : null;
+
+        if (typeof materialType === "object" && materialType !== null) {
+          // PBR Material
+          if (mat.userData.currentPbrId !== materialType.id) {
+            mat.userData.currentPbrId = materialType.id;
+            mat.color.setHex(0xffffff);
+            mat.map = null;
+            mat.normalMap = null;
+            mat.roughnessMap = null;
+            mat.metalnessMap = null;
+            mat.aoMap = null;
+
+            const loadMap = (url, mapType, isColorSpace) => {
+              if (!url) return;
+              new THREE.TextureLoader().load(url, (texture) => {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                if (isColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
+                mat[mapType] = texture;
+                mat.needsUpdate = true;
+              });
+            };
+
+            if (materialType.maps.albedo) loadMap(materialType.maps.albedo, "map", true);
+            if (materialType.maps.normal) loadMap(materialType.maps.normal, "normalMap", false);
+            if (materialType.maps.roughness) loadMap(materialType.maps.roughness, "roughnessMap", false);
+            if (materialType.maps.metallic) loadMap(materialType.maps.metallic, "metalnessMap", false);
+            if (materialType.maps.ao) loadMap(materialType.maps.ao, "aoMap", false);
+
+            mat.roughness = 1.0;
+            mat.metalness = 1.0;
+            mat.needsUpdate = true;
+          }
+        } else {
+          // No PBR Material
+          if (mat.userData.currentPbrId !== null) {
+            mat.userData.currentPbrId = null;
+            mat.map = null;
+            mat.normalMap = null;
+            mat.roughnessMap = null;
+            mat.metalnessMap = null;
+            mat.aoMap = null;
+            mat.roughness = Math.max(0.72, mat.roughness);
+            mat.metalness = 0;
+            mat.needsUpdate = true;
+          }
+        }
+
         if ("envMapIntensity" in mat) mat.envMapIntensity = 0.08;
-        if ("roughness" in mat) mat.roughness = Math.max(0.72, mat.roughness);
-        if ("metalness" in mat) mat.metalness = 0;
-        if (mat.side !== undefined) {
-          mat.side = THREE.DoubleSide;
-        }
+        if (mat.side !== undefined) mat.side = THREE.DoubleSide;
         if ("toneMapped" in mat) mat.toneMapped = true;
         mat.needsUpdate = true;
       }
@@ -856,7 +935,9 @@ function AutoSizedModel({
 
     appliedTextureVersionRef.current = textureVersion;
     appliedWireframeRef.current = wireframe;
-  }, [clonedScene, gl, textureCanvasRef, textureVersion, wireframe]);
+    appliedMaterialsRef.current = appliedMaterials;
+    appliedActiveRef.current = true;
+  }, [clonedScene, gl, textureCanvasRef, textureVersion, wireframe, appliedMaterials, isActive]);
 
   if (!clonedScene) return null;
 

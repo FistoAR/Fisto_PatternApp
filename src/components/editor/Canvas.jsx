@@ -1194,6 +1194,7 @@ const Canvas = forwardRef(
       fullUv,
       bgColor,
       isActive,
+      appliedMaterials,
       onSelectedLayerChange,
       onFaceSelectionChange,
     },
@@ -1394,7 +1395,7 @@ const Canvas = forwardRef(
       });
 
       // Draw controls for selected image LAST (on top)
-      if (selectedImageRef.current && toolModeRef.current !== "eraser") {
+      if (selectedImageRef.current && toolModeRef.current !== "eraser" && toolModeRef.current !== "eraser-pick") {
         selectedImageRef.current.drawControls(ctx, scale);
       }
     }, [showUv, fullUv, faceColors, selectedFaces]);
@@ -1406,8 +1407,10 @@ const Canvas = forwardRef(
         const bakeCtx = bakeCanvas.getContext("2d");
 
         bakeCtx.clearRect(0, 0, bakeCanvas.width, bakeCanvas.height);
-        bakeCtx.fillStyle = bgColor;
-        bakeCtx.fillRect(0, 0, bakeCanvas.width, bakeCanvas.height);
+        
+        // We always want a transparent background for the base texture
+        // so that PBR materials can show through where no artwork/color is applied.
+        // We do NOT fill the background with bgColor here anymore.
 
         // Bake Face Colors first
         uvComponentsRef.current.forEach((comp) => {
@@ -1524,7 +1527,7 @@ const Canvas = forwardRef(
             }
           } else {
             bakeCtx.drawImage(
-              item.img,
+              item.filteredCanvas || item.img,
               -item.width / 2,
               -item.height / 2,
               item.width,
@@ -1536,7 +1539,7 @@ const Canvas = forwardRef(
 
         onTextureUpdatedRef.current();
       },
-      [bgColor, faceColors, selectedFaces, textureCanvasRef],
+      [bgColor, faceColors, selectedFaces, textureCanvasRef, appliedMaterials],
     );
 
     // --- History Logic ---
@@ -1882,8 +1885,10 @@ const Canvas = forwardRef(
     useEffect(() => {
       const canvas = displayCanvasRef.current;
       if (!canvas) return;
-      if (toolMode === "eraser") {
-        canvas.style.cursor = "cell";
+      if (toolMode === "eraser-pick") {
+        canvas.style.cursor = "crosshair";
+      } else if (toolMode === "eraser") {
+        canvas.style.cursor = "default";
       } else if (toolMode === "hand") {
         canvas.style.cursor = "grab";
       } else {
@@ -1971,7 +1976,7 @@ const Canvas = forwardRef(
 
     useEffect(() => {
       bakeTexture();
-    }, [bgColor, faceColors, selectedFace, bakeTexture]);
+    }, [bgColor, faceColors, selectedFace, bakeTexture, appliedMaterials]);
 
     useEffect(() => {
       window.addEventListener("resize", resizeDisplayCanvas);
@@ -2053,6 +2058,84 @@ const Canvas = forwardRef(
         return;
       }
 
+      // If we are in eraser/eraser-pick mode, we only want to select images (or sample pixels in eraser-pick)
+      // and do not want to drag, resize, rotate, or pan them.
+      if (toolMode === "eraser" || toolMode === "eraser-pick") {
+        let clickedImage = null;
+        for (let i = imagesRef.current.length - 1; i >= 0; i--) {
+          const img = imagesRef.current[i];
+          if (img.contains(mx, my, scale) && !img.locked) {
+            clickedImage = img;
+            break;
+          }
+        }
+
+        if (clickedImage) {
+          selectedImageRef.current = clickedImage;
+          setSelectedImage(clickedImage);
+          onSelectedLayerChangeRef.current?.(clickedImage);
+
+          if (toolMode === "eraser-pick" && clickedImage instanceof DraggableImage) {
+            const sel = clickedImage;
+            const { lx, ly } = sel._toLocal(mx, my, scale);
+            const hw = sel.width / scale / 2;
+            const hh = sel.height / scale / 2;
+
+            if (lx >= -hw && lx <= hw && ly >= -hh && ly <= hh) {
+              const imgX = Math.floor(
+                ((lx + hw) / (sel.width / scale)) * sel.img.width,
+              );
+              const imgY = Math.floor(
+                ((ly + hh) / (sel.height / scale)) * sel.img.height,
+              );
+
+              const sourceCanvas =
+                sel.filteredCanvas ||
+                (() => {
+                  const c = document.createElement("canvas");
+                  c.width = sel.img.width;
+                  c.height = sel.img.height;
+                  const ctx = c.getContext("2d", { willReadFrequently: true });
+                  ctx.drawImage(sel.img, 0, 0);
+                  return c;
+                })();
+
+              const ctx = sourceCanvas.getContext("2d", {
+                willReadFrequently: true,
+              });
+              const pixel = ctx.getImageData(imgX, imgY, 1, 1).data;
+
+              if (pixel[3] > 0) {
+                setEraserTargetColor({ r: pixel[0], g: pixel[1], b: pixel[2] });
+                setToolMode("eraser");
+              }
+            }
+          }
+        } else {
+          // Check if we clicked a face to select
+          const u = mx / displayCanvas.width;
+          const v = my / displayCanvas.height;
+          let clickedFace = null;
+          let clickedUv = null;
+          for (const comp of uvComponentsRef.current) {
+            if (pointInPolygon({ u, v }, comp.path)) {
+              clickedFace = comp.id;
+              clickedUv = { u, v };
+              break;
+            }
+          }
+          if (clickedFace !== null) {
+            setSelectedFace(clickedFace);
+            setSelectedFaceUv(clickedUv);
+            selectedImageRef.current = null;
+            setSelectedImage(null);
+            onSelectedLayerChangeRef.current?.(null);
+          }
+        }
+        redrawDisplay();
+        return;
+      }
+
       // First, check if we hit any handle on the currently selected image
       const sel = selectedImageRef.current;
       if (sel) {
@@ -2094,52 +2177,7 @@ const Canvas = forwardRef(
         }
       }
 
-      if (
-        toolMode === "eraser" &&
-        clickedImage &&
-        clickedImage instanceof DraggableImage
-      ) {
-        const sel = clickedImage;
-        const { lx, ly } = sel._toLocal(mx, my, scale);
-        const hw = sel.width / scale / 2;
-        const hh = sel.height / scale / 2;
 
-        if (lx >= -hw && lx <= hw && ly >= -hh && ly <= hh) {
-          const imgX = Math.floor(
-            ((lx + hw) / (sel.width / scale)) * sel.img.width,
-          );
-          const imgY = Math.floor(
-            ((ly + hh) / (sel.height / scale)) * sel.img.height,
-          );
-
-          const sourceCanvas =
-            sel.filteredCanvas ||
-            (() => {
-              const c = document.createElement("canvas");
-              c.width = sel.img.width;
-              c.height = sel.img.height;
-              const ctx = c.getContext("2d", { willReadFrequently: true });
-              ctx.drawImage(sel.img, 0, 0);
-              return c;
-            })();
-
-          const ctx = sourceCanvas.getContext("2d", {
-            willReadFrequently: true,
-          });
-          const pixel = ctx.getImageData(imgX, imgY, 1, 1).data;
-
-          if (pixel[3] > 0) {
-            setEraserTargetColor({ r: pixel[0], g: pixel[1], b: pixel[2] });
-          }
-        }
-
-        // Ensure the clicked image is selected so the Eraser UI can act on it
-        selectedImageRef.current = clickedImage;
-        setSelectedImage(clickedImage);
-        onSelectedLayerChangeRef.current?.(clickedImage);
-        
-        return;
-      }
 
       if (clickedImage) {
         selectedImageRef.current = clickedImage;
@@ -2314,6 +2352,15 @@ const Canvas = forwardRef(
       const mx = (e.clientX - rect.left) / zoom;
       const my = (e.clientY - rect.top) / zoom;
       const scale = canvasScaleRef.current;
+
+      if (toolMode === "eraser" || toolMode === "eraser-pick") {
+        if (toolMode === "eraser-pick") {
+          setCursor("crosshair");
+        } else {
+          setCursor("default");
+        }
+        return;
+      }
 
       // --- Dragging ---
       const img = selectedImageRef.current;
@@ -3407,7 +3454,7 @@ const Canvas = forwardRef(
                       setEraserTargetColor(null);
                       redrawDisplay();
                     }}
-                    className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "eraser" ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${(toolMode === "eraser" || toolMode === "eraser-pick") ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -3415,7 +3462,7 @@ const Canvas = forwardRef(
                       viewBox="0 0 24 24"
                       strokeWidth={2}
                       stroke="currentColor"
-                      className={`w-5 h-5 opacity-80 hover:opacity-100 ${toolMode === "eraser" ? "text-white" : "text-gray-800"}`}
+                      className={`w-5 h-5 opacity-80 hover:opacity-100 ${(toolMode === "eraser" || toolMode === "eraser-pick") ? "text-white" : "text-gray-800"}`}
                     >
                       <path
                         strokeLinecap="round"
@@ -3435,7 +3482,7 @@ const Canvas = forwardRef(
                     </svg>
                   </button>
                 </Tooltip>
-                {toolMode === "eraser" && (
+                {(toolMode === "eraser" || toolMode === "eraser-pick") && (
                   <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 p-4 w-64 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex justify-between items-center mb-3">
                       <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -3443,7 +3490,21 @@ const Canvas = forwardRef(
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                    <div 
+                      onClick={() => setToolMode(toolMode === "eraser-pick" ? "eraser" : "eraser-pick")}
+                      className="flex items-center gap-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100/80 transition-colors"
+                      title="Pick Color from Image"
+                    >
+                      <div
+                        className={`w-8 h-8 rounded flex items-center justify-center transition-colors shrink-0 ${toolMode === "eraser-pick" ? "bg-indigo-100 text-indigo-600 border border-indigo-200" : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100"}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m15 11.25 1.5 1.5.75-.375a1.5 1.5 0 0 1 1.5 1.5l5.25 5.25c.375.375.375.982 0 1.357-.375.375-.982.375-1.357 0l-5.25-5.25a1.5 1.5 0 0 1-1.5-1.5l.375-.75-1.5-1.5M15 11.25l-2.25-2.25M15 11.25l-2.25 2.25m-6-6 2.25-2.25m0 0L7.5 4.5m1.5 1.5L5.25 9.75M12 9l-3 3" />
+                        </svg>
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium flex-1">
+                        {eraserTargetColor ? "Color Selected" : "Click to select"}
+                      </div>
                       <div 
                         className="w-8 h-8 rounded border border-gray-200 shadow-sm shrink-0" 
                         style={{ 
@@ -3454,9 +3515,6 @@ const Canvas = forwardRef(
                           backgroundSize: '4px 4px'
                         }}
                       />
-                      <div className="text-xs text-gray-500 font-medium">
-                        {eraserTargetColor ? "Color Selected" : "Click image to select"}
-                      </div>
                     </div>
 
                     <div className="flex justify-between items-center mb-2">
@@ -3496,7 +3554,6 @@ const Canvas = forwardRef(
                           saveState();
                           redrawDisplay();
                           bakeTexture();
-                          setEraserTargetColor(null);
                         }
                       }}
                       className="w-full py-2 bg-red-50 text-red-600 font-bold text-xs rounded-lg border border-red-100 hover:bg-red-100 hover:border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

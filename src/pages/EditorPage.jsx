@@ -2,13 +2,13 @@ import { useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import EditorScreen1 from "../components/editor/EditorScreen1";
 import EditorScreen2 from "../components/editor/EditorScreen2";
-import sqBox1Url from "../assets/models/box models/sq box/squareBox1.glb?url";
+import foldingBoxUrl from "../assets/models/Carton box/Folding/Folding.glb?url";
 
 export default function EditorPage() {
   const location = useLocation();
   const [currentScreen, setCurrentScreen] = useState(1);
   const [modelUrl, setModelUrl] = useState(
-    location.state?.initialModelUrl || sqBox1Url,
+    location.state?.initialModelUrl || foldingBoxUrl,
   );
   const [selectedMaterial, setSelectedMaterial] = useState(null);
 
@@ -21,7 +21,7 @@ export default function EditorPage() {
 
   // Lift activeTab state here to preserve it when switching screens
   const [activeTab, setActiveTab] = useState(() => {
-    return modelUrl && modelUrl.includes("squareBox1.glb")
+    return modelUrl && modelUrl.includes("Folding.glb")
       ? "models"
       : "edit";
   });
@@ -42,9 +42,19 @@ export default function EditorPage() {
   const pushHistory = (newStateUpdates) => {
     setEditorState((prevState) => {
       const nextState = { ...prevState, ...newStateUpdates };
-      history.current = history.current.slice(0, historyIndex.current + 1);
-      history.current.push(nextState);
-      historyIndex.current = history.current.length - 1;
+      const currentStack = history.current.slice(0, historyIndex.current + 1);
+      const lastItem = currentStack[currentStack.length - 1];
+      const isDuplicate =
+        lastItem &&
+        lastItem.textures === nextState.textures &&
+        lastItem.colors === nextState.colors &&
+        lastItem.materials === nextState.materials &&
+        lastItem.customSize === nextState.customSize;
+
+      if (!isDuplicate) {
+        history.current = [...currentStack, nextState];
+        historyIndex.current = history.current.length - 1;
+      }
       return nextState;
     });
   };
@@ -102,7 +112,7 @@ export default function EditorPage() {
   const colorDebounceRef = useRef(null);
 
   const handleApplyColor = (materialId, colorHex) => {
-    const targetMat = materialId || "all";
+    const targetMat = (materialId && materialId !== "none") ? materialId : "all";
     
     setEditorState((prevState) => {
       const nextState = {
@@ -123,25 +133,21 @@ export default function EditorPage() {
   };
 
   const handleApplyMaterial = (materialId, materialType) => {
-    const targetMat = materialId || "all";
+    const targetMat = (materialId && materialId !== "none") ? materialId : "all";
     if (materialType === null) {
       if (targetMat === "all") {
         pushHistory({
           materials: {},
-          textures: {},
           lastApplied: {},
         });
       } else {
         const newMaterials = { ...editorState.materials };
         delete newMaterials[targetMat];
-        const newTextures = { ...editorState.textures };
-        delete newTextures[targetMat];
         const newLastApplied = { ...editorState.lastApplied };
         delete newLastApplied[targetMat];
         
         pushHistory({
           materials: newMaterials,
-          textures: newTextures,
           lastApplied: newLastApplied,
         });
       }
@@ -196,6 +202,7 @@ export default function EditorPage() {
         <EditorScreen2
           modelUrl={modelUrl}
           setModelUrl={setModelUrl}
+          appliedMaterials={editorState.materials}
           onBack={handleBackToModelViewer}
           isActive={currentScreen === 2}
           canvasResetKey={canvasResetKey}

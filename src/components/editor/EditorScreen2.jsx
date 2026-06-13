@@ -202,6 +202,7 @@ export default function EditorScreen2({
   isActive,
   modelUrl,
   setModelUrl,
+  appliedMaterials,
   canvasResetKey,
   sceneBgColor,
   sceneBgImage,
@@ -663,6 +664,7 @@ export default function EditorScreen2({
             fullUv={fullUv}
             bgColor={bgColor}
             isActive={isActive}
+            appliedMaterials={appliedMaterials}
             onSelectedLayerChange={handleSelectedLayerChange}
             onFaceSelectionChange={(faces) =>
               setIsFrameSelected(faces.size > 0)
@@ -688,6 +690,7 @@ export default function EditorScreen2({
               textureCanvasRef={textureCanvasRef}
               textureVersion={textureVersion}
               modelUrl={modelUrl}
+              appliedMaterials={appliedMaterials}
               wireframe={wireframe}
               setWireframe={setWireframe}
               showUv={showUv}
@@ -701,6 +704,7 @@ export default function EditorScreen2({
               hideExport={false}
               onExportClick={() => setShowExportModal(true)}
               onSave={handleSave}
+              isActive={isActive}
             />
           </div>
         </div>

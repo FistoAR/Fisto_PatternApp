@@ -27,6 +27,27 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
           svgElement.style.height = 'auto';
         }
 
+        // Hide card background container and border
+        const rects = container.querySelectorAll('rect');
+        rects.forEach((rect) => {
+          const fill = rect.getAttribute('fill') || '';
+          if (!fill.startsWith('url(')) {
+            rect.style.display = 'none';
+          }
+        });
+
+        // Remove card drop-shadow filters
+        const groups = container.querySelectorAll('g');
+        groups.forEach((g) => {
+          const filter = g.getAttribute('filter') || '';
+          if (filter.includes('filter0') || filter.includes('filter1')) {
+            g.removeAttribute('filter');
+          }
+        });
+
+        const titleText = container.querySelector('path[fill="#111827"]');
+        const descText = container.querySelector('path[fill="#6B7280"]');
+
         const enter = () => {
           gsap.to(wrapper, {
             y: -14,
@@ -35,11 +56,22 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
             duration: 0.35,
             ease: 'power3.out',
           });
-          gsap.to(svgElement, {
-            filter: 'drop-shadow(0px 24px 28px rgba(17, 24, 39, 0.18))',
-            duration: 0.35,
-            ease: 'power3.out',
-          });
+          if (titleText) {
+            gsap.to(titleText, {
+              y: -8,
+              duration: 0.35,
+              ease: 'power3.out',
+              overwrite: 'auto',
+            });
+          }
+          if (descText) {
+            gsap.to(descText, {
+              y: -4,
+              duration: 0.35,
+              ease: 'power3.out',
+              overwrite: 'auto',
+            });
+          }
         };
 
         const leave = () => {
@@ -50,11 +82,22 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
             duration: 0.35,
             ease: 'power3.out',
           });
-          gsap.to(svgElement, {
-            filter: 'drop-shadow(0px 0px 0px rgba(17, 24, 39, 0))',
-            duration: 0.35,
-            ease: 'power3.out',
-          });
+          if (titleText) {
+            gsap.to(titleText, {
+              y: 0,
+              duration: 0.35,
+              ease: 'power3.out',
+              overwrite: 'auto',
+            });
+          }
+          if (descText) {
+            gsap.to(descText, {
+              y: 0,
+              duration: 0.35,
+              ease: 'power3.out',
+              overwrite: 'auto',
+            });
+          }
         };
 
         wrapper.addEventListener('mouseenter', enter);

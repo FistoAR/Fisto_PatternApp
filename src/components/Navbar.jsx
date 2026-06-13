@@ -2,7 +2,7 @@ import fistoLogo from '../assets/images/fisto-logo.png';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
-import sqBox1Url from '../assets/models/box models/sq box/squareBox1.glb?url';
+import foldingBoxUrl from '../assets/models/Carton box/Folding/Folding.glb?url';
 
 const navLinks = ['Home','Mockups', 'Features', 'Contact'];
 
@@ -48,7 +48,7 @@ export default function Navbar({ onTogglePanel }) {
   };
 
   const handleUploadIMLClick = () => {
-    navigate('/editor', { state: { initialModelUrl: sqBox1Url } });
+    navigate('/editor', { state: { initialModelUrl: foldingBoxUrl } });
   };
 
   return (

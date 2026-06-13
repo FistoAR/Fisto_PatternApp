@@ -6,149 +6,84 @@ import ReadyMockupBanner from "../components/ReadyMockupBanner";
 import mockupBanner from "../assets/images/MockupsSection/banner.svg";
 
 // New Icons
-import packagingTapesIcon from "../assets/images/MockupsSection/Icons/PakagingTapes.webp";
-import drinkWareIcon from "../assets/images/MockupsSection/Icons/drinkWare.webp";
-import ecoFriendlyBagsIcon from "../assets/images/MockupsSection/Icons/eco-freindlyBags.webp";
-import fashionIcon from "../assets/images/MockupsSection/Icons/fashion.webp";
-import foodContainerNewIcon from "../assets/images/MockupsSection/Icons/foodContainer.webp";
-import foodPackingIcon from "../assets/images/MockupsSection/Icons/foodPacking.webp";
-import cartonBox from "../assets/images/MockupsSection/Icons/cartonbox.webp"
-import allProducts from "../assets/images/MockupsSection/Icons/all.webp"
+import packagingTapesIcon from "../assets/images/MockupsSection/Icons/tapes.webp";
+import drinkWareIcon from "../assets/images/MockupsSection/Icons/drinkwareBottle.webp";
+import ecoFriendlyBagsIcon from "../assets/images/MockupsSection/Icons/eco-bag.webp";
+import fashionIcon from "../assets/images/MockupsSection/Icons/tshirt.webp";
+import foodContainerNewIcon from "../assets/images/MockupsSection/Icons/FoodContainer.webp";
+import foodPackingIcon from "../assets/images/MockupsSection/Icons/FoodPacking.webp";
+import cartonBox from "../assets/images/MockupsSection/Icons/cartonBoxes.webp";
+import allProducts from "../assets/images/MockupsSection/Icons/all.webp";
 
-// Box Models
-import sqBox1Url from "../assets/models/box models/sq box/squareBox1.glb?url";
-import sqBox2Url from "../assets/models/box models/sq box/squareBox2.glb?url";
-import plasticBox1Url from "../assets/models/box models/plastic box/PlasticBox1.glb?url";
-import plasticBox2Url from "../assets/models/box models/plastic box/PlasticBox2.glb?url";
-import foodBox1Url from "../assets/models/box models/food box/Food Box1.glb?url";
-import foodBox2Url from "../assets/models/box models/food box/Food Box2.glb?url";
+// Carton Box Models & Images
+import beverageCupUrl from "../assets/models/Carton box/Beverage/Beverage Cup.glb?url";
+import beverageCupImg from "../assets/models/Carton box/Beverage/Beverage.webp";
+import dieCutBoxUrl from "../assets/models/Carton box/Die cut/Die cut.glb?url";
+import dieCutBoxImg from "../assets/models/Carton box/Die cut/iecutd.webp";
+import foldingBoxUrl from "../assets/models/Carton box/Folding/Folding.glb?url";
+import foldingBoxImg from "../assets/models/Carton box/Folding/Folding.webp";
 
-// Bag Models
-import paperBag1Url from "../assets/models/Bag/paperBag.glb?url";
-import plasticBag1Url from "../assets/models/Bag/plasticBag1.glb?url";
-import plasticBag2Url from "../assets/models/Bag/plasticBag2.glb?url";
-import plasticBag3Url from "../assets/models/Bag/plasticBag3.glb?url";
-import plasticBag4Url from "../assets/models/Bag/plasticBag4.glb?url";
+// Drinkware Bottles Models & Images
+import glassBottleUrl from "../assets/models/Drinkware Bottles/Glass Bottle/glass_Bottle.glb?url";
+import glassBottleImg from "../assets/models/Drinkware Bottles/Glass Bottle/Glass bottle1.webp";
+import plasticWaterBottleUrl from "../assets/models/Drinkware Bottles/Plastic water bottles/Plastic Water bottle.glb?url";
+import plasticWaterBottleImg from "../assets/models/Drinkware Bottles/Plastic water bottles/plastic water bottle.webp";
+import softDrinksBottleUrl from "../assets/models/Drinkware Bottles/Soft drinks/Soft drinks bottle.glb?url";
+import softDrinksBottleImg from "../assets/models/Drinkware Bottles/Soft drinks/05.waterbottle.webp";
 
-// Bottle Models
-import waterBottle1Url from "../assets/models/Bottle/2.bottle-water bottle/waterBottle1.glb?url";
-import waterBottle2Url from "../assets/models/Bottle/2.bottle-water bottle/waterBottle2.glb?url";
-import waterBottle3Url from "../assets/models/Bottle/2.bottle-water bottle/waterBottle3.glb?url";
-import waterBottle4Url from "../assets/models/Bottle/2.bottle-water bottle/waterBottle4.glb?url";
+// Eco friendly Models & Images
+import biodegradableBagsUrl from "../assets/models/Eco friendly/Bio degradable/Biodegradable  bags.glb?url";
+import biodegradableBagsImg from "../assets/models/Eco friendly/Bio degradable/Biodegradable.webp";
+import paperBagUrl from "../assets/models/Eco friendly/Paper Bags/Paper Bag-1.glb?url";
+import paperBagImg from "../assets/models/Eco friendly/Paper Bags/02.Plastic Bag.webp";
 
-import oilBottle1Url from "../assets/models/Bottle/2.bottle-oil bottle/oilBottle1.glb?url";
-import oilBottle2Url from "../assets/models/Bottle/2.bottle-oil bottle/oilBottle2.glb?url";
+// Fashion Wear Models & Images
+import tshirtUrl from "../assets/models/Fashion Wear/T-shirt/t s1.glb?url";
+import tshirtImg from "../assets/models/Fashion Wear/T-shirt/tShirt.webp";
+import hoodieUrl from "../assets/models/Fashion Wear/hoodie/Hoodie2.glb?url";
+import hoodieImg from "../assets/models/Fashion Wear/hoodie/Hoodie.webp";
 
-import glassBottle1Url from "../assets/models/Bottle/2.bottle-glass bottle/glassBottle1.glb?url";
-import glassBottle2Url from "../assets/models/Bottle/2.bottle-glass bottle/glassBottle2.glb?url";
+// Food Containers Models & Images
+import ovalContainerUrl from "../assets/models/Food Containers/Oval/oval .glb?url";
+import ovalContainerImg from "../assets/models/Food Containers/Oval/Oval.webp";
+import roundContainerUrl from "../assets/models/Food Containers/Round/Round.glb?url";
+import roundContainerImg from "../assets/models/Food Containers/Round/02.Round.webp";
+import tamperEvidentUrl from "../assets/models/Food Containers/Tamper Evident/TE .glb?url";
+import tamperEvidentImg from "../assets/models/Food Containers/Tamper Evident/TE-3.webp";
 
-import waterCan1Url from "../assets/models/Bottle/2.bottl- water can/waterCan1.glb?url";
-import waterCan2Url from "../assets/models/Bottle/2.bottl- water can/waterCan2.glb?url";
-import waterCan3Url from "../assets/models/Bottle/2.bottl- water can/waterCan3.glb?url";
+// Food Packaging Models & Images
+import kraftPaperUrl from "../assets/models/Food Packaging/Kraft Paper/Craft paper.glb?url";
+import kraftPaperImg from "../assets/models/Food Packaging/Kraft Paper/Kraft paper.webp";
+import zipLockPouchesUrl from "../assets/models/Food Packaging/zip lock Pouches bag/Zip lock Pouches.glb?url";
+import zipLockPouchesImg from "../assets/models/Food Packaging/zip lock Pouches bag/zip lock pouches.webp";
 
-// Container Models
-import tumbler1Url from "../assets/models/Container/Tumbler/tumbler1.glb?url";
-import tumbler2Url from "../assets/models/Container/Tumbler/tumbler2.glb?url";
-
-import cup1Url from "../assets/models/Container/cup/papercup1.glb?url";
-import cup2Url from "../assets/models/Container/cup/papercup2.glb?url";
-import cup3Url from "../assets/models/Container/cup/plasticCup1.glb?url";
-import cup4Url from "../assets/models/Container/cup/plasticCup2.glb?url";
-
-import roundContainer1Url from "../assets/models/Container/Food Conatiner/Round Container/roundCont1.glb?url";
-import roundContainer2Url from "../assets/models/Container/Food Conatiner/Round Container/roundCont2.glb?url";
-
-import roundSquare1Url from "../assets/models/Container/Food Conatiner/Round Square/roundSquareCont1.glb?url";
-import roundSquare2Url from "../assets/models/Container/Food Conatiner/Round Square/roundSquareCont2.glb?url";
-
-import rectContainer1Url from "../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont1.glb?url";
-import rectContainer2Url from "../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont2.glb?url";
-
-import sweetBox1Url from "../assets/models/Container/Food Conatiner/Sweet Box/sweetBox1.glb?url";
-import sweetBox2Url from "../assets/models/Container/Food Conatiner/Sweet Box/sweetBox2.glb?url";
-
-// Food Packaging Models
-import iceCream1Url from "../assets/models/Food/Ice cream/iceCream1.glb?url";
-import iceCream2Url from "../assets/models/Food/Ice cream/iceCream2.glb?url";
-
-import burgerWrap1Url from "../assets/models/Food/Burger/burger1.glb?url";
-import burgerWrap2Url from "../assets/models/Food/Burger/burger2.glb?url";
-
-import pizzaBox1Url from "../assets/models/Food/pIZZA/pizza1.glb?url";
-import pizzaBox2Url from "../assets/models/Food/pIZZA/pizza2.glb?url";
-
-// Tshirt Models
-import tshirt1Url from "../assets/models/Tshirt/tShirt1.glb?url";
-import tshirt2Url from "../assets/models/Tshirt/tShirt2.glb?url";
-import hoodie1Url from "../assets/models/Tshirt/hoodie.glb?url";
-
-// Specific Webp Image Imports
-import sqBox1Img from "../assets/models/box models/sq box/squareBox1.webp";
-import sqBox2Img from "../assets/models/box models/sq box/squareBox2.webp";
-import plasticBox1Img from "../assets/models/box models/plastic box/Plastic Box1.webp";
-import plasticBox2Img from "../assets/models/box models/plastic box/Plastic Box2.webp";
-import foodBox1Img from "../assets/models/box models/food box/Food Box1.webp";
-import foodBox2Img from "../assets/models/box models/food box/Food Box2.webp";
-import paperBag1Img from "../assets/models/Bag/plasticBag1.webp";
-import plasticBag1Img from "../assets/models/Bag/plasticBag1.webp";
-import plasticBag2Img from "../assets/models/Bag/plasticBag2.webp";
-import plasticBag3Img from "../assets/models/Bag/plasticBag3.webp";
-import plasticBag4Img from "../assets/models/Bag/plasticBag4.webp";
-import waterBottle1Img from "../assets/models/Bottle/2.bottle-water bottle/waterBottle1.webp";
-import waterBottle2Img from "../assets/models/Bottle/2.bottle-water bottle/waterBottle1.webp";
-import waterBottle3Img from "../assets/models/Bottle/2.bottle-water bottle/waterBottle3.webp";
-import waterBottle4Img from "../assets/models/Bottle/2.bottle-water bottle/waterBottle4.webp";
-import oilBottle1Img from "../assets/models/Bottle/2.bottle-oil bottle/oilBottle1.webp";
-import oilBottle2Img from "../assets/models/Bottle/2.bottle-oil bottle/oilBottle1.webp";
-import glassBottle1Img from "../assets/models/Bottle/2.bottle-glass bottle/glassBottle1.webp";
-import glassBottle2Img from "../assets/models/Bottle/2.bottle-glass bottle/glassBottle1.webp";
-import waterCan1Img from "../assets/models/Bottle/2.bottl- water can/waterCan1.webp";
-import waterCan2Img from "../assets/models/Bottle/2.bottl- water can/waterCan1.webp";
-import waterCan3Img from "../assets/models/Bottle/2.bottl- water can/waterCan3.webp";
-import tumbler1Img from "../assets/models/Container/Tumbler/tumbler1.webp";
-import tumbler2Img from "../assets/models/Container/Tumbler/tumbler2.webp";
-import cup1Img from "../assets/models/Container/cup/papercup1.webp";
-import cup2Img from "../assets/models/Container/cup/papercup2.webp";
-import roundContainer1Img from "../assets/models/Container/Food Conatiner/Round Container/roundCont1.webp";
-import roundContainer2Img from "../assets/models/Container/Food Conatiner/Round Container/roundCont2.webp";
-import roundSquare1Img from "../assets/models/Container/Food Conatiner/Round Square/roundSquareCont1.webp";
-import roundSquare2Img from "../assets/models/Container/Food Conatiner/Round Square/roundSquareCont2.webp";
-import rectContainer1Img from "../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont1.webp";
-import rectContainer2Img from "../assets/models/Container/Food Conatiner/Rectangle Container/rectangleCont2.webp";
-import sweetBox1Img from "../assets/models/Container/Food Conatiner/Sweet Box/sweetBox1.webp";
-import sweetBox2Img from "../assets/models/Container/Food Conatiner/Sweet Box/sweetBox2.webp";
-import iceCream1Img from "../assets/models/Food/Ice cream/iceCream1.webp";
-import iceCream2Img from "../assets/models/Food/Ice cream/iceCream2.webp";
-import burgerWrap1Img from "../assets/models/Food/Burger/burger1.webp";
-import burgerWrap2Img from "../assets/models/Food/Burger/burger2.webp";
-import pizzaBox1Img from "../assets/models/Food/pIZZA/pizza1.webp";
-import pizzaBox2Img from "../assets/models/Food/pIZZA/pizza2.webp";
-import tshirt1Img from "../assets/models/Tshirt/tShirt1.webp";
-import tshirt2Img from "../assets/models/Tshirt/tShirt2.webp";
-import hoodie1Img from "../assets/models/Tshirt/hoodie.webp";
+// Packaging tapes Models & Images
+import boxSealingTapeUrl from "../assets/models/Packaging tapes/Box sealing Tape/Box_Tape.glb?url";
+import boxSealingTapeImg from "../assets/models/Packaging tapes/Box sealing Tape/Tape.webp";
 
 const modelMappings = {
-  "Round Container": roundContainer1Url,
-  "Tamper Evident Container": roundSquare1Url,
-  "Oval Containers": rectContainer1Url,
-  
-  "Zip Lock Pouches": plasticBag1Url,
-  "Kraft Paper Pouches": paperBag1Url,
-  
-  "Plastic Water Bottle": waterBottle1Url,
-  "Glass Water Bottle": glassBottle1Url,
-  "Soft Drink Bottles": waterCan1Url,
-  
-  "Folding Carton Box": sqBox1Url,
-  "Die-Cut Carton Box": foodBox1Url,
-  
-  "Paper Bags": paperBag1Url,
-  "Biodegradable Bags": plasticBag3Url,
-  
-  "Box Sealing Tape": plasticBox1Url,
-  
-  "T-Shirts": tshirt1Url,
-  "Hoodies": hoodie1Url,
+  "Beverage Carton Box": beverageCupUrl,
+  "Die-Cut Carton Box": dieCutBoxUrl,
+  "Folding Carton Box": foldingBoxUrl,
+
+  "Glass Water Bottle": glassBottleUrl,
+  "Plastic Water Bottle": plasticWaterBottleUrl,
+  "Soft Drink Bottles": softDrinksBottleUrl,
+
+  "Biodegradable Bags": biodegradableBagsUrl,
+  "Paper Bags": paperBagUrl,
+
+  "T-Shirts": tshirtUrl,
+  "Hoodies": hoodieUrl,
+
+  "Oval Containers": ovalContainerUrl,
+  "Round Container": roundContainerUrl,
+  "Tamper Evident Container": tamperEvidentUrl,
+
+  "Kraft Paper Pouches": kraftPaperUrl,
+  "Zip Lock Pouches": zipLockPouchesUrl,
+
+  "Box Sealing Tape": boxSealingTapeUrl,
 };
 
 const categoryGroups = [
@@ -184,7 +119,7 @@ const catalogSections = [
     title: "Carton Boxes",
     icon: "box",
     sidebarLabels: ["Carton Boxes"],
-    products: ["Folding Carton Box", "Die-Cut Carton Box"],
+    products: ["Folding Carton Box", "Die-Cut Carton Box", "Beverage Carton Box"],
   },
   {
     title: "Eco-Friendly Bags",
@@ -291,28 +226,28 @@ const sidebarIcons = {
 };
 
 const productImages = {
-  // Exact Specific Models Image Mapping
-  "round container": roundContainer1Img,
-  "tamper evident container": roundSquare1Img,
-  "oval containers": rectContainer1Img,
-  
-  "zip lock pouches": plasticBag1Img,
-  "kraft paper pouches": paperBag1Img,
-  
-  "plastic water bottle": waterBottle1Img,
-  "glass water bottle": glassBottle1Img,
-  "soft drink bottles": waterCan1Img,
-  
-  "folding carton box": sqBox1Img,
-  "die cut carton box": foodBox1Img,
-  
-  "paper bags": paperBag1Img,
-  "biodegradable bags": plasticBag3Img,
-  
-  "box sealing tape": plasticBox1Img,
-  
-  "t shirts": tshirt1Img,
-  "hoodies": hoodie1Img,
+  "beverage carton box": beverageCupImg,
+  "die cut carton box": dieCutBoxImg,
+  "folding carton box": foldingBoxImg,
+
+  "glass water bottle": glassBottleImg,
+  "plastic water bottle": plasticWaterBottleImg,
+  "soft drink bottles": softDrinksBottleImg,
+
+  "biodegradable bags": biodegradableBagsImg,
+  "paper bags": paperBagImg,
+
+  "t shirts": tshirtImg,
+  "hoodies": hoodieImg,
+
+  "oval containers": ovalContainerImg,
+  "round container": roundContainerImg,
+  "tamper evident container": tamperEvidentImg,
+
+  "kraft paper pouches": kraftPaperImg,
+  "zip lock pouches": zipLockPouchesImg,
+
+  "box sealing tape": boxSealingTapeImg,
 };
 
 function iconFor(type, className) {
@@ -360,22 +295,6 @@ function ProductPlaceholder({ name, index }) {
             <div className="absolute bottom-7 left-1/2 h-3 w-24 -translate-x-1/2 rounded-full bg-black/10 blur-sm" />
           </>
         )}
-        <button
-          type="button"
-          aria-label={`Save ${name}`}
-          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border border-white/80 bg-white/70 text-[#6d7960] transition-colors duration-200 hover:bg-[#cc6428] hover:text-white cursor-pointer"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="h-4 w-4"
-            aria-hidden="true"
-          >
-            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
-          </svg>
-        </button>
       </div>
       <h3 className="mt-3 truncate text-[17px] font-bold text-[#2b2b2b] transition-colors duration-200 group-hover:text-[#cc6428]">
         {name}

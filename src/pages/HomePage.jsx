@@ -6,37 +6,292 @@ import fistoLogo from "../assets/images/fisto-logo.png";
 import packagingIcon from "../assets/images/Home/packaging.webp";
 import realistic3dIcon from "../assets/images/Home/realistic3d.webp";
 import fasteasyIcon from "../assets/images/Home/fasteasy.webp";
-import bg1 from "../assets/images/Home/Hero/banner1/background.webp";
-import prod1 from "../assets/images/Home/Hero/banner1/product.webp";
+// Slide 1 (Food Containers)
+import bg1 from "../assets/images/Home/Hero/slide1/bg.webp";
+import prod1 from "../assets/images/Home/Hero/slide1/product.webp";
+import leafLeft1 from "../assets/images/Home/Hero/slide1/leaf-left.webp";
+import rightWood1 from "../assets/images/Home/Hero/slide1/right-wood.webp";
+import potRight1 from "../assets/images/Home/Hero/slide1/pot-right.webp";
+import pantRight1 from "../assets/images/Home/Hero/slide1/pant-right.webp";
 
-import bg2 from "../assets/images/Home/Hero/banner2/background.webp";
-import prod2 from "../assets/images/Home/Hero/banner2/product.webp";
-import label2 from "../assets/images/Home/Hero/banner2/label.webp";
+// Slide 2 (Food Packaging)
+import bg2 from "../assets/images/Home/Hero/slide2/bg.webp";
+import prod2 from "../assets/images/Home/Hero/slide2/product.webp";
 
-import bg3 from "../assets/images/Home/Hero/banner3/background.webp";
-import prod3 from "../assets/images/Home/Hero/banner3/product.webp";
-import label3 from "../assets/images/Home/Hero/banner3/label.webp";
+// Slide 3 (Drinkware Bottles)
+import bg3 from "../assets/images/Home/Hero/slide3/bg.webp";
+import prod3 from "../assets/images/Home/Hero/slide3/product.webp";
+import leaf3 from "../assets/images/Home/Hero/slide3/leaf.webp";
+import centerStone3 from "../assets/images/Home/Hero/slide3/center stone.webp";
 
-import bg4 from "../assets/images/Home/Hero/banner4/background.webp";
-import prod4 from "../assets/images/Home/Hero/banner4/product.webp";
-import label4 from "../assets/images/Home/Hero/banner4/label.webp";
+// Slide 4 (Carton Boxes)
+import bg4 from "../assets/images/Home/Hero/slide4/bg.webp";
+import prod4 from "../assets/images/Home/Hero/slide4/product.webp";
 
-import bg5 from "../assets/images/Home/Hero/banner5/background.webp";
-import prod5 from "../assets/images/Home/Hero/banner5/product.webp";
+// Slide 5 (Eco-Friendly Bags)
+import bg5 from "../assets/images/Home/Hero/slide5/bg.webp";
+import prod5 from "../assets/images/Home/Hero/slide5/product.webp";
+import plant5 from "../assets/images/Home/Hero/slide5/plant.webp";
+import pot5 from "../assets/images/Home/Hero/slide5/pot.webp";
 
-import bg6 from "../assets/images/Home/Hero/banner6/background.webp";
-import prod6 from "../assets/images/Home/Hero/banner6/product.webp";
+// Slide 6 (Packaging Tapes)
+import bg6 from "../assets/images/Home/Hero/slide6/bg.webp";
+import prod6_1 from "../assets/images/Home/Hero/slide6/product1.webp";
+import prod6_2 from "../assets/images/Home/Hero/slide6/product2.webp";
+import prod6_3 from "../assets/images/Home/Hero/slide6/product3.webp";
+
+// Slide 7 (Fashion Wear)
+import bg7 from "../assets/images/Home/Hero/slide7/bg.webp";
+import prod7 from "../assets/images/Home/Hero/slide7/product.webp";
+import centerBootmPot7 from "../assets/images/Home/Hero/slide7/center-bootm-pot.webp";
+import rightLeaf7 from "../assets/images/Home/Hero/slide7/right-leaf.webp";
+import rightPoy7 from "../assets/images/Home/Hero/slide7/right-poy.webp";
+
 import AnimatedSvgCard from "../components/AnimatedSvgCard";
-import card1 from "../assets/images/Home/card1.svg?url";
-import card2 from "../assets/images/Home/card2.svg?url";
-import card3 from "../assets/images/Home/card3.svg?url";
-import card4 from "../assets/images/Home/card4.svg?url";
-import card5 from "../assets/images/Home/card5.svg?url";
+import card1 from "../assets/images/Home/cards/card1.svg?url";
+import card2 from "../assets/images/Home/cards/card2.svg?url";
+import card3 from "../assets/images/Home/cards/card3.svg?url";
+import card4 from "../assets/images/Home/cards/card4.svg?url";
+import card5 from "../assets/images/Home/cards/card5.svg?url";
+import card6 from "../assets/images/Home/cards/card6.svg?url";
+import card7 from "../assets/images/Home/cards/card7.svg?url";
 import Footer from "../components/Footer";
 import GsapSmoothScroll from "../components/GsapSmoothScroll";
 import ReadyMockupBanner from "../components/ReadyMockupBanner";
 
+const cardsConfig = [
+  { src: card1, category: "Food Containers" },
+  { src: card2, category: "Food Packaging" },
+  { src: card3, category: "Drinkware Bottles" },
+  { src: card4, category: "Carton Boxes" },
+  { src: card5, category: "Eco-Friendly Bags" },
+  { src: card6, category: "Packaging Tapes" },
+  { src: card7, category: "Fashion Wear" },
+];
+
 gsap.registerPlugin(ScrollTrigger);
+
+const slideConfigs = [
+  {
+    id: 1,
+    bg: bg1,
+    assets: [
+      { src: rightWood1, css: { left: "77.76%", top: "11.48%", width: "19.69%", height: "52.41%" } },
+      { src: leafLeft1, css: { left: "0.21%", top: "63.89%", width: "24.58%", height: "36.67%" }, isLeaf: true },
+      { src: potRight1, css: { left: "87.55%", top: "42.13%", width: "14.43%", height: "32.96%" } },
+      { src: pantRight1, css: { left: "84.74%", top: "15.00%", width: "18.07%", height: "32.13%" } },
+      { src: prod1, css: { left: "36%", top: "12%", width: "58%", objectFit: "contain" } },
+    ]
+  },
+  {
+    id: 2,
+    bg: bg2,
+    assets: [
+      { src: prod2, css: { left: "47.97%", top: "11.85%", width: "47.03%", height: "82.31%" } }
+    ]
+  },
+  {
+    id: 3,
+    bg: bg3,
+    assets: [
+      { src: leaf3, css: { left: "1.30%", top: "0.00%", width: "99.84%", height: "100.46%" }, isLeaf: true },
+      { src: centerStone3, css: { left: "18.48%", top: "24.17%", width: "74.53%", height: "70.37%" } },
+      { src: prod3, css: { left: "49%", top: "15%", width: "43%", height: "78%" } }
+    ]
+  },
+  {
+    id: 4,
+    bg: bg4,
+    assets: [
+      { src: prod4, css: { left: "36%", top: "8%", width: "58%", objectFit: "contain" } }
+    ]
+  },
+  {
+    id: 5,
+    bg: bg5,
+    assets: [
+      { src: plant5, css: { left: "80%", top: "15%", width: "25%", height: "85%" }, isLeaf: true },
+      { src: pot5, css: { left: "88%", top: "60%", width: "12%", height: "40%" } },
+      { src: prod5, css: { left: "46%", top: "20%", width: "38%", height: "70%" } }
+    ]
+  },
+  {
+    id: 6,
+    bg: bg6,
+    assets: [
+      { src: prod6_1, css: { left: "44%", top: "5%", width: "35%", objectFit: "contain" } },
+      { src: prod6_2, css: { left: "70%", top: "10%", width: "28%", objectFit: "contain" } },
+      { src: prod6_3, css: { left: "76%", top: "60%", width: "22%", objectFit: "contain" } }
+    ]
+  },
+  {
+    id: 7,
+    bg: bg7,
+    assets: [
+      { src: rightLeaf7, css: { left: "72.97%", top: "15.46%", width: "26.23%", height: "56.32%" }, isLeaf: true },
+      { src: rightPoy7, css: { left: "77.14%", top: "70.51%", width: "13.39%", height: "17.28%" } },
+      { src: centerBootmPot7, css: { left: "41.75%", top: "69.01%", width: "13.88%", height: "24.68%" } },
+      { src: prod7, css: { left: "42%", top: "5%", width: "55%", objectFit: "contain" } }
+    ]
+  }
+];
+
+const slideContents = [
+  {
+    title: (
+      <>
+        <span className="hero-title-line block">Design Premium</span>
+        <span className="hero-title-line block">
+          Container <span style={{ color: "#37472F" }}>Mockups</span>
+        </span>
+        <span className="hero-title-line block" style={{ color: "#37472F" }}>
+          In Minutes
+        </span>
+      </>
+    ),
+    description:
+      "Showcase your packaging designs on realistic food and storage containers with studio-quality mockups built for modern brands.",
+    buttonBg: "#37472F",
+    themeColor: "#37472F",
+    features: [
+      { text: "Smart\nPacking Preview", icon: realistic3dIcon },
+      { text: "HD Container\nMockups", icon: packagingIcon },
+      { text: "Fast Design\nEditing", icon: fasteasyIcon },
+    ],
+  },
+  {
+    title: (
+      <>
+        <span className="hero-title-line block">Bring Your</span>
+        <span className="hero-title-line block">
+          Food <span style={{ color: "#7C4321" }}>Packaging</span>
+        </span>
+        <span className="hero-title-line block" style={{ color: "#7C4321" }}>
+          To Life
+        </span>
+      </>
+    ),
+    description:
+      "Present your snack, bakery, and takeaway packaging with realistic mockups designed for branding, marketing, and online stores.",
+    buttonBg: "#7C4321",
+    themeColor: "#7C4321",
+    features: [
+      { text: "Realistic\nFood Packaging", icon: realistic3dIcon },
+      { text: "Print-ready\nPresentation", icon: packagingIcon },
+      { text: "Instant Brand\nPreview", icon: fasteasyIcon },
+    ],
+  },
+  {
+    title: (
+      <>
+        <span className="hero-title-line block">Realistic Water</span>
+        <span className="hero-title-line block">
+          Bottle <span style={{ color: "#4f5d2f" }}>Mockups</span>
+        </span>
+        <span className="hero-title-line block" style={{ color: "#4f5d2f" }}>
+          For Every Brand
+        </span>
+      </>
+    ),
+    description:
+      "High-quality 3D water bottle mockups for stunning packaging, branding, and product presentations.",
+    buttonBg: "#4f5d2f",
+    themeColor: "#4f5d2f",
+    features: [
+      { text: "Realistic 3D\nPreviews", icon: realistic3dIcon },
+      { text: "Premium\nQuality", icon: packagingIcon },
+      { text: "Fast & Easy\nCustomization", icon: fasteasyIcon },
+    ],
+  },
+  {
+    title: (
+      <>
+        <span className="hero-title-line block">Create Professional</span>
+        <span className="hero-title-line block">
+          Box <span style={{ color: "#5a6215" }}>Mockups</span>
+        </span>
+        <span className="hero-title-line block" style={{ color: "#5a6215" }}>
+          In Seconds
+        </span>
+      </>
+    ),
+    description:
+      "Showcase your packaging designs on realistic box mockups with high-quality 3D previews. Perfect for product packaging, shipping boxes, retail branding, and e-commerce presentations.",
+    buttonBg: "#5a6215",
+    themeColor: "#5a6215",
+    features: [
+      { text: "Realistic 3D\nBox Preview", icon: realistic3dIcon },
+      { text: "Premium\nPackaging Mockups", icon: packagingIcon },
+      { text: "Fast & Easy\nCustomization", icon: fasteasyIcon },
+    ],
+  },
+  {
+    title: (
+      <>
+        <span className="hero-title-line block">Create Eye-Catching</span>
+        <span className="hero-title-line block">
+          Bag <span style={{ color: "#a6530c" }}>Mockups</span>
+        </span>
+        <span className="hero-title-line block" style={{ color: "#a6530c" }}>
+          Effortlessly
+        </span>
+      </>
+    ),
+    description:
+      "Preview shopping bags, paper bags and carry bags with professional mockups that help your brand stand out instantly.",
+    buttonBg: "#a6530c",
+    themeColor: "#a6530c",
+    features: [
+      { text: "Premium Bag\nDesign", icon: realistic3dIcon },
+      { text: "Realistic Print\nPreview", icon: packagingIcon },
+      { text: "Quick Custom\nEditing", icon: fasteasyIcon },
+    ],
+  },
+  {
+    title: (
+      <>
+        <span className="hero-title-line block">Stronger Sealing.</span>
+        <span className="hero-title-line block">
+          Safer Shipping.
+        </span>
+        <span className="hero-title-line block" style={{ color: "#2B4326" }}>
+          FIST-O Tape
+        </span>
+      </>
+    ),
+    description:
+      "High-quality adhesive tapes for secure sealing, packing, and protection. Built for performance. Made to last.",
+    buttonBg: "#2B4326",
+    themeColor: "#2B4326",
+    features: [
+      { text: "Strong\nAdhesion", icon: realistic3dIcon },
+      { text: "Secure\nSealing", icon: packagingIcon },
+      { text: "Durable &\nReliable", icon: fasteasyIcon },
+    ],
+  },
+  {
+    title: (
+      <>
+        <span className="hero-title-line block">Design Modern</span>
+        <span className="hero-title-line block">
+          T-Shirt <span style={{ color: "#1E3D59" }}>Mockups</span>
+        </span>
+        <span className="hero-title-line block" style={{ color: "#1E3D59" }}>
+          Like a pro
+        </span>
+      </>
+    ),
+    description:
+      "Upload your artwork and visual it on realistic t-shirt mockups perfect for fashion brands, print shops and online stores.",
+    buttonBg: "#1E3D59",
+    themeColor: "#1E3D59",
+    features: [
+      { text: "HD Apparel\nMockups", icon: realistic3dIcon },
+      { text: "Instant Design\nPreview", icon: packagingIcon },
+      { text: "Easy Color\nCustomization", icon: fasteasyIcon },
+    ],
+  },
+];
 
 export default function HomePage({ onLoaded }) {
   const navigate = useNavigate();
@@ -48,273 +303,28 @@ export default function HomePage({ onLoaded }) {
   const [hasAnimatedMount, setHasAnimatedMount] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
 
-  const slideConfigs = [
-    {
-      id: 1,
-      bg: bg1,
-      productSelector: ".banner-prod",
-      labelSelector: null,
-      prod: {
-        src: prod1,
-        css: {
-          left: "46.1979%",
-          top: "37.5618%",
-          width: "40.1262%",
-          height: "49.1919%",
-          transformOrigin: "top left",
-          transform: "rotate(-10.7475deg)",
-        },
-      },
-      label: null,
-    },
-    {
-      id: 2,
-      bg: bg2,
-      productSelector: ".banner-prod",
-      labelSelector: ".banner-label",
-      prod: {
-        src: prod2,
-        css: {
-          left: "47.5%",
-          top: "25.2777%",
-          width: "31.5625%",
-          height: "57.7777%",
-        },
-      },
-      label: {
-        src: label2,
-        css: {
-          left: "47.7604%",
-          top: "44.4444%",
-          width: "29.6354%",
-          height: "35.1851%",
-        },
-      },
-    },
-    {
-      id: 3,
-      bg: bg3,
-      productSelector: ".banner-prod",
-      labelSelector: ".banner-label",
-      prod: {
-        src: prod3,
-        css: {
-          left: "58.9692%",
-          top: "23.5185%",
-          width: "26.1577%",
-          height: "55.8173%",
-        },
-      },
-      label: {
-        src: label3,
-        css: {
-          left: "55.1041%",
-          top: "45.3703%",
-          width: "34.2187%",
-          height: "24.6296%",
-        },
-      },
-    },
-    {
-      id: 4,
-      bg: bg4,
-      productSelector: ".banner-prod",
-      labelSelector: ".banner-label",
-      prod: {
-        src: prod4,
-        css: {
-          left: "51.25%",
-          top: "16.9444%",
-          width: "32.552%",
-          height: "72.3148%",
-        },
-      },
-      label: {
-        src: label4,
-        css: {
-          left: "49.4791%",
-          top: "32.4074%",
-          width: "36.4062%",
-          height: "45.2777%",
-        },
-      },
-    },
-    {
-      id: 5,
-      bg: bg5,
-      productSelector: ".banner-prod",
-      labelSelector: null,
-      prod: {
-        src: prod5,
-        css: {
-          left: "39.7395%",
-          top: "6.3888%",
-          width: "42.9166%",
-          height: "84.9074%",
-        },
-      },
-      label: null,
-    },
-    {
-      id: 6,
-      bg: bg6,
-      productSelector: ".banner-prod",
-      labelSelector: null,
-      prod: {
-        src: prod6,
-        css: {
-          left: "49.1666%",
-          top: "14.3518%",
-          width: "39.0104%",
-          height: "79.9074%",
-        },
-      },
-      label: null,
-    },
-  ];
+  const cardsRowRef = useRef(null);
 
-  const slideContents = [
-    {
-      title: (
-        <>
-          <span className="hero-title-line block">Create Professional</span>
-          <span className="hero-title-line block">
-            Box <span style={{ color: "#37472F" }}>Mockups</span>
-          </span>
-          <span className="hero-title-line block" style={{ color: "#37472F" }}>
-            In Seconds
-          </span>
-        </>
-      ),
-      description:
-        "Showcase your packaging designs on realistic box mockups with high-quality 3D previews. Perfect for product packaging, shipping boxes, retail branding, and e-commerce presentations.",
-      buttonBg: "#37472F",
-      themeColor: "#37472F",
-      features: [
-        { text: "Realistic 3D\nBox Preview", icon: realistic3dIcon },
-        { text: "Premium\nPackaging Mockups", icon: packagingIcon },
-        { text: "Fast & Easy\nCustomization", icon: fasteasyIcon },
-      ],
-    },
-    {
-      title: (
-        <>
-          <span className="hero-title-line block">Create Stunning</span>
-          <span className="hero-title-line block">
-            Bottle <span style={{ color: "#D54B0D" }}>Mockups</span>
-          </span>
-          <span className="hero-title-line block" style={{ color: "#D54B0D" }}>
-            Instantly
-          </span>
-        </>
-      ),
-      description:
-        "Upload your label design and preview it on premium-quality bottle mockups in real time. Perfect for beverage brands, cosmetic products, and e-commerce presentations.",
-      buttonBg: "#D54B0D",
-      themeColor: "#D54B0D",
-      features: [
-        { text: "Real-time\nPreview", icon: realistic3dIcon },
-        { text: "High Quality\nBottle Renders", icon: packagingIcon },
-        { text: "Easy Label\nCustomization", icon: fasteasyIcon },
-      ],
-    },
-    {
-      title: (
-        <>
-          <span className="hero-title-line block">Design Premium</span>
-          <span className="hero-title-line block">
-            Container <span style={{ color: "#224964" }}>Mockups</span>
-          </span>
-          <span className="hero-title-line block" style={{ color: "#224964" }}>
-            In Minutes
-          </span>
-        </>
-      ),
-      description:
-        "Showcase your packaging designs on realistic food and storage containers with studio-quality mockups built for modern brands.",
-      buttonBg: "#224964",
-      themeColor: "#224964",
-      features: [
-        { text: "Smart\nPacking Preview", icon: realistic3dIcon },
-        { text: "HD Container\nMockups", icon: packagingIcon },
-        { text: "Fast Design\nEditing", icon: fasteasyIcon },
-      ],
-    },
-    {
-      title: (
-        <>
-          <span className="hero-title-line block">Bring Your</span>
-          <span className="hero-title-line block">
-            Food <span style={{ color: "#7C4321" }}>Packaging</span>
-          </span>
-          <span className="hero-title-line block" style={{ color: "#7C4321" }}>
-            To Life
-          </span>
-        </>
-      ),
-      description:
-        "Present your snack, bakery, and takeaway packaging with realistic mockups designed for branding, marketing, and online stores.",
-      buttonBg: "#7C4321",
-      themeColor: "#7C4321",
-      features: [
-        { text: "Realistic\nFood Packaging", icon: realistic3dIcon },
-        { text: "Print-ready\nPresentation", icon: packagingIcon },
-        { text: "Instant Brand\nPreview", icon: fasteasyIcon },
-      ],
-    },
-    {
-      title: (
-        <>
-          <span className="hero-title-line block">Create Eye-Catching</span>
-          <span className="hero-title-line block">
-            Bag <span style={{ color: "#5C5281" }}>Mockups</span>
-          </span>
-          <span className="hero-title-line block" style={{ color: "#5C5281" }}>
-            Effortlessly
-          </span>
-        </>
-      ),
-      description:
-        "Preview shopping bags, paper bags and carry bags with professional mockups that help your brand stand out instantly.",
-      buttonBg: "#5C5281",
-      themeColor: "#5C5281",
-      features: [
-        { text: "Premium Bag\nDesign", icon: realistic3dIcon },
-        { text: "Realistic Print\nPreview", icon: packagingIcon },
-        { text: "Quick Custom\nEditing", icon: fasteasyIcon },
-      ],
-    },
-    {
-      title: (
-        <>
-          <span className="hero-title-line block">Design Modern</span>
-          <span className="hero-title-line block">
-            T-Shirt <span style={{ color: "#244963" }}>Mockups</span>
-          </span>
-          <span className="hero-title-line block" style={{ color: "#244963" }}>
-            Like a pro
-          </span>
-        </>
-      ),
-      description:
-        "Upload your artwork and visual it on realistic t-shirt mockups perfect for fashion brands, print shops and online stores.",
-      buttonBg: "#244963",
-      themeColor: "#244963",
-      features: [
-        { text: "HD Apparel\nMockups", icon: realistic3dIcon },
-        { text: "Instant Design\nPreview", icon: packagingIcon },
-        { text: "Easy Color\nCustomization", icon: fasteasyIcon },
-      ],
-    },
-  ];
+  const scrollCards = (direction) => {
+    if (!cardsRowRef.current) return;
+    const scrollAmount = 300;
+    if (direction === "left") {
+      cardsRowRef.current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+    } else {
+      cardsRowRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
 
   // Preload images
   useEffect(() => {
     const imageUrls = [];
     slideConfigs.forEach((config) => {
       if (config.bg) imageUrls.push(config.bg);
-      if (config.prod?.src) imageUrls.push(config.prod.src);
-      if (config.label?.src) imageUrls.push(config.label.src);
+      if (config.assets) {
+        config.assets.forEach((asset) => {
+          if (asset.src) imageUrls.push(asset.src);
+        });
+      }
     });
 
     let loadedCount = 0;
@@ -348,8 +358,8 @@ export default function HomePage({ onLoaded }) {
     if (isTransitioning) return;
 
     let logicalNext = nextIndex;
-    if (nextIndex >= 6) logicalNext = 0;
-    if (nextIndex < 0) logicalNext = 5;
+    if (nextIndex >= slideConfigs.length) logicalNext = 0;
+    if (nextIndex < 0) logicalNext = slideConfigs.length - 1;
 
     if (currentSlide === logicalNext) return;
 
@@ -414,8 +424,37 @@ export default function HomePage({ onLoaded }) {
     setHasAnimatedMount(true);
   }, [bannersContent, hasAnimatedMount]);
 
+  // Waving leaf animation
   useEffect(() => {
-    // Only run if banners are loaded. If currentSlide is briefly -1, don't run animation on non-existent element
+    if (bannersContent.length === 0) return;
+
+    const leaves = pageRef.current?.querySelectorAll(".waving-leaf");
+    if (!leaves || leaves.length === 0) return;
+
+    const ctx = gsap.context(() => {
+      leaves.forEach((leaf) => {
+        gsap.set(leaf, { transformOrigin: "bottom center" });
+
+        gsap.to(leaf, {
+          rotation: "random(-3, 3)",
+          x: "random(-4, 4)",
+          y: "random(-2, 2)",
+          duration: "random(3, 5)",
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          delay: "random(0, 2)",
+        });
+      });
+    }, pageRef);
+
+    return () => {
+      ctx.revert();
+    };
+  }, [bannersContent]);
+
+  // Active slide assets animation
+  useEffect(() => {
     if (bannersContent.length === 0 || currentSlide < 0) return;
 
     const container = pageRef.current?.querySelector(".hero-svg-wrapper");
@@ -426,77 +465,34 @@ export default function HomePage({ onLoaded }) {
     )[currentSlide];
     if (!activeSlideEl) return;
 
-    const logicalSlide = currentSlide;
-    const config = slideConfigs[logicalSlide];
-    const product = activeSlideEl.querySelector(config.productSelector);
-    const labels = config.labelSelector
-      ? activeSlideEl.querySelectorAll(config.labelSelector)
-      : null;
-    const background = activeSlideEl.querySelector('img[alt="Background"]');
-
-    const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
-
+    const background = activeSlideEl.querySelector(".hero-slide-bg");
     if (background) {
-      tl.fromTo(background, { opacity: 0.5 }, { opacity: 1, duration: 1.0 }, 0);
+      gsap.fromTo(
+        background,
+        { opacity: 0.5 },
+        { opacity: 1, duration: 1.0, overwrite: "auto" }
+      );
     }
 
-    if (product) {
-      // Section 1: Initial load and all slider changes product scale 0 to 1
-      if (logicalSlide === 0) {
-        tl.fromTo(
-          product,
-          {
-            scale: 0,
-            rotate: -10.7475,
-            transformOrigin: "50% 50%",
-            opacity: 0,
-          },
-          {
-            scale: 1,
-            rotate: -10.7475,
-            opacity: 1,
-            duration: 2.5,
-            ease: "back.out(0.5)",
-          },
-          0.2,
-        );
-      }
-      // Section 2, 3, 4: Product from right, label from left
-      else if (logicalSlide === 1 || logicalSlide === 2 || logicalSlide === 3) {
-        tl.fromTo(
-          product,
-          { x: 550, opacity: 0 },
-          { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
-          0.2,
-        );
-        if (labels && labels.length > 0) {
-          gsap.set(labels, { opacity: 0, x: -450 });
-          tl.fromTo(
-            labels,
-            { x: -450, opacity: 0 },
-            { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
-            0.8, // Delays label so it comes after the bottle
-          );
+    const activeAssets = activeSlideEl.querySelectorAll(".hero-slide-asset");
+    if (activeAssets.length > 0) {
+      gsap.set(activeAssets, { transformOrigin: "center center" });
+
+      gsap.fromTo(
+        activeAssets,
+        {
+          opacity: 0,
+          scale: 0.95,
+        },
+        {
+          opacity: 1,
+          scale: 1,
+          duration: 1.2,
+          stagger: 0.15,
+          ease: "power2.out",
+          overwrite: "auto",
         }
-      }
-      // Section 5: Product fade in from top
-      else if (logicalSlide === 4) {
-        tl.fromTo(
-          product,
-          { y: -300, opacity: 0 },
-          { y: 0, opacity: 1, duration: 2, ease: "power3.out" },
-          0.2,
-        );
-      }
-      // Section 6: Product fade in from left
-      else if (logicalSlide === 5) {
-        tl.fromTo(
-          product,
-          { x: -500, opacity: 0 },
-          { x: 0, opacity: 1, duration: 2, ease: "power3.out" },
-          0.2,
-        );
-      }
+      );
     }
   }, [currentSlide, bannersContent]);
 
@@ -756,27 +752,20 @@ export default function HomePage({ onLoaded }) {
                         {/* Background */}
                         <img
                           src={banner.bg}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          className="absolute inset-0 w-full h-full object-cover hero-slide-bg"
                           alt="Background"
                         />
 
-                        {/* Product */}
-                        <img
-                          src={banner.prod.src}
-                          style={banner.prod.css}
-                          className="absolute banner-prod drop-shadow-2xl will-change-transform"
-                          alt="Product"
-                        />
-
-                        {/* Label (if exists) */}
-                        {banner.label && (
+                        {/* Assets */}
+                        {banner.assets?.map((asset, assetIdx) => (
                           <img
-                            src={banner.label.src}
-                            style={banner.label.css}
-                            className="absolute banner-label drop-shadow-xl will-change-transform"
-                            alt="Label"
+                            key={assetIdx}
+                            src={asset.src}
+                            style={asset.css}
+                            className={`absolute drop-shadow-2xl will-change-transform hero-slide-asset ${asset.isLeaf ? "waving-leaf" : ""}`}
+                            alt={`Asset ${assetIdx}`}
                           />
-                        )}
+                        ))}
                       </div>
                     </div>
                   );
@@ -899,7 +888,7 @@ export default function HomePage({ onLoaded }) {
 
             {/* Carousel Slide Indicators */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
-              {Array.from({ length: 6 }).map((_, index) => (
+              {slideConfigs.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => changeSlide(index)}
@@ -983,72 +972,54 @@ export default function HomePage({ onLoaded }) {
               to life.
             </p>
 
-            <div className="category-cards w-full flex flex-wrap justify-center gap-6 lg:gap-8 max-w-[1400px] mx-auto">
-              <div
-                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
-                onClick={() =>
-                  navigate("/modelsMockup", {
-                    state: { activeCategory: "Box" },
-                  })
+            <div className="w-full relative mx-auto flex flex-col items-center">
+              <style>{`
+                .scrollbar-hide::-webkit-scrollbar {
+                  display: none;
                 }
-              >
-                <AnimatedSvgCard src={card1} index={0} />
-              </div>
-              <div
-                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
-                onClick={() =>
-                  navigate("/modelsMockup", {
-                    state: { activeCategory: "Bottle" },
-                  })
-                }
-              >
-                <AnimatedSvgCard src={card2} index={1} />
-              </div>
-              <div
-                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
-                onClick={() =>
-                  navigate("/modelsMockup", {
-                    state: { activeCategory: "Container" },
-                  })
-                }
-              >
-                <AnimatedSvgCard src={card3} index={2} />
-              </div>
-              <div
-                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
-                onClick={() =>
-                  navigate("/modelsMockup", {
-                    state: { activeCategory: "Bag" },
-                  })
-                }
-              >
-                <AnimatedSvgCard src={card4} index={3} />
-              </div>
-
-              <div
-                className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] cursor-pointer"
-                onClick={() =>
-                  navigate("/modelsMockup", {
-                    state: { activeCategory: "T-shirt" },
-                  })
-                }
-              >
-                <AnimatedSvgCard src={card5} index={4} />
-              </div>
-
-              <div className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] opacity-60 cursor-not-allowed">
-                <div className="w-full h-full min-h-[300px] bg-gray-50 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
-                  <span className="text-gray-400 font-semibold text-lg">
-                    Coming Soon
-                  </span>
+              `}</style>
+              <div className="category-cards-container w-full overflow-hidden pb-4">
+                <div 
+                  ref={cardsRowRef}
+                  className="category-cards category-cards-row flex gap-6 md:gap-8 justify-start lg:justify-center  scrollbar-hide scroll-smooth snap-x snap-mandatory px-4 py-2 w-full lg:flex-nowrap"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                >
+                  {cardsConfig.map((card, idx) => (
+                    <div
+                      key={idx}
+                      className="explore-card shrink-0 w-[220px] sm:w-[240px] md:w-[266px] lg:shrink lg:w-full lg:max-w-[160px] snap-center cursor-pointer"
+                      onClick={() =>
+                        navigate("/modelsMockup", {
+                          state: { activeCategory: card.category },
+                        })
+                      }
+                    >
+                      <AnimatedSvgCard src={card.src} index={idx} />
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="explore-card w-[calc(50%-1.5rem)] md:w-[calc(33.33%-1.5rem)] lg:w-[calc(25%-2rem)] opacity-60 cursor-not-allowed">
-                <div className="w-full h-full min-h-[300px] bg-gray-50 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
-                  <span className="text-gray-400 font-semibold text-lg">
-                    Coming Soon
-                  </span>
-                </div>
+              
+              {/* Navigation Arrows Centered Below */}
+              <div className="flex gap-4 mt-2 lg:hidden">
+                <button
+                  onClick={() => scrollCards("left")}
+                  className="w-12 h-12 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center cursor-pointer border border-white/20 hover:scale-105 transition-all shadow-md"
+                  aria-label="Scroll left"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => scrollCards("right")}
+                  className="w-12 h-12 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center cursor-pointer border border-white/20 hover:scale-105 transition-all shadow-md"
+                  aria-label="Scroll right"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
               </div>
             </div>
 
