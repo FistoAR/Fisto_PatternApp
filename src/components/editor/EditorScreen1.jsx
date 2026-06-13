@@ -24,19 +24,27 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 function CustomHdriEnvironment({ url, intensity }) {
   const texture = useLoader(RGBELoader, url);
   texture.mapping = THREE.EquirectangularReflectionMapping;
-  return <Environment map={texture} background={false} environmentIntensity={intensity} />;
+  return (
+    <Environment
+      map={texture}
+      background={false}
+      environmentIntensity={intensity}
+    />
+  );
 }
 
 function BackgroundImage({ url }) {
   const { scene } = useThree();
   const texture = useLoader(THREE.TextureLoader, url);
-  
+
   useEffect(() => {
     if (texture) {
       texture.colorSpace = THREE.SRGBColorSpace;
       scene.background = texture;
     }
-    return () => { scene.background = null; }
+    return () => {
+      scene.background = null;
+    };
   }, [texture, scene]);
 
   return null;
@@ -82,7 +90,7 @@ function HdriLoadingOverlay({ isModelLoading }) {
   // Show this overlay when Suspense is active but the main model isn't loading
   // (which happens when HDRI Environments are being downloaded/compiled)
   if (isModelLoading || !active) return null;
-  
+
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#e6e2db]/60 backdrop-blur-[2px] pointer-events-none">
       <div className="relative w-14 h-14 mb-4">
@@ -96,6 +104,33 @@ function HdriLoadingOverlay({ isModelLoading }) {
       <p className="text-[#c05520] font-bold text-base tracking-wide">
         Applying Environment...
       </p>
+    </div>
+  );
+}
+
+function TextureActiveOverlay() {
+  const { active } = useProgress();
+  return (
+    <div className="absolute inset-0 bg-[#c05520]/20 flex items-center justify-center backdrop-blur-[1px]">
+      {active ? (
+        <svg className="animate-spin h-5 w-5 text-white drop-shadow-md" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      ) : (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="w-6 h-6 text-white drop-shadow-md"
+        >
+          <path
+            fillRule="evenodd"
+            d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z"
+            clipRule="evenodd"
+          />
+        </svg>
+      )}
     </div>
   );
 }
@@ -348,17 +383,17 @@ function AutoSizedModelWithDimensions({
           if (m.userData.currentPbrId !== materialType.id) {
             m.userData.currentPbrId = materialType.id;
             m.userData.currentTextureUrl = null; // Clear active simple texture
-            
+
             // Set base color to white so textures show accurately
             m.color.setHex(0xffffff);
-            
+
             // Initialize maps
             m.map = null;
             m.normalMap = null;
             m.roughnessMap = null;
             m.metalnessMap = null;
             m.aoMap = null;
-            
+
             const loadMap = (url, mapType, isColorSpace) => {
               if (!url) return;
               loader.load(url, (texture) => {
@@ -371,11 +406,16 @@ function AutoSizedModelWithDimensions({
             };
 
             // Load available maps
-            if (materialType.maps.albedo) loadMap(materialType.maps.albedo, 'map', true);
-            if (materialType.maps.normal) loadMap(materialType.maps.normal, 'normalMap', false);
-            if (materialType.maps.roughness) loadMap(materialType.maps.roughness, 'roughnessMap', false);
-            if (materialType.maps.metallic) loadMap(materialType.maps.metallic, 'metalnessMap', false);
-            if (materialType.maps.ao) loadMap(materialType.maps.ao, 'aoMap', false);
+            if (materialType.maps.albedo)
+              loadMap(materialType.maps.albedo, "map", true);
+            if (materialType.maps.normal)
+              loadMap(materialType.maps.normal, "normalMap", false);
+            if (materialType.maps.roughness)
+              loadMap(materialType.maps.roughness, "roughnessMap", false);
+            if (materialType.maps.metallic)
+              loadMap(materialType.maps.metallic, "metalnessMap", false);
+            if (materialType.maps.ao)
+              loadMap(materialType.maps.ao, "aoMap", false);
 
             // Set physical properties to full effect to let maps dictate appearance
             m.roughness = 1.0;
@@ -385,9 +425,15 @@ function AutoSizedModelWithDimensions({
         } else {
           // No material specified, restore originals
           m.userData.currentPbrId = null;
-          m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.5;
-          m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
-          
+          m.roughness =
+            m.userData.originalRoughness !== undefined
+              ? m.userData.originalRoughness
+              : 0.5;
+          m.metalness =
+            m.userData.originalMetalness !== undefined
+              ? m.userData.originalMetalness
+              : 0.1;
+
           // Only clear custom PBR maps if they exist, but leave m.map intact if it came from texture picker
           m.normalMap = null;
           m.roughnessMap = null;
@@ -396,7 +442,13 @@ function AutoSizedModelWithDimensions({
         }
       });
     });
-  }, [clonedScene, appliedTextures, appliedColors, appliedMaterials, appliedLastApplied]);
+  }, [
+    clonedScene,
+    appliedTextures,
+    appliedColors,
+    appliedMaterials,
+    appliedLastApplied,
+  ]);
 
   if (!clonedScene) return null;
 
@@ -462,12 +514,15 @@ export default function EditorScreen1({
     let newPct = zoomPercent + step;
     if (newPct < 50) newPct = 50;
     if (newPct > 150) newPct = 150;
-    
+
     const controls = orbitControlsRef.current;
     const camera = cameraRef.current;
     if (controls && camera) {
       const newDist = 4 / (newPct / 100);
-      const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+      const offset = new THREE.Vector3().subVectors(
+        camera.position,
+        controls.target,
+      );
       offset.setLength(newDist);
       camera.position.copy(controls.target).add(offset);
       controls.update();
@@ -493,9 +548,11 @@ export default function EditorScreen1({
   const [exportPdfChecked, setExportPdfChecked] = useState(false);
 
   const textureLibrary = useMemo(() => getTextureLibrary(), []);
-  const [activeTextureCategory, setActiveTextureCategory] = useState(textureLibrary[0]?.category || "Wood");
+  const [activeTextureCategory, setActiveTextureCategory] = useState(
+    textureLibrary[0]?.category || "Wood",
+  );
   const [isTextureDropdownOpen, setIsTextureDropdownOpen] = useState(false);
-  
+
   const [isModelLoading, setIsModelLoading] = useState(false);
 
   useEffect(() => {
@@ -513,7 +570,12 @@ export default function EditorScreen1({
   };
 
   const handleExport = () => {
-    if (!exportGlbChecked && !exportPngChecked && !exportJpgChecked && !exportPdfChecked) {
+    if (
+      !exportGlbChecked &&
+      !exportPngChecked &&
+      !exportJpgChecked &&
+      !exportPdfChecked
+    ) {
       alert("Please select at least one option to export.");
       return;
     }
@@ -556,7 +618,7 @@ export default function EditorScreen1({
           captureRef.current.capture({
             png: exportPngChecked,
             jpg: exportJpgChecked,
-            pdf: exportPdfChecked
+            pdf: exportPdfChecked,
           });
         } else {
           alert("Could not capture 3D Canvas screen.");
@@ -621,7 +683,10 @@ export default function EditorScreen1({
       }
 
       // V or S -> select/cursor tool
-      if (!isModKey && (e.key.toLowerCase() === "v" || e.key.toLowerCase() === "s")) {
+      if (
+        !isModKey &&
+        (e.key.toLowerCase() === "v" || e.key.toLowerCase() === "s")
+      ) {
         e.preventDefault();
         handleSetToolMode("cursor");
       }
@@ -686,7 +751,10 @@ export default function EditorScreen1({
   const handleSetToolMode = (mode) => setToolMode(mode);
 
   return (
-    <div className="flex flex-col h-full w-full transition-colors duration-300 relative" style={{ backgroundColor: bgColor }}>
+    <div
+      className="flex flex-col h-full w-full transition-colors duration-300 relative"
+      style={{ backgroundColor: bgColor }}
+    >
       {/* 3D Canvas Background */}
       <div
         id="three-canvas-container"
@@ -745,7 +813,10 @@ export default function EditorScreen1({
           {customHdri ? (
             <CustomHdriEnvironment url={customHdri} intensity={envIntensity} />
           ) : (
-            <SafeEnvironment preset={hdriPreset} environmentIntensity={envIntensity} />
+            <SafeEnvironment
+              preset={hdriPreset}
+              environmentIntensity={envIntensity}
+            />
           )}
           <OrbitControls
             ref={orbitControlsRef}
@@ -759,7 +830,9 @@ export default function EditorScreen1({
             onEnd={(e) => {
               const controls = e.target;
               if (controls && controls.object) {
-                const dist = controls.object.position.distanceTo(controls.target);
+                const dist = controls.object.position.distanceTo(
+                  controls.target,
+                );
                 const pct = Math.round((4 / dist) * 100);
                 setZoomPercent(Math.min(150, Math.max(50, pct)));
               }
@@ -797,7 +870,11 @@ export default function EditorScreen1({
               />
             )}
           </Suspense>
-          <ScreenshotHelper ref={captureRef} filename={getModelName()} bgColor={bgColor} />
+          <ScreenshotHelper
+            ref={captureRef}
+            filename={getModelName()}
+            bgColor={bgColor}
+          />
         </R3FCanvas>
         {/* Loading overlay sits on top of canvas */}
         {modelUrl && <ModelLoadingOverlay isLoading={isModelLoading} />}
@@ -819,7 +896,9 @@ export default function EditorScreen1({
             <ModelsPopup
               onSelectModel={(url) => {
                 if (url === modelUrl) return;
-                const hasEdits = Object.keys(appliedTextures || {}).length > 0 || Object.keys(appliedColors || {}).length > 0;
+                const hasEdits =
+                  Object.keys(appliedTextures || {}).length > 0 ||
+                  Object.keys(appliedColors || {}).length > 0;
                 if (hasEdits) {
                   setPendingModelUrl(url);
                   setShowSwitchDialog(true);
@@ -833,19 +912,25 @@ export default function EditorScreen1({
           {activeTab === "layout" && <LayoutPopup />}
           {activeTab === "scene" && (
             <ScenePopup
-              bgColor={bgColor} setBgColor={setBgColor}
-              hdriPreset={hdriPreset} setHdriPreset={setHdriPreset}
-              envIntensity={envIntensity} setEnvIntensity={setEnvIntensity}
-              ambLight={ambLight} setAmbLight={setAmbLight}
-              dirLight={dirLight} setDirLight={setDirLight}
-              shadowOpacity={shadowOpacity} setShadowOpacity={setShadowOpacity}
-              customHdri={customHdri} setCustomHdri={setCustomHdri}
-              bgImage={bgImage} setBgImage={setBgImage}
+              bgColor={bgColor}
+              setBgColor={setBgColor}
+              hdriPreset={hdriPreset}
+              setHdriPreset={setHdriPreset}
+              envIntensity={envIntensity}
+              setEnvIntensity={setEnvIntensity}
+              ambLight={ambLight}
+              setAmbLight={setAmbLight}
+              dirLight={dirLight}
+              setDirLight={setDirLight}
+              shadowOpacity={shadowOpacity}
+              setShadowOpacity={setShadowOpacity}
+              customHdri={customHdri}
+              setCustomHdri={setCustomHdri}
+              bgImage={bgImage}
+              setBgImage={setBgImage}
             />
           )}
         </div>
-
-
 
         {/* Edit Popup Panel */}
         {activeTab === "edit" && !showCustomSize && (
@@ -874,11 +959,11 @@ export default function EditorScreen1({
                   </svg>
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-[#111827] text-sm">
-                    Size
-                  </span>
+                  <span className="font-bold text-[#111827] text-sm">Size</span>
                   <span className="text-[11px] font-medium text-gray-500">
-                    {baseDimensions ? `${baseDimensions.length} x ${baseDimensions.width} x ${baseDimensions.height} mm` : 'Loading...'}
+                    {baseDimensions
+                      ? `${baseDimensions.length} x ${baseDimensions.width} x ${baseDimensions.height} mm`
+                      : "Loading..."}
                   </span>
                 </div>
               </div>
@@ -945,30 +1030,50 @@ export default function EditorScreen1({
             </div>
 
             <div className="flex flex-col gap-3">
-              <label className="text-sm font-bold text-gray-700">Apply Color</label>
+              <label className="text-sm font-bold text-gray-700">
+                Apply Color
+              </label>
               <div className="flex items-center gap-3 w-full">
                 <div className="relative w-10 h-10 rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0 flex items-center justify-center bg-gray-50 hover:bg-gray-100 group">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500 absolute z-0 group-hover:scale-110 transition-transform">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11.25l1.5 1.5.75-.75V8.758l2.276-.61a3 3 0 10-3.675-3.675l-.61 2.277H12l-.75.75 1.5 1.5M15 11.25v-2.25m0 2.25l-2.25 1.5M7.5 15l-1.5 1.5-.75-.75V12.5l2.25-1.5M7.5 15l1.5 2.25m0-2.25l-2.25-1.5M10.5 18l-1.5 1.5-.75-.75V15.5l2.25-1.5M10.5 18l1.5 2.25m0-2.25l-2.25-1.5" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-5 h-5 text-gray-500 absolute z-0 group-hover:scale-110 transition-transform"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 11.25l1.5 1.5.75-.75V8.758l2.276-.61a3 3 0 10-3.675-3.675l-.61 2.277H12l-.75.75 1.5 1.5M15 11.25v-2.25m0 2.25l-2.25 1.5M7.5 15l-1.5 1.5-.75-.75V12.5l2.25-1.5M7.5 15l1.5 2.25m0-2.25l-2.25-1.5M10.5 18l-1.5 1.5-.75-.75V15.5l2.25-1.5M10.5 18l1.5 2.25m0-2.25l-2.25-1.5"
+                    />
                   </svg>
                   <input
                     type="color"
-                    value={appliedColors?.[selectedMaterial || "all"] || "#ffffff"}
+                    value={
+                      appliedColors?.[selectedMaterial || "all"] || "#ffffff"
+                    }
                     onChange={(e) =>
-                      onApplyColor && onApplyColor(selectedMaterial, e.target.value)
+                      onApplyColor &&
+                      onApplyColor(selectedMaterial, e.target.value)
                     }
                     className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0 z-10"
                   />
                 </div>
                 <div className="flex-1 grid grid-cols-5 gap-2">
-                  {['#e6e2db', '#ffffff', '#1a1a1a', '#2c3e50', '#c05520'].map(color => (
-                    <button
-                      key={color}
-                      onClick={() => onApplyColor && onApplyColor(selectedMaterial, color)}
-                      className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${appliedColors?.[selectedMaterial || "all"] === color ? 'border-[#c05520] shadow-md' : 'border-gray-200'}`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
+                  {["#e6e2db", "#ffffff", "#1a1a1a", "#2c3e50", "#c05520"].map(
+                    (color) => (
+                      <button
+                        key={color}
+                        onClick={() =>
+                          onApplyColor && onApplyColor(selectedMaterial, color)
+                        }
+                        className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${appliedColors?.[selectedMaterial || "all"] === color ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ),
+                  )}
                 </div>
               </div>
             </div>
@@ -980,54 +1085,87 @@ export default function EditorScreen1({
                   Texture Library
                 </label>
                 <button
-                  onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, null)}
+                  onClick={() =>
+                    onApplyMaterial && onApplyMaterial(selectedMaterial, null)
+                  }
                   className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                    stroke="currentColor"
+                    className="w-3 h-3"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                   Clear
                 </button>
               </div>
-              
+
               {/* Category Tabs */}
               <div className="flex gap-1.5 py-1 items-center justify-between relative">
                 <div className="flex gap-1.5 overflow-hidden flex-wrap max-h-8">
                   {textureLibrary
-                    .filter((c, i) => i < 3 || c.category === activeTextureCategory)
+                    .filter(
+                      (c, i) => i < 3 || c.category === activeTextureCategory,
+                    )
                     .map((category) => (
-                    <button
-                      key={category.category}
-                      onClick={() => setActiveTextureCategory(category.category)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTextureCategory === category.category ? 'bg-[#c05520] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                    >
-                      {category.category}
-                    </button>
-                  ))}
+                      <button
+                        key={category.category}
+                        onClick={() =>
+                          setActiveTextureCategory(category.category)
+                        }
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTextureCategory === category.category ? "bg-[#c05520] text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                      >
+                        {category.category}
+                      </button>
+                    ))}
                 </div>
 
                 <div className="relative shrink-0">
-                  <button 
-                    onClick={() => setIsTextureDropdownOpen(!isTextureDropdownOpen)}
-                    className={`p-1.5 rounded-full border text-gray-500 hover:text-gray-900 bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer flex items-center justify-center transition-all ${isTextureDropdownOpen ? 'bg-gray-100 border-gray-300' : ''}`}
+                  <button
+                    onClick={() =>
+                      setIsTextureDropdownOpen(!isTextureDropdownOpen)
+                    }
+                    className={`p-1.5 rounded-full border text-gray-500 hover:text-gray-900 bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer flex items-center justify-center transition-all ${isTextureDropdownOpen ? "bg-gray-100 border-gray-300" : ""}`}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2.5}
+                      stroke="currentColor"
+                      className="w-4 h-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m19.5 8.25-7.5 7.5-7.5-7.5"
+                      />
                     </svg>
                   </button>
-                  
+
                   {isTextureDropdownOpen && (
                     <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsTextureDropdownOpen(false)} />
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsTextureDropdownOpen(false)}
+                      />
                       <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto py-1.5 flex flex-col">
-                        {textureLibrary.map(category => (
+                        {textureLibrary.map((category) => (
                           <button
                             key={category.category}
                             onClick={() => {
                               setActiveTextureCategory(category.category);
                               setIsTextureDropdownOpen(false);
                             }}
-                            className={`px-4 py-2 text-left text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer ${activeTextureCategory === category.category ? 'text-[#c05520] bg-orange-50/50' : 'text-gray-700'}`}
+                            className={`px-4 py-2 text-left text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer ${activeTextureCategory === category.category ? "text-[#c05520] bg-orange-50/50" : "text-gray-700"}`}
                           >
                             {category.category}
                           </button>
@@ -1040,34 +1178,40 @@ export default function EditorScreen1({
 
               {/* Texture Grid */}
               <div className="grid grid-cols-3 gap-2 mt-1 max-h-[200px] overflow-y-auto pr-1">
-                {textureLibrary.find(c => c.category === activeTextureCategory)?.textures.map((texture) => (
-                  <button
-                    key={texture.id}
-                    title={texture.name}
-                    onClick={() => onApplyMaterial && onApplyMaterial(selectedMaterial, texture)}
-                    className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"]?.id === texture.id ? 'border-[#c05520] shadow-md' : 'border-transparent hover:border-gray-200'}`}
-                  >
-                    {texture.preview ? (
-                      <img src={texture.preview} alt={texture.name} className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 p-1 text-center font-medium leading-tight">{texture.name}</div>
-                    )}
-                    {appliedMaterials?.[selectedMaterial || "all"]?.id === texture.id && (
-                      <div className="absolute inset-0 bg-[#c05520]/20 flex items-center justify-center backdrop-blur-[1px]">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white drop-shadow-md">
-                          <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                ))}
+                {textureLibrary
+                  .find((c) => c.category === activeTextureCategory)
+                  ?.textures.map((texture) => (
+                    <button
+                      key={texture.id}
+                      title={texture.name}
+                      onClick={() =>
+                        onApplyMaterial &&
+                        onApplyMaterial(selectedMaterial, texture)
+                      }
+                      className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center cursor-pointer transition-all ${appliedMaterials?.[selectedMaterial || "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
+                    >
+                      {texture.preview ? (
+                        <img
+                          src={texture.preview}
+                          alt={texture.name}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 p-1 text-center font-medium leading-tight">
+                          {texture.name}
+                        </div>
+                      )}
+                      {appliedMaterials?.[selectedMaterial || "all"]?.id === texture.id && (
+                        <TextureActiveOverlay />
+                      )}
+                    </button>
+                  ))}
               </div>
             </div>
-
           </div>
         )}
 
-        <HdriLoadingOverlay isModelLoading={isModelLoading} />
+        {activeTab === "scene" && <HdriLoadingOverlay isModelLoading={isModelLoading} />}
 
         {/* Custom Size Editor */}
         {activeTab === "edit" && showCustomSize && (
@@ -1268,8 +1412,16 @@ export default function EditorScreen1({
               stroke="currentColor"
               className="w-5 h-5"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5"
+              />
             </svg>
           </button>
         </Tooltip1>
@@ -1326,19 +1478,49 @@ export default function EditorScreen1({
         </Tooltip1>
 
         <Tooltip1 label="Zoom In" side="left">
-          <button onClick={() => handleZoom(10)} className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+          <button
+            onClick={() => handleZoom(10)}
+            className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.8}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"
+              />
             </svg>
           </button>
         </Tooltip1>
 
-        <div className="text-[11px] font-bold text-gray-400 text-center w-full select-none">{zoomPercent}%</div>
+        <div className="text-[11px] font-bold text-gray-400 text-center w-full select-none">
+          {zoomPercent}%
+        </div>
 
         <Tooltip1 label="Zoom Out" side="left">
-          <button onClick={() => handleZoom(-10)} className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6" />
+          <button
+            onClick={() => handleZoom(-10)}
+            className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.8}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6"
+              />
             </svg>
           </button>
         </Tooltip1>
@@ -1398,7 +1580,7 @@ export default function EditorScreen1({
         </Tooltip1>
 
         <div className="w-6 h-px bg-gray-200 mx-auto" />
-        
+
         <Tooltip1 label="Help & Controls" side="left">
           <button
             onClick={() => setShowLegend(!showLegend)}
@@ -1408,8 +1590,19 @@ export default function EditorScreen1({
                 : "bg-transparent text-gray-500 hover:bg-gray-100"
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.8}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
+              />
             </svg>
           </button>
         </Tooltip1>
@@ -1419,51 +1612,93 @@ export default function EditorScreen1({
       {showLegend && (
         <>
           {/* Invisible overlay for click-outside to close */}
-          <div 
-            className="fixed inset-0 z-[999]" 
+          <div
+            className="fixed inset-0 z-[999]"
             onClick={() => setShowLegend(false)}
           />
           <div className="absolute bottom-6 right-24 bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.1)] text-xs text-gray-600 border border-white/60 flex flex-col gap-3 z-[1000]">
-            <div className="font-bold text-gray-800 text-[14px]">Editor Controls</div>
+            <div className="font-bold text-gray-800 text-[14px]">
+              Editor Controls
+            </div>
             <div className="flex gap-6 pointer-events-none">
-             <div className="flex items-start gap-2">
-                <img src={cursorIcon} className="w-4 h-4 opacity-70 mt-0.5" alt="" /> 
+              <div className="flex items-start gap-2">
+                <img
+                  src={cursorIcon}
+                  className="w-4 h-4 opacity-70 mt-0.5"
+                  alt=""
+                />
                 <div className="flex flex-col">
                   <span className="font-bold text-gray-700">Select Tool</span>
                   <span className="text-gray-500">Rotate & explore</span>
                 </div>
-             </div>
-             <div className="flex items-start gap-2">
-                <img src={handIcon} className="w-4 h-4 opacity-70 mt-0.5" alt="" /> 
+              </div>
+              <div className="flex items-start gap-2">
+                <img
+                  src={handIcon}
+                  className="w-4 h-4 opacity-70 mt-0.5"
+                  alt=""
+                />
                 <div className="flex flex-col">
                   <span className="font-bold text-gray-700">Hand Tool</span>
                   <span className="text-gray-500">Pan & move</span>
                 </div>
-             </div>
-             <div className="flex items-start gap-2">
-                <span className="text-[16px] leading-none mt-0.5">⚙️</span> 
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-[16px] leading-none mt-0.5">⚙️</span>
                 <div className="flex flex-col">
                   <span className="font-bold text-gray-700">Mouse Wheel</span>
                   <span className="text-gray-500">Zoom in / out</span>
                 </div>
-             </div>
-          </div>
-          <div className="flex gap-6 pt-3 border-t border-gray-200/60 mt-1">
-             <div className="flex items-start gap-2">
-                <svg className="w-4 h-4 opacity-70 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5" /></svg>
+              </div>
+            </div>
+            <div className="flex gap-6 pt-3 border-t border-gray-200/60 mt-1">
+              <div className="flex items-start gap-2">
+                <svg
+                  className="w-4 h-4 opacity-70 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5"
+                  />
+                </svg>
                 <div className="flex flex-col">
-                  <span className="font-bold text-gray-700">Reset Position</span>
+                  <span className="font-bold text-gray-700">
+                    Reset Position
+                  </span>
                   <span className="text-gray-500">Center view</span>
                 </div>
-             </div>
-             <div className="flex items-start gap-2">
-                <svg className="w-4 h-4 opacity-70 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+              </div>
+              <div className="flex items-start gap-2">
+                <svg
+                  className="w-4 h-4 opacity-70 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                  />
+                </svg>
                 <div className="flex flex-col">
                   <span className="font-bold text-gray-700">Reset Edits</span>
                   <span className="text-gray-500">Clear all designs</span>
                 </div>
-             </div>
-          </div>
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -1472,144 +1707,144 @@ export default function EditorScreen1({
       {showExportModal && (
         <>
           {/* Invisible overlay for click-outside to close */}
-          <div 
-            className="fixed inset-0 z-[999]" 
+          <div
+            className="fixed inset-0 z-[999]"
             onClick={() => setShowExportModal(false)}
           />
           <div className="absolute right-[100px] top-6 z-[1000] pointer-events-auto">
             <div className="bg-white rounded-[15px] p-6 w-[340px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-5 relative border border-gray-100">
-            <button
-              onClick={() => setShowExportModal(false)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border-none text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2.5}
-                stroke="currentColor"
-                className="w-4 h-4"
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border-none text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18 18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18 18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
 
-            <div className="flex flex-col gap-1 pr-6">
-              <h3 className="text-lg font-bold text-gray-900 m-0">
-                Export Design
-              </h3>
-              <p className="text-xs text-gray-500 m-0">
-                Choose your preferred format(s)
-              </p>
+              <div className="flex flex-col gap-1 pr-6">
+                <h3 className="text-lg font-bold text-gray-900 m-0">
+                  Export Design
+                </h3>
+                <p className="text-xs text-gray-500 m-0">
+                  Choose your preferred format(s)
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportGlbChecked}
+                    onChange={(e) => setExportGlbChecked(e.target.checked)}
+                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-800">
+                      Export as GLB
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Download the 3D model with your design applied
+                    </span>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportPngChecked}
+                    onChange={(e) => setExportPngChecked(e.target.checked)}
+                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-800">
+                      Export as PNG
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      High-res image with transparent background
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportJpgChecked}
+                    onChange={(e) => setExportJpgChecked(e.target.checked)}
+                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-800">
+                      Export as JPG
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      High-res screenshot with background
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportPdfChecked}
+                    onChange={(e) => setExportPdfChecked(e.target.checked)}
+                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-800">
+                      Export as PDF
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Document containing the 3D model view
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="w-full py-3.5 rounded-2xl bg-[#c05520] hover:bg-[#a04619] disabled:bg-gray-300 text-white font-bold text-base transition-colors border-none cursor-pointer shadow-md flex items-center justify-center gap-2"
+              >
+                {isExporting ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <span>Download Now</span>
+                )}
+              </button>
             </div>
-
-            <div className="flex flex-col gap-3">
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={exportGlbChecked}
-                  onChange={(e) => setExportGlbChecked(e.target.checked)}
-                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">
-                    Export as GLB
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    Download the 3D model with your design applied
-                  </span>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={exportPngChecked}
-                  onChange={(e) => setExportPngChecked(e.target.checked)}
-                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">
-                    Export as PNG 
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    High-res image with transparent background
-                  </span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={exportJpgChecked}
-                  onChange={(e) => setExportJpgChecked(e.target.checked)}
-                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">
-                    Export as JPG
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    High-res screenshot with background
-                  </span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={exportPdfChecked}
-                  onChange={(e) => setExportPdfChecked(e.target.checked)}
-                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">
-                    Export as PDF
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    Document containing the 3D model view
-                  </span>
-                </div>
-              </label>
-            </div>
-
-            <button
-              onClick={handleExport}
-              disabled={isExporting}
-              className="w-full py-3.5 rounded-2xl bg-[#c05520] hover:bg-[#a04619] disabled:bg-gray-300 text-white font-bold text-base transition-colors border-none cursor-pointer shadow-md flex items-center justify-center gap-2"
-            >
-              {isExporting ? (
-                <>
-                  <svg
-                    className="animate-spin h-5 w-5 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  <span>Exporting...</span>
-                </>
-              ) : (
-                <span>Download Now</span>
-              )}
-            </button>
           </div>
-        </div>
         </>
       )}
 
@@ -1620,18 +1855,32 @@ export default function EditorScreen1({
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-6 shadow-2xl w-[90%] max-w-[360px] flex flex-col gap-5 text-center transform transition-all">
             <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-[#c0623a] mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-6 h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                />
               </svg>
             </div>
-            
-            <h3 className="text-xl font-bold text-gray-900 m-0">Switch Model</h3>
+
+            <h3 className="text-xl font-bold text-gray-900 m-0">
+              Switch Model
+            </h3>
             <p className="text-[13px] text-gray-500 m-0 leading-relaxed">
-              Do you want to keep your current design on the new model, or start fresh?
+              Do you want to keep your current design on the new model, or start
+              fresh?
             </p>
-            
+
             <div className="flex flex-col gap-2 mt-2">
-              <button 
+              <button
                 onClick={() => {
                   setModelUrl(pendingModelUrl);
                   setShowSwitchDialog(false);
@@ -1641,7 +1890,7 @@ export default function EditorScreen1({
               >
                 Keep Design
               </button>
-              <button 
+              <button
                 onClick={() => {
                   onResetAll();
                   setModelUrl(pendingModelUrl);
@@ -1652,7 +1901,7 @@ export default function EditorScreen1({
               >
                 Clear Design
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setShowSwitchDialog(false);
                   setPendingModelUrl(null);
@@ -1744,16 +1993,26 @@ const ScreenshotHelper = forwardRef(({ filename, bgColor }, ref) => {
           gl.setClearColor(new THREE.Color(bgColor), 1); // Solid background
           scene.background = new THREE.Color(bgColor);
         }
-        
+
         gl.render(scene, camera);
-        
+
         let mimeType = format === "jpg" ? "image/jpeg" : "image/png";
         const url = gl.domElement.toDataURL(mimeType, 1.0);
-        
+
         if (format === "pdf") {
           const { jsPDF } = await import("jspdf");
-          const pdfDoc = new jsPDF("landscape", "px", [gl.domElement.width, gl.domElement.height]);
-          pdfDoc.addImage(url, 'PNG', 0, 0, gl.domElement.width, gl.domElement.height);
+          const pdfDoc = new jsPDF("landscape", "px", [
+            gl.domElement.width,
+            gl.domElement.height,
+          ]);
+          pdfDoc.addImage(
+            url,
+            "PNG",
+            0,
+            0,
+            gl.domElement.width,
+            gl.domElement.height,
+          );
           pdfDoc.save(`${filename || "model"}.pdf`);
         } else {
           const a = document.createElement("a");
@@ -1777,4 +2036,3 @@ const ScreenshotHelper = forwardRef(({ filename, bgColor }, ref) => {
 
   return null;
 });
-

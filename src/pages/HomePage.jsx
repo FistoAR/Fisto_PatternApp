@@ -38,7 +38,7 @@ import ReadyMockupBanner from "../components/ReadyMockupBanner";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function HomePage() {
+export default function HomePage({ onLoaded }) {
   const navigate = useNavigate();
   const pageRef = useRef(null);
 
@@ -323,6 +323,7 @@ export default function HomePage() {
     if (totalImages === 0) {
       setImagesLoaded(true);
       setBannersContent(slideConfigs);
+      if (onLoaded) onLoaded();
       return;
     }
 
@@ -331,6 +332,7 @@ export default function HomePage() {
       if (loadedCount === totalImages) {
         setImagesLoaded(true);
         setBannersContent(slideConfigs);
+        if (onLoaded) onLoaded();
       }
     };
 
@@ -740,16 +742,6 @@ export default function HomePage() {
             id="home"
             className="hero-section relative w-[100vw] h-[100vh] flex flex-col justify-center overflow-hidden"
           >
-            {/* Loading Overlay */}
-            {!imagesLoaded && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#EEE2D3]">
-                <img
-                  src={fistoLogo}
-                  alt="Loading..."
-                  className="w-48 h-auto animate-pulse drop-shadow-xl"
-                />
-              </div>
-            )}
             {/* Background & Right-Side SVG Banner Fade (Fade In / Fade Out) */}
             <div className="hero-svg-wrapper absolute inset-0 w-full h-full z-0 pointer-events-none overflow-hidden bg-[#EEE2D3]">
               <div className="hero-svg-wrapper-inner relative w-[100vw] h-full">
