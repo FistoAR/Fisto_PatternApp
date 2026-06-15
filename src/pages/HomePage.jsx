@@ -76,64 +76,163 @@ const slideConfigs = [
     id: 1,
     bg: bg1,
     assets: [
-      { src: rightWood1, css: { left: "77.76%", top: "11.48%", width: "19.69%", height: "52.41%" } },
-      { src: leafLeft1, css: { left: "0.21%", top: "63.89%", width: "24.58%", height: "36.67%" }, isLeaf: true },
-      { src: potRight1, css: { left: "87.55%", top: "42.13%", width: "14.43%", height: "32.96%" } },
-      { src: pantRight1, css: { left: "84.74%", top: "15.00%", width: "18.07%", height: "32.13%" } },
-      { src: prod1, css: { left: "36%", top: "12%", width: "58%", objectFit: "contain" } },
-    ]
+      {
+        src: rightWood1,
+        css: {
+          left: "77.76%",
+          top: "11.48%",
+          width: "19.69%",
+          height: "52.41%",
+        },
+      },
+      {
+        src: leafLeft1,
+        css: {
+          left: "0.21%",
+          top: "63.89%",
+          width: "24.58%",
+          height: "36.67%",
+        },
+        isLeaf: true,
+      },
+      {
+        src: potRight1,
+        css: {
+          left: "87.55%",
+          top: "42.13%",
+          width: "14.43%",
+          height: "32.96%",
+        },
+      },
+      {
+        src: pantRight1,
+        css: {
+          left: "84.74%",
+          top: "15.00%",
+          width: "18.07%",
+          height: "32.13%",
+        },
+      },
+      {
+        src: prod1,
+        css: { right: "5%", top: "30%", width: "55%", objectFit: "contain" },
+      },
+    ],
   },
   {
     id: 2,
     bg: bg2,
     assets: [
-      { src: prod2, css: { left: "47.97%", top: "11.85%", width: "47.03%", height: "82.31%" } }
-    ]
+      {
+        src: prod2,
+        css: {
+          left: "47.97%",
+          top: "11.85%",
+          width: "42.03%",
+          height: "72.31%",
+        },
+      },
+    ],
   },
   {
     id: 3,
     bg: bg3,
     assets: [
-      { src: leaf3, css: { left: "1.30%", top: "0.00%", width: "99.84%", height: "100.46%" }, isLeaf: true },
-      { src: centerStone3, css: { left: "18.48%", top: "24.17%", width: "74.53%", height: "70.37%" } },
-      { src: prod3, css: { left: "49%", top: "15%", width: "43%", height: "78%" } }
-    ]
+      {
+        src: centerStone3,
+        css: {
+          right: "10.48%",
+          top: "21.17%",
+          width: "58.53%",
+          height: "70.37%",
+        },
+      },
+      {
+        src: leaf3,
+        css: { left: "0", top: "-7.00%", width: "100", height: "100%" },
+        isLeaf: true,
+      },
+      {
+        src: prod3,
+        css: { right: "16%", top: "12%", width: "38%", height: "auto" },
+      },
+    ],
   },
   {
     id: 4,
     bg: bg4,
     assets: [
-      { src: prod4, css: { left: "36%", top: "8%", width: "58%", objectFit: "contain" } }
-    ]
+      {
+        src: prod4,
+        css: { right: "4.5%", top: "18%", width: "48%", objectFit: "contain" },
+      },
+    ],
   },
   {
     id: 5,
     bg: bg5,
     assets: [
-      { src: plant5, css: { left: "80%", top: "15%", width: "25%", height: "85%" }, isLeaf: true },
-      { src: pot5, css: { left: "88%", top: "60%", width: "12%", height: "40%" } },
-      { src: prod5, css: { left: "46%", top: "20%", width: "38%", height: "70%" } }
-    ]
+      {
+        src: pot5,
+        css: { right: "-1.5%", top: "60%", width: "12%", height: "auto" },
+      },
+      {
+        src: plant5,
+        css: { left: "83.5%", top: "15.4%", width: "25%", height: "auto" },
+        isLeaf: true,
+      },
+      {
+        src: prod5,
+        css: { right: "13%", top: "19%", width: "35%", height: "auto" },
+      },
+    ],
   },
   {
     id: 6,
     bg: bg6,
     assets: [
-      { src: prod6_1, css: { left: "44%", top: "5%", width: "35%", objectFit: "contain" } },
-      { src: prod6_2, css: { left: "70%", top: "10%", width: "28%", objectFit: "contain" } },
-      { src: prod6_3, css: { left: "76%", top: "60%", width: "22%", objectFit: "contain" } }
-    ]
+      {
+        src: prod6_1,
+        css: { left: "51%", top: "27%", width: "25%", objectFit: "contain" },
+      },
+      {
+        src: prod6_2,
+        css: { left: "61%", top: "34%", width: "19%", objectFit: "contain" },
+      },
+      {
+        src: prod6_3,
+        css: { left: "72%", top: "54%", width: "15%", objectFit: "contain" },
+      },
+    ],
   },
   {
     id: 7,
     bg: bg7,
     assets: [
-      { src: rightLeaf7, css: { left: "72.97%", top: "15.46%", width: "26.23%", height: "56.32%" }, isLeaf: true },
-      { src: rightPoy7, css: { left: "77.14%", top: "70.51%", width: "13.39%", height: "17.28%" } },
-      { src: centerBootmPot7, css: { left: "41.75%", top: "69.01%", width: "13.88%", height: "24.68%" } },
-      { src: prod7, css: { left: "42%", top: "5%", width: "55%", objectFit: "contain" } }
-    ]
-  }
+      {
+        src: rightLeaf7,
+        css: { right: "-8%", top: "15.46%", width: "26.23%", height: "56.32%" },
+        isLeaf: true,
+      },
+      {
+        src: rightPoy7,
+        css: { right: "0%", top: "70.51%", width: "13.39%", height: "17.28%" },
+      },
+      {
+        src: centerBootmPot7,
+        css: {
+          left: "41.75%",
+          top: "69.01%",
+          width: "13.88%",
+          height: "24.68%",
+        },
+      },
+      {
+        src: prod7,
+        css: { left: "44%", top: "17%", width: "45%", objectFit: "contain" },
+      },
+    ],
+  },
 ];
 
 const slideContents = [
@@ -251,9 +350,7 @@ const slideContents = [
     title: (
       <>
         <span className="hero-title-line block">Stronger Sealing.</span>
-        <span className="hero-title-line block">
-          Safer Shipping.
-        </span>
+        <span className="hero-title-line block">Safer Shipping.</span>
         <span className="hero-title-line block" style={{ color: "#2B4326" }}>
           FIST-O Tape
         </span>
@@ -436,13 +533,13 @@ export default function HomePage({ onLoaded }) {
         gsap.set(leaf, { transformOrigin: "bottom center" });
 
         gsap.to(leaf, {
-          rotation: "random(-3, 3)",
+          rotation: "random(-2, 2)",
           x: "random(-4, 4)",
           y: "random(-2, 2)",
           duration: "random(3, 5)",
           repeat: -1,
           yoyo: true,
-          ease: "sine.inOut",
+          ease: "sine3.inOut",
           delay: "random(0, 2)",
         });
       });
@@ -470,7 +567,7 @@ export default function HomePage({ onLoaded }) {
       gsap.fromTo(
         background,
         { opacity: 0.5 },
-        { opacity: 1, duration: 1.0, overwrite: "auto" }
+        { opacity: 1, duration: 1.0, overwrite: "auto" },
       );
     }
 
@@ -491,7 +588,7 @@ export default function HomePage({ onLoaded }) {
           stagger: 0.15,
           ease: "power2.out",
           overwrite: "auto",
-        }
+        },
       );
     }
   }, [currentSlide, bannersContent]);
@@ -956,7 +1053,7 @@ export default function HomePage({ onLoaded }) {
             className="w-full py-14 px-6 lg:px-12 xl:px-20 flex flex-col items-center bg-white"
           >
             <span
-              className="explore-text text-xl font-bold tracking-widest uppercase mb-4"
+              className="explore-text text-2xl font-bold tracking-widest uppercase mb-4"
               style={{ color: "#D89234" }}
             >
               Explore By Category
@@ -978,16 +1075,16 @@ export default function HomePage({ onLoaded }) {
                   display: none;
                 }
               `}</style>
-              <div className="category-cards-container w-full overflow-hidden pb-4">
-                <div 
+              <div className="category-cards-container w-full  pb-4">
+                <div
                   ref={cardsRowRef}
-                  className="category-cards category-cards-row flex gap-6 md:gap-8 justify-start lg:justify-center  scrollbar-hide scroll-smooth snap-x snap-mandatory px-4 py-2 w-full lg:flex-nowrap"
+                  className="category-cards category-cards-row flex  md:gap-8 justify-start lg:justify-center  scrollbar-hide scroll-smooth snap-x snap-mandatory  w-full lg:flex-nowrap"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
                   {cardsConfig.map((card, idx) => (
                     <div
                       key={idx}
-                      className="explore-card shrink-0 w-[220px] sm:w-[240px] md:w-[266px] lg:shrink lg:w-full lg:max-w-[160px] snap-center cursor-pointer"
+                      className="explore-card w-[260px] sm:w-[280px] lg:flex-1 lg:max-w-[220px] shrink-0 snap-center cursor-pointer bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.12)] transition-shadow duration-300 p-2 border border-gray-50"
                       onClick={() =>
                         navigate("/modelsMockup", {
                           state: { activeCategory: card.category },
@@ -999,7 +1096,7 @@ export default function HomePage({ onLoaded }) {
                   ))}
                 </div>
               </div>
-              
+
               {/* Navigation Arrows Centered Below */}
               <div className="flex gap-4 mt-2 lg:hidden">
                 <button
@@ -1007,8 +1104,19 @@ export default function HomePage({ onLoaded }) {
                   className="w-12 h-12 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center cursor-pointer border border-white/20 hover:scale-105 transition-all shadow-md"
                   aria-label="Scroll left"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.75 19.5 8.25 12l7.5-7.5"
+                    />
                   </svg>
                 </button>
                 <button
@@ -1016,8 +1124,19 @@ export default function HomePage({ onLoaded }) {
                   className="w-12 h-12 rounded-full bg-black/15 hover:bg-black/30 text-white flex items-center justify-center cursor-pointer border border-white/20 hover:scale-105 transition-all shadow-md"
                   aria-label="Scroll right"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                    />
                   </svg>
                 </button>
               </div>
