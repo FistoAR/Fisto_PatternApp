@@ -16,6 +16,7 @@ import frontIcon from "../../assets/images/Icons/front.webp";
 import lockIcon from "../../assets/images/Icons/lock.webp";
 import sendIcon from "../../assets/images/Icons/send.webp";
 import transparentIcon from "../../assets/images/Icons/transparent.webp";
+import erraserIcon from "../../assets/images/Editor 2/Icons/erraser.webp";
 
 const TEXTURE_WIDTH = 2048;
 const TEXTURE_HEIGHT = 2048;
@@ -363,6 +364,8 @@ class DraggableText {
     this.flipX = false;
     this.flipY = false;
     this.locked = false;
+    this.bend = options.bend || 0;
+    this.letterSpacing = options.letterSpacing || 0;
 
     this.updateDimensions();
 
@@ -379,9 +382,16 @@ class DraggableText {
     const lines = this.text.split("\n");
     let maxWidth = 0;
     lines.forEach(line => {
-      const metrics = ctx.measureText(line);
-      if (metrics.width > maxWidth) {
-        maxWidth = metrics.width;
+      let lineW = 0;
+      if (this.letterSpacing) {
+        const chars = line.split('');
+        chars.forEach(c => lineW += ctx.measureText(c).width + this.letterSpacing);
+        if (chars.length > 0) lineW -= this.letterSpacing;
+      } else {
+        lineW = ctx.measureText(line).width;
+      }
+      if (lineW > maxWidth) {
+        maxWidth = lineW;
       }
     });
 
@@ -413,6 +423,8 @@ class DraggableText {
     copy.flipX = this.flipX;
     copy.flipY = this.flipY;
     copy.locked = this.locked;
+    copy.bend = this.bend;
+    copy.letterSpacing = this.letterSpacing;
     return copy;
   }
 
@@ -433,8 +445,40 @@ class DraggableText {
     };
   }
 
-  draw(ctx, scale) {
+  draw(ctx, scale, uvComponents = []) {
     ctx.save();
+
+    // Clip to the selected faces if any
+    if (
+      this.selectedFaceIds &&
+      this.selectedFaceIds.length > 0 &&
+      uvComponents &&
+      uvComponents.length > 0
+    ) {
+      ctx.beginPath();
+      let hasPath = false;
+      this.selectedFaceIds.forEach((fId) => {
+        const comp = uvComponents.find((c) => c.id === fId);
+        if (comp && comp.path && comp.path.length > 0) {
+          ctx.moveTo(
+            comp.path[0].u * ctx.canvas.width,
+            comp.path[0].v * ctx.canvas.height,
+          );
+          for (let i = 1; i < comp.path.length; i++) {
+            ctx.lineTo(
+              comp.path[i].u * ctx.canvas.width,
+              comp.path[i].v * ctx.canvas.height,
+            );
+          }
+          hasPath = true;
+        }
+      });
+      if (hasPath) {
+        ctx.closePath();
+        ctx.clip();
+      }
+    }
+
     ctx.globalAlpha = this.opacity;
 
     const scaledX = this.x / scale;
@@ -461,21 +505,80 @@ class DraggableText {
 
     lines.forEach((line, i) => {
       const lineY = startY + i * lineHeight;
-      ctx.fillText(line, 0, lineY);
+      
+      let textWidth = 0;
+      const charWidths = [];
+      const chars = line.split('');
+      chars.forEach(c => {
+        const w = ctx.measureText(c).width;
+        charWidths.push(w);
+        textWidth += w + (this.letterSpacing || 0);
+      });
+      if (chars.length > 0) textWidth -= (this.letterSpacing || 0);
 
-      if (this.underline) {
-        const metrics = ctx.measureText(line);
-        const textWidth = metrics.width;
-        // Position underline just below the text baseline
-        const underlineY = lineY + (this.fontSize / scale) * 0.4;
-        const thickness = Math.max(1, this.fontSize / scale / 15);
+      if (!this.bend || Math.abs(this.bend) < 1) {
+        if (!this.letterSpacing) {
+          ctx.fillText(line, 0, lineY);
+        } else {
+          let currX = -textWidth / 2;
+          chars.forEach((char, idx) => {
+            const w = charWidths[idx];
+            ctx.fillText(char, currX + w / 2, lineY);
+            currX += w + this.letterSpacing;
+          });
+        }
 
-        ctx.beginPath();
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = thickness;
-        ctx.moveTo(-textWidth / 2, underlineY);
-        ctx.lineTo(textWidth / 2, underlineY);
-        ctx.stroke();
+        if (this.underline) {
+          // Position underline just below the text baseline
+          const underlineY = lineY + (this.fontSize / scale) * 0.4;
+          const thickness = Math.max(1, this.fontSize / scale / 15);
+
+          ctx.beginPath();
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = thickness;
+          ctx.moveTo(-textWidth / 2, underlineY);
+          ctx.lineTo(textWidth / 2, underlineY);
+          ctx.stroke();
+        }
+      } else {
+        // Draw curved text (fixed left-to-right reading direction)
+        const angle = (this.bend / 100) * Math.PI;
+        const R = textWidth / angle;
+        let currentAngle = -angle / 2; // start on the left
+
+        ctx.save();
+        ctx.translate(0, lineY + R);
+
+        chars.forEach((char, idx) => {
+          const w = charWidths[idx];
+          const charTotalW = w + (idx < chars.length - 1 ? (this.letterSpacing || 0) : 0);
+          const charAngle = charTotalW / R;
+          
+          // Place character in the center of its arc segment
+          const theta = currentAngle + charAngle / 2;
+          ctx.save();
+          ctx.rotate(theta);
+          ctx.translate(0, -R);
+          ctx.fillText(char, 0, 0);
+          
+          if (this.underline) {
+            const underlineY = (this.fontSize / scale) * 0.4;
+            const thickness = Math.max(1, this.fontSize / scale / 15);
+            ctx.beginPath();
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = thickness;
+            // Draw a straight line segment for this character
+            ctx.moveTo(-charTotalW / 2, underlineY);
+            ctx.lineTo(charTotalW / 2, underlineY);
+            ctx.stroke();
+          }
+          
+          ctx.restore();
+          
+          currentAngle += charAngle;
+        });
+        
+        ctx.restore();
       }
     });
 
@@ -1044,22 +1147,27 @@ export function extractUvComponents(mesh, modelUrl) {
     const area = (maxU - minU) * (maxV - minV);
     const loops = orderEdgesToPaths(outlineEdges);
     
-    const validLoops = loops.filter(loop => {
-      if (loop.length < 3) return false;
+    const loopsWithArea = loops.map(loop => {
       let loopArea = 0;
-      for (let i = 0; i < loop.length; i++) {
-        let p1 = loop[i];
-        let p2 = loop[(i + 1) % loop.length];
-        loopArea += p1.u * p2.v - p2.u * p1.v;
+      if (loop.length >= 3) {
+        for (let i = 0; i < loop.length; i++) {
+          let p1 = loop[i];
+          let p2 = loop[(i + 1) % loop.length];
+          loopArea += p1.u * p2.v - p2.u * p1.v;
+        }
       }
-      return Math.abs(loopArea / 2) > 0.0001;
+      return { loop, area: Math.abs(loopArea / 2) };
     });
 
-    if (validLoops.length > 0) {
+    const validLoopsInfo = loopsWithArea
+      .filter(info => info.area > 0.0001)
+      .sort((a, b) => b.area - a.area);
+
+    if (validLoopsInfo.length > 0) {
       finalComponents.push({
         id: `face_${faceCounter++}`,
-        path: validLoops[0],
-        loops: validLoops,
+        path: validLoopsInfo[0].loop,
+        loops: validLoopsInfo.map(info => info.loop),
         minU,
         maxU,
         minV,
@@ -1469,72 +1577,7 @@ const Canvas = forwardRef(
           });
         }
         imagesRef.current.forEach((item) => {
-          bakeCtx.save();
-
-          // Clip to selected faces if any to prevent image bleeding onto adjacent UV frames/islands in the 3D model
-          if (item.selectedFaceIds && item.selectedFaceIds.length > 0) {
-            bakeCtx.beginPath();
-            let hasPath = false;
-            item.selectedFaceIds.forEach((fId) => {
-              const comp = uvComponentsRef.current.find((c) => c.id === fId);
-              if (comp && comp.path && comp.path.length > 0) {
-                bakeCtx.moveTo(
-                  comp.path[0].u * bakeCanvas.width,
-                  comp.path[0].v * bakeCanvas.height,
-                );
-                for (let i = 1; i < comp.path.length; i++) {
-                  bakeCtx.lineTo(
-                    comp.path[i].u * bakeCanvas.width,
-                    comp.path[i].v * bakeCanvas.height,
-                  );
-                }
-                hasPath = true;
-              }
-            });
-            if (hasPath) {
-              bakeCtx.closePath();
-              bakeCtx.clip();
-            }
-          }
-
-          bakeCtx.globalAlpha = item.opacity;
-          bakeCtx.translate(item.x + item.width / 2, item.y + item.height / 2);
-          bakeCtx.rotate(item.rotation);
-          bakeCtx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
-          if (item instanceof DraggableText) {
-            const scaleX = item.width / item.nativeWidth;
-            const scaleY = item.height / item.nativeHeight;
-            bakeCtx.scale(scaleX, scaleY);
-
-            bakeCtx.fillStyle = item.color;
-            bakeCtx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
-            bakeCtx.textAlign = "center";
-            bakeCtx.textBaseline = "middle";
-            bakeCtx.fillText(item.text, 0, 0);
-
-            if (item.underline) {
-              const metrics = bakeCtx.measureText(item.text);
-              const textWidth = metrics.width;
-              const underlineY = item.fontSize * 0.4;
-              const thickness = Math.max(1, item.fontSize / 15);
-
-              bakeCtx.beginPath();
-              bakeCtx.strokeStyle = item.color;
-              bakeCtx.lineWidth = thickness;
-              bakeCtx.moveTo(-textWidth / 2, underlineY);
-              bakeCtx.lineTo(textWidth / 2, underlineY);
-              bakeCtx.stroke();
-            }
-          } else {
-            bakeCtx.drawImage(
-              item.filteredCanvas || item.img,
-              -item.width / 2,
-              -item.height / 2,
-              item.width,
-              item.height,
-            );
-          }
-          bakeCtx.restore();
+          item.draw(bakeCtx, 1, uvComponentsRef.current);
         });
 
         onTextureUpdatedRef.current();
@@ -2733,6 +2776,53 @@ const Canvas = forwardRef(
       uploadImage: (file, fitType = null) => {
         onUploadImage(file, fitType);
       },
+      alignSelectedLayer: (hAlign, vAlign) => {
+        const sel = selectedImageRef.current;
+        if (!sel) return;
+
+        let minU = 0, maxU = 1, minV = 0, maxV = 1;
+        let hasSelected = false;
+
+        uvComponentsRef.current.forEach((comp) => {
+          if (selectedFacesRef.current.has(comp.id)) {
+            if (!hasSelected) {
+              minU = comp.minU; maxU = comp.maxU;
+              minV = comp.minV; maxV = comp.maxV;
+            } else {
+              minU = Math.min(minU, comp.minU);
+              maxU = Math.max(maxU, comp.maxU);
+              minV = Math.min(minV, comp.minV);
+              maxV = Math.max(maxV, comp.maxV);
+            }
+            hasSelected = true;
+          }
+        });
+
+        const texW = textureSizeRef.current.width;
+        const texH = textureSizeRef.current.height;
+        
+        const boundsX = minU * texW;
+        const boundsY = minV * texH;
+        const boundsW = (maxU - minU) * texW;
+        const boundsH = (maxV - minV) * texH;
+
+        if (hAlign) {
+          if (hAlign === "left") sel.x = boundsX;
+          else if (hAlign === "center") sel.x = boundsX + boundsW / 2 - sel.width / 2;
+          else if (hAlign === "right") sel.x = boundsX + boundsW - sel.width;
+        }
+
+        if (vAlign) {
+          if (vAlign === "top") sel.y = boundsY;
+          else if (vAlign === "center") sel.y = boundsY + boundsH / 2 - sel.height / 2;
+          else if (vAlign === "bottom") sel.y = boundsY + boundsH - sel.height;
+        }
+
+        needsDisplayRedrawRef.current = true;
+        bakeTexture();
+        saveState();
+        redrawDisplay();
+      },
       applyFitToSelectedImage: (fitType) => {
         const sel = selectedImageRef.current;
         if (!sel || !sel.img) return;
@@ -3456,30 +3546,11 @@ const Canvas = forwardRef(
                     }}
                     className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${(toolMode === "eraser" || toolMode === "eraser-pick") ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                      stroke="currentColor"
-                      className={`w-5 h-5 opacity-80 hover:opacity-100 ${(toolMode === "eraser" || toolMode === "eraser-pick") ? "text-white" : "text-gray-800"}`}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0 0 12 2.25ZM9 12h.008v.008H9V12Zm3 0h.008v.008H12V12Zm3 0h.008v.008H15V12Z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="m13.5 15-3 3"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="m10.5 15 3 3"
-                      />
-                    </svg>
+                    <img
+                      src={erraserIcon}
+                      alt="Eraser"
+                      className={`w-6 h-6 opacity-80 hover:opacity-100 ${(toolMode === "eraser" || toolMode === "eraser-pick") ? "brightness-0 invert" : ""}`}
+                    />
                   </button>
                 </Tooltip>
                 {(toolMode === "eraser" || toolMode === "eraser-pick") && (

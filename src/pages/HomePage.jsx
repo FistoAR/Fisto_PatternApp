@@ -22,7 +22,6 @@ import prod2 from "../assets/images/Home/Hero/slide2/product.webp";
 import bg3 from "../assets/images/Home/Hero/slide3/bg.webp";
 import prod3 from "../assets/images/Home/Hero/slide3/product.webp";
 import leaf3 from "../assets/images/Home/Hero/slide3/leaf.webp";
-import centerStone3 from "../assets/images/Home/Hero/slide3/center stone.webp";
 
 // Slide 4 (Carton Boxes)
 import bg4 from "../assets/images/Home/Hero/slide4/bg.webp";
@@ -138,23 +137,15 @@ const slideConfigs = [
     id: 3,
     bg: bg3,
     assets: [
+      
       {
-        src: centerStone3,
-        css: {
-          right: "10.48%",
-          top: "21.17%",
-          width: "58.53%",
-          height: "70.37%",
-        },
+        src: prod3,
+        css: { right: "12%", bottom: "5%", width: "55%", height: "auto" },
       },
       {
         src: leaf3,
         css: { left: "0", top: "-7.00%", width: "100", height: "100%" },
         isLeaf: true,
-      },
-      {
-        src: prod3,
-        css: { right: "16%", top: "12%", width: "38%", height: "auto" },
       },
     ],
   },
@@ -468,28 +459,28 @@ export default function HomePage({ onLoaded }) {
       gsap.to(leftContent.children, {
         y: 40,
         opacity: 0,
-        duration: 0.4, // Speed up text exit so it feels more responsive
-        stagger: 0.1,
+        duration: 0.3, // Faster text exit
+        stagger: 0.05,
         ease: "power2.inOut",
         onComplete: () => {
           setCurrentSlide(logicalNext);
 
           setTimeout(() => {
-            // Unlock early so users can rapidly click next/prev without waiting for text to finish animating in!
-            setIsTransitioning(false);
-
             gsap.fromTo(
               leftContent.children,
-              { y: 200, opacity: 0 },
+              { y: 80, opacity: 0 },
               {
                 y: 0,
                 opacity: 1,
-                duration: 1.0,
-                stagger: 0.15,
+                duration: 0.8,
+                stagger: 0.1,
                 ease: "power3.out",
+                onComplete: () => {
+                  setIsTransitioning(false);
+                }
               },
             );
-          }, 700);
+          }, 50);
         },
       });
     } else {
@@ -501,7 +492,7 @@ export default function HomePage({ onLoaded }) {
   useEffect(() => {
     const timer = setInterval(() => {
       changeSlide(currentSlide + 1);
-    }, 2000); // Increased interval time so the new slower animations can play
+    }, 4000); // 4 seconds between slides
     return () => clearInterval(timer);
   }, [currentSlide, isTransitioning]);
 

@@ -203,6 +203,7 @@ export default function EditorScreen2({
   modelUrl,
   setModelUrl,
   appliedMaterials,
+  appliedColors,
   canvasResetKey,
   sceneBgColor,
   sceneBgImage,
@@ -254,6 +255,8 @@ export default function EditorScreen2({
     bold: false,
     italic: false,
     underline: false,
+    bend: 0,
+    letterSpacing: 0,
   });
 
   // ── Export Modal State ───────────────────────────────────────────────────
@@ -362,6 +365,8 @@ export default function EditorScreen2({
         bold: layer.bold || false,
         italic: layer.italic || false,
         underline: layer.underline || false,
+        bend: layer.bend || 0,
+        letterSpacing: layer.letterSpacing || 0,
       });
     }
   }, []);
@@ -531,6 +536,107 @@ export default function EditorScreen2({
                       </div>
                     </div>
 
+                    {/* Blend (Arch) */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                        Blend (Arch) — {textProps.bend}
+                      </label>
+                      <input
+                        type="range"
+                        min={-100}
+                        max={100}
+                        step={1}
+                        value={textProps.bend}
+                        onChange={(e) =>
+                          applyTextProp("bend", Number(e.target.value))
+                        }
+                        className="w-full accent-[#c0623a] cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                        <span>Up</span>
+                        <span>Straight</span>
+                        <span>Down</span>
+                      </div>
+                    </div>
+
+                    {/* Letter Spacing */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                        Letter Spacing — {textProps.letterSpacing}
+                      </label>
+                      <input
+                        type="range"
+                        min={-20}
+                        max={100}
+                        step={1}
+                        value={textProps.letterSpacing}
+                        onChange={(e) =>
+                          applyTextProp("letterSpacing", Number(e.target.value))
+                        }
+                        className="w-full accent-[#c0623a] cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                        <span>Tight</span>
+                        <span>Normal</span>
+                        <span>Loose</span>
+                      </div>
+                    </div>
+
+                    {/* Alignment Options */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                        Alignment (to Selection)
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => canvasRef.current?.alignSelectedLayer("left", null)}
+                            className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
+                            title="Align Left"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+                          </button>
+                          <button
+                            onClick={() => canvasRef.current?.alignSelectedLayer("center", null)}
+                            className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
+                            title="Align Center Horizontal"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                          </button>
+                          <button
+                            onClick={() => canvasRef.current?.alignSelectedLayer("right", null)}
+                            className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
+                            title="Align Right"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25" /></svg>
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => canvasRef.current?.alignSelectedLayer(null, "top")}
+                            className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
+                            title="Align Top"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>
+                          </button>
+                          <button
+                            onClick={() => canvasRef.current?.alignSelectedLayer(null, "center")}
+                            className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
+                            title="Align Center Vertical"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>
+                          </button>
+                          <button
+                            onClick={() => canvasRef.current?.alignSelectedLayer(null, "bottom")}
+                            className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
+                            title="Align Bottom"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Bold / Italic / Underline */}
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
@@ -691,6 +797,7 @@ export default function EditorScreen2({
               textureVersion={textureVersion}
               modelUrl={modelUrl}
               appliedMaterials={appliedMaterials}
+              appliedColors={appliedColors}
               wireframe={wireframe}
               setWireframe={setWireframe}
               showUv={showUv}

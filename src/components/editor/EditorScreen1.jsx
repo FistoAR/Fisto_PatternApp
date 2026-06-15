@@ -366,7 +366,11 @@ function AutoSizedModelWithDimensions({
           // Restore Originals (No custom color, no PBR material)
           m.color.setHex(m.userData.originalColorHex);
           m.userData.currentPbrId = null;
-          m.map = m.userData.originalMap;
+          if (textureUrl) {
+            m.map = null;
+          } else {
+            m.map = m.userData.originalMap;
+          }
           m.normalMap = null;
           m.roughnessMap = null;
           m.metalnessMap = null;
@@ -546,6 +550,7 @@ export default function EditorScreen1({
       offset.setLength(newDist);
       camera.position.copy(controls.target).add(offset);
       controls.update();
+      setZoomPercent(newPct);
     }
   };
 

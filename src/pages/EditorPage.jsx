@@ -203,6 +203,7 @@ export default function EditorPage() {
           modelUrl={modelUrl}
           setModelUrl={setModelUrl}
           appliedMaterials={editorState.materials}
+          appliedColors={editorState.colors}
           onBack={handleBackToModelViewer}
           isActive={currentScreen === 2}
           canvasResetKey={canvasResetKey}

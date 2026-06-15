@@ -45,6 +45,7 @@ export default function RightPanel({
   textureVersion,
   modelUrl,
   appliedMaterials,
+  appliedColors,
   wireframe,
   setWireframe,
   showUv,
@@ -263,6 +264,7 @@ export default function RightPanel({
                   textureVersion={textureVersion}
                   wireframe={wireframe}
                   appliedMaterials={appliedMaterials}
+                  appliedColors={appliedColors}
                   isActive={isActive}
                 />
               )}
@@ -738,6 +740,7 @@ function AutoSizedModel({
   wireframe,
   customSize,
   appliedMaterials,
+  appliedColors,
   isActive,
 }) {
   const { scene } = useGLTF(modelUrl);
@@ -756,9 +759,10 @@ function AutoSizedModel({
   }, [scene]);
   // No uvLayout memoization needed
   const canvasTextureRef = useRef(null);
-  const appliedTextureVersionRef = useRef(-1);
+  const appliedTextureVersionRef = useRef(null);
   const appliedWireframeRef = useRef(null);
   const appliedMaterialsRef = useRef(null);
+  const appliedColorsRef = useRef(null);
   const appliedActiveRef = useRef(false);
 
   const { autoTransform, baseDims } = useMemo(() => {
@@ -793,18 +797,15 @@ function AutoSizedModel({
 
   // Apply texture + wireframe
   useEffect(() => {
-    if (!isActive) {
-      appliedActiveRef.current = false;
-      return;
-    }
-
     if (
       textureVersion === appliedTextureVersionRef.current &&
       wireframe === appliedWireframeRef.current &&
       appliedMaterials === appliedMaterialsRef.current &&
-      appliedActiveRef.current === true
-    )
+      appliedColors === appliedColorsRef.current &&
+      appliedActiveRef.current === isActive
+    ) {
       return;
+    }
     if (!clonedScene || !textureCanvasRef?.current) return;
 
     const textureCanvas = textureCanvasRef.current;
@@ -895,7 +896,6 @@ function AutoSizedModel({
           // No PBR Material
           if (mat.userData.currentPbrId !== null) {
             mat.userData.currentPbrId = null;
-            mat.map = null;
             mat.normalMap = null;
             mat.roughnessMap = null;
             mat.metalnessMap = null;
@@ -904,6 +904,36 @@ function AutoSizedModel({
             mat.metalness = 0;
             mat.needsUpdate = true;
           }
+        }
+
+        // --- APPLY COLORS ---
+        const colorHex = appliedColors
+          ? appliedColors[mat.name] || appliedColors["all"]
+          : null;
+
+        if (colorHex) {
+          mat.color.set(colorHex);
+          // Hide base map so 'your design here' doesn't show under the decal
+          if (!mat.userData.currentPbrId && mat.map !== null) {
+            mat.map = null;
+          }
+          mat.needsUpdate = true;
+        } else if (!materialType) {
+          // Restore Original
+          if (mat.userData.originalColorHex !== undefined) {
+             mat.color.setHex(mat.userData.originalColorHex);
+          }
+          if (mat.map === null && mat.userData.originalMap) {
+             mat.map = mat.userData.originalMap;
+          }
+          mat.needsUpdate = true;
+        } else if (materialType) {
+           // For PBR materials with no custom color, default to white
+           mat.color.setHex(0xffffff);
+           if (mat.map !== null && !mat.userData.currentPbrId) {
+             mat.map = null;
+           }
+           mat.needsUpdate = true;
         }
 
         if ("envMapIntensity" in mat) mat.envMapIntensity = 0.08;
@@ -936,8 +966,9 @@ function AutoSizedModel({
     appliedTextureVersionRef.current = textureVersion;
     appliedWireframeRef.current = wireframe;
     appliedMaterialsRef.current = appliedMaterials;
+    appliedColorsRef.current = appliedColors;
     appliedActiveRef.current = true;
-  }, [clonedScene, gl, textureCanvasRef, textureVersion, wireframe, appliedMaterials, isActive]);
+  }, [clonedScene, gl, textureCanvasRef, textureVersion, wireframe, appliedMaterials, appliedColors, isActive]);
 
   if (!clonedScene) return null;
 
