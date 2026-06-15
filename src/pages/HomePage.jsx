@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { MODELS } from "../components/editor/ModelsPopup";
 import fistoLogo from "../assets/images/fisto-logo.png";
 import packagingIcon from "../assets/images/Home/packaging.webp";
 import realistic3dIcon from "../assets/images/Home/realistic3d.webp";
@@ -385,6 +386,21 @@ export default function HomePage({ onLoaded }) {
   const navigate = useNavigate();
   const pageRef = useRef(null);
 
+  const handleStartDesigning = () => {
+    const slideToModelIdMap = {
+      0: 'oval-container',
+      1: 'kraft-paper',
+      2: 'glass-bottle',
+      3: 'beverage-cup',
+      4: 'biodegradable-bags',
+      5: 'box-sealing-tape',
+      6: 't-shirt',
+    };
+    const modelId = slideToModelIdMap[currentSlide] || 'oval-container';
+    const selectedModel = MODELS.find(m => m.id === modelId);
+    navigate('/editor', { state: { initialModelUrl: selectedModel?.modelUrl } });
+  };
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [bannersContent, setBannersContent] = useState([]);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -492,7 +508,7 @@ export default function HomePage({ onLoaded }) {
   useEffect(() => {
     const timer = setInterval(() => {
       changeSlide(currentSlide + 1);
-    }, 4000); // 4 seconds between slides
+    }, 2800); // reduced slide staying time
     return () => clearInterval(timer);
   }, [currentSlide, isTransitioning]);
 
@@ -564,23 +580,42 @@ export default function HomePage({ onLoaded }) {
 
     const activeAssets = activeSlideEl.querySelectorAll(".hero-slide-asset");
     if (activeAssets.length > 0) {
-      gsap.set(activeAssets, { transformOrigin: "center center" });
+      gsap.set(activeAssets, { transformOrigin: "center center", opacity: 0, scale: 1, x: 0, y: 0 });
 
-      gsap.fromTo(
-        activeAssets,
-        {
-          opacity: 0,
-          scale: 0.95,
-        },
-        {
-          opacity: 1,
-          scale: 1,
-          duration: 1.2,
-          stagger: 0.15,
-          ease: "power2.out",
-          overwrite: "auto",
-        },
-      );
+      const tl = gsap.timeline({ overwrite: "auto" });
+
+      if (currentSlide === 0) {
+        // Slide 1: 1st wood from right, next flower pot, third product from bottom
+        if (activeAssets[0]) tl.fromTo(activeAssets[0], { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+        if (activeAssets[1]) tl.fromTo(activeAssets[1], { x: -50, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
+        if (activeAssets[2]) tl.fromTo(activeAssets[2], { x: 50, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
+        if (activeAssets[3]) tl.fromTo(activeAssets[3], { y: -50, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
+        if (activeAssets[4]) tl.fromTo(activeAssets[4], { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.4);
+      } else if (currentSlide === 1) {
+        // Slide 2: product from right
+        tl.fromTo(activeAssets[0], { x: 150, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+      } else if (currentSlide === 2) {
+        // Slide 3: product from bottom and leaf appear
+        if (activeAssets[0]) tl.fromTo(activeAssets[0], { y: 150, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+        if (activeAssets[1]) tl.fromTo(activeAssets[1], { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 1.5, ease: "power2.out" }, 0.2);
+      } else if (currentSlide === 3) {
+        // Slide 4: product from right side
+        if (activeAssets[0]) tl.fromTo(activeAssets[0], { x: 150, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+      } else if (currentSlide === 4) {
+        // Slide 5: leaf from right, product from top
+        if (activeAssets[0]) tl.fromTo(activeAssets[0], { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+        if (activeAssets[1]) tl.fromTo(activeAssets[1], { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
+        if (activeAssets[2]) tl.fromTo(activeAssets[2], { y: -150, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.4);
+      } else if (currentSlide === 5) {
+        // Slide 6: product appear one by one from bottom right corner
+        tl.fromTo(activeAssets, { x: 100, y: 100, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 1.5, stagger: 0.2, ease: "power2.out" }, 0);
+      } else if (currentSlide === 6) {
+        // Slide 7: leaf and pot from bottom, product from left
+        if (activeAssets[0]) tl.fromTo(activeAssets[0], { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+        if (activeAssets[1]) tl.fromTo(activeAssets[1], { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.1);
+        if (activeAssets[2]) tl.fromTo(activeAssets[2], { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
+        if (activeAssets[3]) tl.fromTo(activeAssets[3], { x: -150, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.4);
+      }
     }
   }, [currentSlide, bannersContent]);
 
@@ -880,7 +915,7 @@ export default function HomePage({ onLoaded }) {
                 </p>
 
                 <button
-                  onClick={() => navigate("/editor")}
+                  onClick={handleStartDesigning}
                   className="hero-btn group flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-white font-semibold text-lg shadow-lg hover:opacity-90 border-none cursor-pointer mb-16 "
                   style={{
                     background: slideContents[currentSlide]?.buttonBg,

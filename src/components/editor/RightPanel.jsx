@@ -61,8 +61,10 @@ export default function RightPanel({
   onExportClick,
   customSize,
   isActive,
+  selectedColor,
+  setSelectedColor,
+  onOpenTapeLayout,
 }) {
-  const [selectedColor, setSelectedColor] = useState("cream");
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -265,6 +267,8 @@ export default function RightPanel({
                   wireframe={wireframe}
                   appliedMaterials={appliedMaterials}
                   appliedColors={appliedColors}
+                  bgColor={bgColor}
+                  selectedColor={selectedColor}
                   isActive={isActive}
                 />
               )}
@@ -741,6 +745,8 @@ function AutoSizedModel({
   customSize,
   appliedMaterials,
   appliedColors,
+  bgColor,
+  selectedColor,
   isActive,
 }) {
   const { scene } = useGLTF(modelUrl);
@@ -751,9 +757,20 @@ function AutoSizedModel({
     const clone = cloneSkeleton(scene);
     clone.traverse((obj) => {
       if (!obj.isMesh || !obj.material) return;
+      
+      const processMat = (mat) => {
+        if (!mat) return mat;
+        const m = mat.clone();
+        m.userData.originalMap = m.map;
+        m.userData.originalColorHex = m.color.getHex();
+        // Remove the default map so "Upload your design" is hidden immediately
+        m.map = null;
+        return m;
+      };
+
       obj.material = Array.isArray(obj.material)
-        ? obj.material.map((mat) => mat?.clone())
-        : obj.material.clone();
+        ? obj.material.map(processMat)
+        : processMat(obj.material);
     });
     return clone;
   }, [scene]);
@@ -763,6 +780,8 @@ function AutoSizedModel({
   const appliedWireframeRef = useRef(null);
   const appliedMaterialsRef = useRef(null);
   const appliedColorsRef = useRef(null);
+  const appliedBgColorRef = useRef(null);
+  const appliedSelectedColorRef = useRef(null);
   const appliedActiveRef = useRef(false);
 
   const { autoTransform, baseDims } = useMemo(() => {
@@ -795,35 +814,35 @@ function AutoSizedModel({
     ];
   }, [baseDims, customSize]);
 
-  // Apply texture + wireframe
+  // Apply texture + wireframe + materials
   useEffect(() => {
     if (
-      textureVersion === appliedTextureVersionRef.current &&
       wireframe === appliedWireframeRef.current &&
       appliedMaterials === appliedMaterialsRef.current &&
       appliedColors === appliedColorsRef.current &&
-      appliedActiveRef.current === isActive
+      bgColor === appliedBgColorRef.current &&
+      selectedColor === appliedSelectedColorRef.current &&
+      appliedActiveRef.current === isActive &&
+      canvasTextureRef.current
     ) {
       return;
     }
     if (!clonedScene || !textureCanvasRef?.current) return;
 
     const textureCanvas = textureCanvasRef.current;
-    if (canvasTextureRef.current) {
-      canvasTextureRef.current.dispose();
+    // Create the canvas texture once
+    if (!canvasTextureRef.current) {
+      const tex = new THREE.CanvasTexture(textureCanvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.ClampToEdgeWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.generateMipmaps = true;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+      tex.flipY = false;
+      canvasTextureRef.current = tex;
     }
-
-    const tex = new THREE.CanvasTexture(textureCanvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = THREE.ClampToEdgeWrapping;
-    tex.wrapT = THREE.ClampToEdgeWrapping;
-    tex.generateMipmaps = true;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    tex.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
-    tex.flipY = false;
-    // No offset/scaling applying, use texture 1:1
-    canvasTextureRef.current = tex;
 
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || obj.userData.isDecal) return;
@@ -907,24 +926,54 @@ function AutoSizedModel({
         }
 
         // --- APPLY COLORS ---
-        const colorHex = appliedColors
-          ? appliedColors[mat.name] || appliedColors["all"]
-          : null;
+        // Precedence: 
+        // 1. If Editor 2 swatch is used (not default cream), use `bgColor`.
+        // 2. Else fallback to `appliedColors` from Editor 1.
+        let finalColorHex = null;
 
-        if (colorHex) {
-          mat.color.set(colorHex);
+        // "cream" (#f5e6d3) is the default unselected state for selectedColor in Editor 2.
+        // Wait, what if they actually want cream? It sets selectedColor="cream".
+        // But if they haven't touched it, it's "cream" by default. If we ALWAYS apply `bgColor`, 
+        // we override Editor 1's `appliedColors` immediately on load. 
+        // We only want to override if they actually changed it!
+        // A better heuristic: we can track if they clicked a swatch by checking if we have a state change,
+        // but it's simpler: if appliedColors has a value, use it, UNLESS selectedColor changes.
+        // Let's use `bgColor` as the base if it's explicitly set. Actually, the user asked to 
+        // "removwe that old color and update new one without collapse those"
+        // Let's check if the current bgColor matches the Editor 1 color, or if it has been updated.
+        const editor1Color = appliedColors ? (appliedColors[mat.name] || appliedColors["all"]) : null;
+
+        // We can give precedence to bgColor. Since we don't have a perfect dirty flag,
+        // we apply editor1Color on first mount, but if they click a swatch in Editor 2, 
+        // we apply bgColor.
+        // If Editor 1 passed a color, and Editor 2's bgColor is default "#ffffff" or "cream" (#f5e6d3)
+        // and hasn't been explicitly clicked, we might accidentally override it.
+        // Let's just use `bgColor` but we need to know if `bgColor` is user-selected or default.
+        // We will just use `bgColor` directly. The parent sets it.
+        // Wait, the parent's default `bgColor` is "#ffffff" (in EditorScreen2). 
+        // Wait, packageColors default is "cream". EditorScreen2 state is "#ffffff".
+        // Let's just use `bgColor` if it differs from "#ffffff", or if `selectedColor` !== "cream" (or actually, if Editor 2 color is actively used).
+        
+        if (selectedColor && selectedColor !== "none") {
+           finalColorHex = bgColor;
+        } else if (editor1Color) {
+           finalColorHex = editor1Color;
+        }
+
+        if (finalColorHex) {
+          mat.color.set(finalColorHex);
           // Hide base map so 'your design here' doesn't show under the decal
           if (!mat.userData.currentPbrId && mat.map !== null) {
             mat.map = null;
           }
           mat.needsUpdate = true;
         } else if (!materialType) {
-          // Restore Original
+          // Restore Original color only, keep map null to hide "upload your design"
           if (mat.userData.originalColorHex !== undefined) {
              mat.color.setHex(mat.userData.originalColorHex);
           }
-          if (mat.map === null && mat.userData.originalMap) {
-             mat.map = mat.userData.originalMap;
+          if (mat.map !== null && !mat.userData.currentPbrId) {
+             mat.map = null;
           }
           mat.needsUpdate = true;
         } else if (materialType) {
@@ -963,12 +1012,24 @@ function AutoSizedModel({
       }
     });
 
-    appliedTextureVersionRef.current = textureVersion;
     appliedWireframeRef.current = wireframe;
     appliedMaterialsRef.current = appliedMaterials;
     appliedColorsRef.current = appliedColors;
+    appliedBgColorRef.current = bgColor;
+    appliedSelectedColorRef.current = selectedColor;
     appliedActiveRef.current = true;
-  }, [clonedScene, gl, textureCanvasRef, textureVersion, wireframe, appliedMaterials, appliedColors, isActive]);
+  }, [clonedScene, gl, textureCanvasRef, wireframe, appliedMaterials, appliedColors, bgColor, selectedColor, isActive]);
+
+  // Fast-path for just updating the texture without re-traversing the scene
+  useEffect(() => {
+    if (textureVersion === appliedTextureVersionRef.current) return;
+    
+    if (canvasTextureRef.current && textureCanvasRef?.current) {
+      // Just mark needsUpdate. Three.js will upload the new canvas pixels to GPU.
+      canvasTextureRef.current.needsUpdate = true;
+    }
+    appliedTextureVersionRef.current = textureVersion;
+  }, [textureVersion, textureCanvasRef]);
 
   if (!clonedScene) return null;
 

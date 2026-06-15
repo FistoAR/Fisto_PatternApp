@@ -6,6 +6,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import * as THREE from "three";
 import UploadsPopup from "./UploadsPopup";
+import TapeLayoutScreen from "./TapeLayoutScreen";
 
 // ─── Font options & Loading ───────────────────────────────────────────────────
 const GOOGLE_FONTS = [
@@ -209,6 +210,7 @@ export default function EditorScreen2({
   sceneBgImage,
 }) {
   const [showMobilePanel, setShowMobilePanel] = useState(false);
+  const [showTapeLayout, setShowTapeLayout] = useState(false);
   const textureCanvasRef = useRef(null);
   const [textureVersion, setTextureVersion] = useState(0);
   const canvasRef = useRef(null);
@@ -217,7 +219,63 @@ export default function EditorScreen2({
   const [showUv, setShowUv] = useState(true);
   const [fullUv, setFullUv] = useState(false);
   const [bgColor, setBgColor] = useState("#ffffff");
+  const [selectedColor, setSelectedColor] = useState("none");
   const [isFrameSelected, setIsFrameSelected] = useState(false);
+  const [currentSelectedFaces, setCurrentSelectedFaces] = useState(new Set());
+  const [pendingTapeLayoutDataUrl, setPendingTapeLayoutDataUrl] = useState(null);
+
+  // Tape layout floating container dragging
+  const [tapeLayoutPos, setTapeLayoutPos] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 - 128 : 0, y: 100 });
+  const [isDraggingTape, setIsDraggingTape] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, startPosX: 0, startPosY: 0 });
+
+  useEffect(() => {
+    if (pendingTapeLayoutDataUrl && typeof window !== 'undefined') {
+      setTapeLayoutPos({ x: window.innerWidth / 2 - 128, y: 100 });
+    }
+  }, [pendingTapeLayoutDataUrl]);
+
+  const handleTapePointerDown = (e) => {
+    setIsDraggingTape(true);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      startPosX: tapeLayoutPos.x,
+      startPosY: tapeLayoutPos.y,
+    };
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    if (!isDraggingTape) return;
+    const handleMove = (e) => {
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      
+      let newX = dragStartRef.current.startPosX + dx;
+      let newY = dragStartRef.current.startPosY + dy;
+
+      // Add boundary constraints
+      if (typeof window !== 'undefined') {
+        const maxX = window.innerWidth - 256; // 256px is roughly w-64
+        const maxY = window.innerHeight - 100;
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(80, Math.min(newY, maxY)); // Protect top navbar (80px)
+      }
+
+      setTapeLayoutPos({ x: newX, y: newY });
+    };
+    const handleUp = () => setIsDraggingTape(false);
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, [isDraggingTape]);
 
   // ── Left panel tab ───────────────────────────────────────────────────────
   const [leftTab, setLeftTab] = useState("uploads"); // 'uploads' | 'text'
@@ -233,6 +291,7 @@ export default function EditorScreen2({
       setUploadedImages([]);
       setSelectedLayer(null);
       setIsFrameSelected(false);
+      setCurrentSelectedFaces(new Set());
       setTextProps({
         color: "#000000",
         fontSize: 80,
@@ -246,6 +305,13 @@ export default function EditorScreen2({
 
   // ── Currently selected layer (for text formatting panel) ─────────────────
   const [selectedLayer, setSelectedLayer] = useState(null);
+
+  // Reset local color override whenever we re-enter Editor 2
+  useEffect(() => {
+    if (isActive) {
+      setSelectedColor("none");
+    }
+  }, [isActive]);
 
   // Text formatting controls state (mirrors selected layer)
   const [textProps, setTextProps] = useState({
@@ -381,14 +447,15 @@ export default function EditorScreen2({
   );
 
   const handleSave = () => {
+    const finalColor = selectedColor !== "none" ? bgColor : undefined;
     if (canvasRef.current?.getCleanTexture) {
       const dataUrl = canvasRef.current.getCleanTexture();
-      onBack(dataUrl);
+      onBack(dataUrl, finalColor);
     } else if (textureCanvasRef.current) {
       const dataUrl = textureCanvasRef.current.toDataURL("image/png");
-      onBack(dataUrl);
+      onBack(dataUrl, finalColor);
     } else {
-      onBack();
+      onBack(undefined, finalColor);
     }
   };
 
@@ -758,7 +825,75 @@ export default function EditorScreen2({
         </div>
 
         {/* ── Center Canvas ─────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col h-full min-w-0">
+        <div className="flex-1 flex flex-col h-full min-w-0 relative">
+          {showTapeLayout && (
+            <TapeLayoutScreen 
+              onCancel={() => setShowTapeLayout(false)}
+              onSave={(dataUrl) => {
+                setShowTapeLayout(false);
+                if (dataUrl) {
+                  setPendingTapeLayoutDataUrl(dataUrl);
+                }
+              }}
+            />
+          )}
+
+          {/* Floating Tape Layout Apply Container */}
+          {pendingTapeLayoutDataUrl && (
+            <div 
+              style={{ top: tapeLayoutPos.y, left: tapeLayoutPos.x }}
+              className="fixed z-50 bg-white p-4 rounded-2xl shadow-xl border border-gray-200 flex flex-col items-center gap-4 w-64"
+            >
+              <div 
+                className="w-full flex justify-between items-center cursor-move touch-none"
+                onPointerDown={handleTapePointerDown}
+              >
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider select-none pointer-events-none">Tape Layout</span>
+                <button 
+                  onClick={() => setPendingTapeLayoutDataUrl(null)}
+                  className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 border-none cursor-pointer z-10"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="w-full h-20 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden p-2">
+                <img src={pendingTapeLayoutDataUrl} alt="Tape Preview" className="max-w-full max-h-full object-contain drop-shadow-sm" />
+              </div>
+              <button
+                disabled={currentSelectedFaces.size === 0}
+                onClick={() => {
+                  if (canvasRef.current && canvasRef.current.uploadImage) {
+                    const img = new Image();
+                    img.onload = () => {
+                      // Rotate 90deg clockwise specifically for applying to the vertical frame
+                      const cvs = document.createElement("canvas");
+                      cvs.width = img.height;
+                      cvs.height = img.width;
+                      const ctx = cvs.getContext("2d");
+                      ctx.translate(cvs.width / 2, cvs.height / 2);
+                      ctx.rotate(Math.PI / 2);
+                      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+                      canvasRef.current.uploadImage(cvs.toDataURL("image/png"), "cover");
+                      setPendingTapeLayoutDataUrl(null);
+                    };
+                    img.src = pendingTapeLayoutDataUrl;
+                  } else {
+                    setPendingTapeLayoutDataUrl(null);
+                  }
+                }}
+                className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all border-none ${
+                  currentSelectedFaces.size > 0 
+                    ? "bg-[#c0623a] text-white hover:bg-[#a54f2c] cursor-pointer shadow-md hover:shadow-lg active:scale-95" 
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {currentSelectedFaces.size > 0 ? "Apply to Frame" : "Select Frame First"}
+              </button>
+            </div>
+          )}
+
           <Canvas
             key={canvasResetKey}
             ref={canvasRef}
@@ -772,9 +907,11 @@ export default function EditorScreen2({
             isActive={isActive}
             appliedMaterials={appliedMaterials}
             onSelectedLayerChange={handleSelectedLayerChange}
-            onFaceSelectionChange={(faces) =>
-              setIsFrameSelected(faces.size > 0)
-            }
+            onFaceSelectionChange={(faces) => {
+              setIsFrameSelected(faces.size > 0);
+              setCurrentSelectedFaces(faces);
+            }}
+            onOpenTapeLayout={() => setShowTapeLayout(true)}
           />
         </div>
 
@@ -806,6 +943,8 @@ export default function EditorScreen2({
               setFullUv={setFullUv}
               bgColor={bgColor}
               setBgColor={setBgColor}
+              selectedColor={selectedColor}
+              setSelectedColor={setSelectedColor}
               sceneBgColor={sceneBgColor}
               sceneBgImage={sceneBgImage}
               hideExport={false}

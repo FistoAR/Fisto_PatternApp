@@ -104,7 +104,12 @@ class DraggableImage {
       });
     }
 
-    this.filteredCtx.clearRect(0, 0, this.filteredCanvas.width, this.filteredCanvas.height);
+    this.filteredCtx.clearRect(
+      0,
+      0,
+      this.filteredCanvas.width,
+      this.filteredCanvas.height,
+    );
     this.filteredCtx.drawImage(this.img, 0, 0);
 
     if (!this.erasedColors || this.erasedColors.length === 0) return;
@@ -127,8 +132,8 @@ class DraggableImage {
       for (const color of this.erasedColors) {
         const dist = Math.sqrt(
           (pr - color.r) * (pr - color.r) +
-          (pg - color.g) * (pg - color.g) +
-          (pb - color.b) * (pb - color.b)
+            (pg - color.g) * (pg - color.g) +
+            (pb - color.b) * (pb - color.b),
         );
         if (dist <= color.tolerance) {
           data[i + 3] = 0;
@@ -378,14 +383,16 @@ class DraggableText {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     ctx.font = `${this.italic ? "italic " : ""}${this.bold ? "bold " : ""}${this.fontSize}px ${this.fontFamily}`;
-    
+
     const lines = this.text.split("\n");
     let maxWidth = 0;
-    lines.forEach(line => {
+    lines.forEach((line) => {
       let lineW = 0;
       if (this.letterSpacing) {
-        const chars = line.split('');
-        chars.forEach(c => lineW += ctx.measureText(c).width + this.letterSpacing);
+        const chars = line.split("");
+        chars.forEach(
+          (c) => (lineW += ctx.measureText(c).width + this.letterSpacing),
+        );
         if (chars.length > 0) lineW -= this.letterSpacing;
       } else {
         lineW = ctx.measureText(line).width;
@@ -501,20 +508,20 @@ class DraggableText {
 
     const lines = this.text.split("\n");
     const lineHeight = (this.fontSize / scale) * 1.3;
-    const startY = -(lines.length - 1) * lineHeight / 2;
+    const startY = (-(lines.length - 1) * lineHeight) / 2;
 
     lines.forEach((line, i) => {
       const lineY = startY + i * lineHeight;
-      
+
       let textWidth = 0;
       const charWidths = [];
-      const chars = line.split('');
-      chars.forEach(c => {
+      const chars = line.split("");
+      chars.forEach((c) => {
         const w = ctx.measureText(c).width;
         charWidths.push(w);
         textWidth += w + (this.letterSpacing || 0);
       });
-      if (chars.length > 0) textWidth -= (this.letterSpacing || 0);
+      if (chars.length > 0) textWidth -= this.letterSpacing || 0;
 
       if (!this.bend || Math.abs(this.bend) < 1) {
         if (!this.letterSpacing) {
@@ -551,16 +558,17 @@ class DraggableText {
 
         chars.forEach((char, idx) => {
           const w = charWidths[idx];
-          const charTotalW = w + (idx < chars.length - 1 ? (this.letterSpacing || 0) : 0);
+          const charTotalW =
+            w + (idx < chars.length - 1 ? this.letterSpacing || 0 : 0);
           const charAngle = charTotalW / R;
-          
+
           // Place character in the center of its arc segment
           const theta = currentAngle + charAngle / 2;
           ctx.save();
           ctx.rotate(theta);
           ctx.translate(0, -R);
           ctx.fillText(char, 0, 0);
-          
+
           if (this.underline) {
             const underlineY = (this.fontSize / scale) * 0.4;
             const thickness = Math.max(1, this.fontSize / scale / 15);
@@ -572,12 +580,12 @@ class DraggableText {
             ctx.lineTo(charTotalW / 2, underlineY);
             ctx.stroke();
           }
-          
+
           ctx.restore();
-          
+
           currentAngle += charAngle;
         });
-        
+
         ctx.restore();
       }
     });
@@ -733,6 +741,8 @@ function drawUVs(
   w,
   h,
   drawFull,
+  modelUrl,
+  uvTapeMerged,
 ) {
   const geometry = mesh.geometry;
   if (!geometry.attributes.uv) {
@@ -753,7 +763,7 @@ function drawUVs(
     if (!comp.loops || comp.loops.length === 0) return;
 
     ctx.beginPath();
-    comp.loops.forEach(loop => {
+    comp.loops.forEach((loop) => {
       if (loop.length === 0) return;
       ctx.moveTo(loop[0].u * w, loop[0].v * h);
       for (let i = 1; i < loop.length; i++) {
@@ -776,7 +786,9 @@ function drawUVs(
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
 
-  const shouldDrawFull = drawFull || !components || components.length === 0;
+  const isTapeModel = modelUrl && modelUrl.includes("Tape");
+  const shouldDrawFull =
+    !isTapeModel && (drawFull || !components || components.length === 0);
 
   if (shouldDrawFull) {
     ctx.beginPath();
@@ -807,30 +819,23 @@ function drawUVs(
     }
     ctx.stroke();
   } else {
-    // Stroke individual components
-    components.forEach((comp) => {
-      if (!comp.loops || comp.loops.length === 0) return;
-      ctx.beginPath();
-      comp.loops.forEach(loop => {
-        if (loop.length === 0) return;
-        ctx.moveTo(loop[0].u * w, loop[0].v * h);
-        for (let i = 1; i < loop.length; i++) {
-          ctx.lineTo(loop[i].u * w, loop[i].v * h);
-        }
-        ctx.closePath();
-      });
-      ctx.stroke();
-    });
-  }
-  ctx.restore();
+    if (isTapeModel && uvTapeMerged) {
+      const { mergedGroups, nonMerged } = uvTapeMerged;
 
-  // 3. Highlight selected faces with solid blue border
-  if (selectedFaces && selectedFaces.size > 0) {
-    selectedFaces.forEach((fId) => {
-      const comp = components.find((c) => c.id === fId);
-      if (comp && comp.loops && comp.loops.length > 0) {
+      Object.values(mergedGroups).forEach((group) => {
         ctx.beginPath();
-        comp.loops.forEach(loop => {
+        ctx.rect(
+          group.minU * w,
+          group.minV * h,
+          (group.maxU - group.minU) * w,
+          (group.maxV - group.minV) * h,
+        );
+        ctx.stroke();
+      });
+
+      nonMerged.forEach((comp) => {
+        ctx.beginPath();
+        comp.loops.forEach((loop) => {
           if (loop.length === 0) return;
           ctx.moveTo(loop[0].u * w, loop[0].v * h);
           for (let i = 1; i < loop.length; i++) {
@@ -838,12 +843,98 @@ function drawUVs(
           }
           ctx.closePath();
         });
+        ctx.stroke();
+      });
+    } else {
+      // Stroke individual components normally
+      components.forEach((comp) => {
+        if (!comp.loops || comp.loops.length === 0) return;
+        ctx.beginPath();
+        comp.loops.forEach((loop) => {
+          if (loop.length === 0) return;
+          ctx.moveTo(loop[0].u * w, loop[0].v * h);
+          for (let i = 1; i < loop.length; i++) {
+            ctx.lineTo(loop[i].u * w, loop[i].v * h);
+          }
+          ctx.closePath();
+        });
+        ctx.stroke();
+      });
+    }
+  }
+  ctx.restore();
 
+  // 3. Highlight selected faces with solid blue border
+  if (selectedFaces && selectedFaces.size > 0) {
+    if (isTapeModel && uvTapeMerged) {
+      const selectedMergedGroups = {};
+      const selectedNonMerged = [];
+
+      selectedFaces.forEach((fId) => {
+        // Fast lookup via uvTapeMerged
+        let foundInGroup = false;
+        for (const group of Object.values(uvTapeMerged.mergedGroups)) {
+          if (group.comps.some((c) => c.id === fId)) {
+            // Use the group's key to deduplicate
+            const key = group.minU.toFixed(2) + "_" + group.maxU.toFixed(2);
+            selectedMergedGroups[key] = group;
+            foundInGroup = true;
+            break;
+          }
+        }
+        if (!foundInGroup) {
+          const comp = uvTapeMerged.nonMerged.find((c) => c.id === fId);
+          if (comp) selectedNonMerged.push(comp);
+        }
+      });
+
+      Object.values(selectedMergedGroups).forEach((group) => {
+        ctx.beginPath();
+        ctx.rect(
+          group.minU * w,
+          group.minV * h,
+          (group.maxU - group.minU) * w,
+          (group.maxV - group.minV) * h,
+        );
         ctx.strokeStyle = "#3b82f6"; // solid blue-500
         ctx.lineWidth = 2;
         ctx.stroke();
-      }
-    });
+      });
+
+      selectedNonMerged.forEach((comp) => {
+        ctx.beginPath();
+        comp.loops.forEach((loop) => {
+          if (loop.length === 0) return;
+          ctx.moveTo(loop[0].u * w, loop[0].v * h);
+          for (let i = 1; i < loop.length; i++) {
+            ctx.lineTo(loop[i].u * w, loop[i].v * h);
+          }
+          ctx.closePath();
+        });
+        ctx.strokeStyle = "#3b82f6";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+    } else {
+      selectedFaces.forEach((fId) => {
+        const comp = components.find((c) => c.id === fId);
+        if (comp && comp.loops && comp.loops.length > 0) {
+          ctx.beginPath();
+          comp.loops.forEach((loop) => {
+            if (loop.length === 0) return;
+            ctx.moveTo(loop[0].u * w, loop[0].v * h);
+            for (let i = 1; i < loop.length; i++) {
+              ctx.lineTo(loop[i].u * w, loop[i].v * h);
+            }
+            ctx.closePath();
+          });
+
+          ctx.strokeStyle = "#3b82f6"; // solid blue-500
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      });
+    }
   }
 
   ctx.restore();
@@ -880,7 +971,7 @@ function orderEdgesToPaths(edges) {
   const usedEdges = new Set();
 
   while (usedEdges.size < edges.length) {
-    let startEdge = edges.find(e => !usedEdges.has(e));
+    let startEdge = edges.find((e) => !usedEdges.has(e));
     if (!startEdge) break;
 
     const path = [];
@@ -890,16 +981,19 @@ function orderEdgesToPaths(edges) {
     let currentKey = currentEdge.k2;
 
     while (true) {
-      path.push(currentEdge.k1 === currentKey ? currentEdge.p1 : currentEdge.p2);
+      path.push(
+        currentEdge.k1 === currentKey ? currentEdge.p1 : currentEdge.p2,
+      );
 
       const connected = edgeMap.get(currentKey);
       if (!connected) break;
       const nextEdge = connected.find((e) => !usedEdges.has(e));
       if (!nextEdge) break;
-      
+
       currentEdge = nextEdge;
       usedEdges.add(currentEdge);
-      currentKey = currentEdge.k1 === currentKey ? currentEdge.k2 : currentEdge.k1;
+      currentKey =
+        currentEdge.k1 === currentKey ? currentEdge.k2 : currentEdge.k1;
     }
     loops.push(path);
   }
@@ -1146,8 +1240,8 @@ export function extractUvComponents(mesh, modelUrl) {
 
     const area = (maxU - minU) * (maxV - minV);
     const loops = orderEdgesToPaths(outlineEdges);
-    
-    const loopsWithArea = loops.map(loop => {
+
+    const loopsWithArea = loops.map((loop) => {
       let loopArea = 0;
       if (loop.length >= 3) {
         for (let i = 0; i < loop.length; i++) {
@@ -1160,14 +1254,14 @@ export function extractUvComponents(mesh, modelUrl) {
     });
 
     const validLoopsInfo = loopsWithArea
-      .filter(info => info.area > 0.0001)
+      .filter((info) => info.area > 0.0001)
       .sort((a, b) => b.area - a.area);
 
     if (validLoopsInfo.length > 0) {
       finalComponents.push({
         id: `face_${faceCounter++}`,
         path: validLoopsInfo[0].loop,
-        loops: validLoopsInfo.map(info => info.loop),
+        loops: validLoopsInfo.map((info) => info.loop),
         minU,
         maxU,
         minV,
@@ -1185,7 +1279,7 @@ export function extractUvComponents(mesh, modelUrl) {
         Math.abs(existing.minU - comp.minU) < 0.005 &&
         Math.abs(existing.maxU - comp.maxU) < 0.005 &&
         Math.abs(existing.minV - comp.minV) < 0.005 &&
-        Math.abs(existing.maxV - comp.maxV) < 0.005
+        Math.abs(existing.maxV - comp.maxV) < 0.005,
     );
     if (!isDuplicate) {
       deduplicatedComponents.push(comp);
@@ -1305,6 +1399,7 @@ const Canvas = forwardRef(
       appliedMaterials,
       onSelectedLayerChange,
       onFaceSelectionChange,
+      onOpenTapeLayout,
     },
     ref,
   ) => {
@@ -1352,6 +1447,7 @@ const Canvas = forwardRef(
     // UV Interaction States
     const [uvComponents, setUvComponents] = useState([]);
     const uvComponentsRef = useRef([]); // for sync access in event handlers
+    const uvTapeMergedRef = useRef(null); // Cache for merged Tape model components
     const [selectedFace, setSelectedFace] = useState(null);
     const [selectedFaceUv, setSelectedFaceUv] = useState(null);
     const [selectedFaces, setSelectedFacesState] = useState(new Set());
@@ -1494,6 +1590,8 @@ const Canvas = forwardRef(
           w,
           h,
           fullUv,
+          modelUrl,
+          uvTapeMergedRef.current,
         );
       }
 
@@ -1503,7 +1601,11 @@ const Canvas = forwardRef(
       });
 
       // Draw controls for selected image LAST (on top)
-      if (selectedImageRef.current && toolModeRef.current !== "eraser" && toolModeRef.current !== "eraser-pick") {
+      if (
+        selectedImageRef.current &&
+        toolModeRef.current !== "eraser" &&
+        toolModeRef.current !== "eraser-pick"
+      ) {
         selectedImageRef.current.drawControls(ctx, scale);
       }
     }, [showUv, fullUv, faceColors, selectedFaces]);
@@ -1515,7 +1617,7 @@ const Canvas = forwardRef(
         const bakeCtx = bakeCanvas.getContext("2d");
 
         bakeCtx.clearRect(0, 0, bakeCanvas.width, bakeCanvas.height);
-        
+
         // We always want a transparent background for the base texture
         // so that PBR materials can show through where no artwork/color is applied.
         // We do NOT fill the background with bgColor here anymore.
@@ -1999,6 +2101,43 @@ const Canvas = forwardRef(
         uvComponentsRef.current = components;
         setUvComponents(components);
 
+        if (modelUrl && modelUrl.includes("Tape")) {
+          const mergedGroups = {};
+          const nonMerged = [];
+          components.forEach((comp) => {
+            if (!comp.loops || comp.loops.length === 0) return;
+            const width = comp.maxU - comp.minU;
+            const height = comp.maxV - comp.minV;
+            if (width > height * 5) {
+              const key = comp.minU.toFixed(2) + "_" + comp.maxU.toFixed(2);
+              if (!mergedGroups[key]) {
+                mergedGroups[key] = {
+                  minU: comp.minU,
+                  maxU: comp.maxU,
+                  minV: comp.minV,
+                  maxV: comp.maxV,
+                  comps: [comp],
+                };
+              } else {
+                mergedGroups[key].comps.push(comp);
+                if (comp.minV < mergedGroups[key].minV)
+                  mergedGroups[key].minV = comp.minV;
+                if (comp.maxV > mergedGroups[key].maxV)
+                  mergedGroups[key].maxV = comp.maxV;
+                if (comp.minU < mergedGroups[key].minU)
+                  mergedGroups[key].minU = comp.minU;
+                if (comp.maxU > mergedGroups[key].maxU)
+                  mergedGroups[key].maxU = comp.maxU;
+              }
+            } else {
+              nonMerged.push(comp);
+            }
+          });
+          uvTapeMergedRef.current = { mergedGroups, nonMerged };
+        } else {
+          uvTapeMergedRef.current = null;
+        }
+
         const materialSize = getTextureSizeFromGltf(gltf);
         resizeTextureCanvas(
           materialSize || estimateTextureSizeFromUv(bestMesh),
@@ -2118,7 +2257,10 @@ const Canvas = forwardRef(
           setSelectedImage(clickedImage);
           onSelectedLayerChangeRef.current?.(clickedImage);
 
-          if (toolMode === "eraser-pick" && clickedImage instanceof DraggableImage) {
+          if (
+            toolMode === "eraser-pick" &&
+            clickedImage instanceof DraggableImage
+          ) {
             const sel = clickedImage;
             const { lx, ly } = sel._toLocal(mx, my, scale);
             const hw = sel.width / scale / 2;
@@ -2220,8 +2362,6 @@ const Canvas = forwardRef(
         }
       }
 
-
-
       if (clickedImage) {
         selectedImageRef.current = clickedImage;
         setSelectedImage(clickedImage);
@@ -2250,11 +2390,30 @@ const Canvas = forwardRef(
           }
         }
 
+        const getFacesToSelect = (clickedFaceId) => {
+          if (
+            modelUrl &&
+            modelUrl.includes("Tape") &&
+            uvTapeMergedRef.current
+          ) {
+            // Find which group contains this face
+            const groups = Object.values(uvTapeMergedRef.current.mergedGroups);
+            for (const group of groups) {
+              if (group.comps.some((c) => c.id === clickedFaceId)) {
+                return group.comps.map((c) => c.id);
+              }
+            }
+          }
+          return [clickedFaceId];
+        };
+
         if (clickedFace) {
+          const facesToToggle = getFacesToSelect(clickedFace);
+
           if (toolMode === "multiselect") {
             const nextFaces = new Set(selectedFacesRef.current);
             if (nextFaces.has(clickedFace)) {
-              nextFaces.delete(clickedFace);
+              facesToToggle.forEach((fid) => nextFaces.delete(fid));
               if (selectedFace === clickedFace) {
                 if (nextFaces.size > 0) {
                   const iter = nextFaces.values();
@@ -2277,7 +2436,7 @@ const Canvas = forwardRef(
                 }
               }
             } else {
-              nextFaces.add(clickedFace);
+              facesToToggle.forEach((fid) => nextFaces.add(fid));
               setSelectedFace(clickedFace);
               setSelectedFaceUv(clickedUv);
             }
@@ -2285,7 +2444,7 @@ const Canvas = forwardRef(
           } else {
             // Normal cursor mode: select it if not already selected
             if (!selectedFacesRef.current.has(clickedFace)) {
-              const nextFaces = new Set([clickedFace]);
+              const nextFaces = new Set(facesToToggle);
               setSelectedFaces(nextFaces);
               setSelectedFace(clickedFace);
               setSelectedFaceUv(clickedUv);
@@ -2306,12 +2465,30 @@ const Canvas = forwardRef(
           }
         }
 
+        const getFacesToSelect = (clickedFaceId) => {
+          if (
+            modelUrl &&
+            modelUrl.includes("Tape") &&
+            uvTapeMergedRef.current
+          ) {
+            const groups = Object.values(uvTapeMergedRef.current.mergedGroups);
+            for (const group of groups) {
+              if (group.comps.some((c) => c.id === clickedFaceId)) {
+                return group.comps.map((c) => c.id);
+              }
+            }
+          }
+          return [clickedFaceId];
+        };
+
         if (clickedFace) {
+          const facesToToggle = getFacesToSelect(clickedFace);
+
           // Keep current image selection when selecting a UV face!
           if (toolMode === "multiselect") {
             const nextFaces = new Set(selectedFacesRef.current);
             if (nextFaces.has(clickedFace)) {
-              nextFaces.delete(clickedFace);
+              facesToToggle.forEach((fid) => nextFaces.delete(fid));
               if (selectedFace === clickedFace) {
                 if (nextFaces.size > 0) {
                   // Pick the first remaining face as the anchor
@@ -2335,13 +2512,13 @@ const Canvas = forwardRef(
                 }
               }
             } else {
-              nextFaces.add(clickedFace);
+              facesToToggle.forEach((fid) => nextFaces.add(fid));
               setSelectedFace(clickedFace);
               setSelectedFaceUv(clickedUv);
             }
             setSelectedFaces(nextFaces);
           } else {
-            const nextFaces = new Set([clickedFace]);
+            const nextFaces = new Set(facesToToggle);
             setSelectedFaces(nextFaces);
             setSelectedFace(clickedFace);
             setSelectedFaceUv(clickedUv);
@@ -2730,6 +2907,17 @@ const Canvas = forwardRef(
           if (fitType === "cover") {
             imgWidth = widthInTex;
             imgHeight = heightInTex;
+          } else if (fitType === "fit-short-edge") {
+            const imgW = img.naturalWidth || img.width || 300;
+            const imgH = img.naturalHeight || img.height || 300;
+            const imgAspect = imgW / imgH;
+            if (widthInTex < heightInTex) {
+              imgWidth = widthInTex;
+              imgHeight = widthInTex / imgAspect;
+            } else {
+              imgHeight = heightInTex;
+              imgWidth = heightInTex * imgAspect;
+            }
           } else if (fitType === "contain") {
             const boxAspect = widthInTex / heightInTex;
             const imgW = img.naturalWidth || img.width || 300;
@@ -2780,14 +2968,19 @@ const Canvas = forwardRef(
         const sel = selectedImageRef.current;
         if (!sel) return;
 
-        let minU = 0, maxU = 1, minV = 0, maxV = 1;
+        let minU = 0,
+          maxU = 1,
+          minV = 0,
+          maxV = 1;
         let hasSelected = false;
 
         uvComponentsRef.current.forEach((comp) => {
           if (selectedFacesRef.current.has(comp.id)) {
             if (!hasSelected) {
-              minU = comp.minU; maxU = comp.maxU;
-              minV = comp.minV; maxV = comp.maxV;
+              minU = comp.minU;
+              maxU = comp.maxU;
+              minV = comp.minV;
+              maxV = comp.maxV;
             } else {
               minU = Math.min(minU, comp.minU);
               maxU = Math.max(maxU, comp.maxU);
@@ -2800,7 +2993,7 @@ const Canvas = forwardRef(
 
         const texW = textureSizeRef.current.width;
         const texH = textureSizeRef.current.height;
-        
+
         const boundsX = minU * texW;
         const boundsY = minV * texH;
         const boundsW = (maxU - minU) * texW;
@@ -2808,13 +3001,15 @@ const Canvas = forwardRef(
 
         if (hAlign) {
           if (hAlign === "left") sel.x = boundsX;
-          else if (hAlign === "center") sel.x = boundsX + boundsW / 2 - sel.width / 2;
+          else if (hAlign === "center")
+            sel.x = boundsX + boundsW / 2 - sel.width / 2;
           else if (hAlign === "right") sel.x = boundsX + boundsW - sel.width;
         }
 
         if (vAlign) {
           if (vAlign === "top") sel.y = boundsY;
-          else if (vAlign === "center") sel.y = boundsY + boundsH / 2 - sel.height / 2;
+          else if (vAlign === "center")
+            sel.y = boundsY + boundsH / 2 - sel.height / 2;
           else if (vAlign === "bottom") sel.y = boundsY + boundsH - sel.height;
         }
 
@@ -2939,7 +3134,7 @@ const Canvas = forwardRef(
             ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
             const lines = item.text.split("\n");
             const lineHeight = item.fontSize * 1.3;
-            const startY = -(lines.length - 1) * lineHeight / 2;
+            const startY = (-(lines.length - 1) * lineHeight) / 2;
 
             lines.forEach((line, i) => {
               const lineY = startY + i * lineHeight;
@@ -2976,21 +3171,22 @@ const Canvas = forwardRef(
         const width = textureSizeRef.current.width;
         const height = textureSizeRef.current.height;
         let svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
-        
+
         svg += `\n  <g id="Background"><rect width="100%" height="100%" fill="#ffffff" /></g>`;
 
         if (showUv && currentMeshRef.current) {
           svg += `\n  <g id="UV_Frame">\n`;
           const mesh = currentMeshRef.current;
           const components = uvComponentsRef.current;
-          const shouldDrawFull = fullUv || !components || components.length === 0;
+          const shouldDrawFull =
+            fullUv || !components || components.length === 0;
           const geometry = mesh.geometry;
-          
+
           if (geometry && geometry.attributes.uv) {
             const uvAttr = geometry.attributes.uv;
             const index = geometry.index;
             let d = "";
-            
+
             if (shouldDrawFull) {
               const addLine = (idx1, idx2) => {
                 const u1 = uvAttr.getX(idx1);
@@ -3021,7 +3217,7 @@ const Canvas = forwardRef(
               components.forEach((comp) => {
                 if (!comp.loops || comp.loops.length === 0) return;
                 let pathD = "";
-                comp.loops.forEach(loop => {
+                comp.loops.forEach((loop) => {
                   if (loop.length === 0) return;
                   pathD += `M${(loop[0].u * width).toFixed(2)} ${(loop[0].v * height).toFixed(2)} `;
                   for (let i = 1; i < loop.length; i++) {
@@ -3042,13 +3238,13 @@ const Canvas = forwardRef(
           tempCanvas.width = width;
           tempCanvas.height = height;
           const ctx = tempCanvas.getContext("2d");
-          
+
           ctx.save();
           ctx.globalAlpha = item.opacity;
           ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
           ctx.rotate(item.rotation);
           ctx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
-          
+
           if (item instanceof DraggableText) {
             const scaleX = item.width / item.nativeWidth;
             const scaleY = item.height / item.nativeHeight;
@@ -3057,7 +3253,7 @@ const Canvas = forwardRef(
             ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
             const lines = item.text.split("\n");
             const lineHeight = item.fontSize * 1.3;
-            const startY = -(lines.length - 1) * lineHeight / 2;
+            const startY = (-(lines.length - 1) * lineHeight) / 2;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             lines.forEach((line, i) => {
@@ -3077,14 +3273,20 @@ const Canvas = forwardRef(
               }
             });
           } else {
-            ctx.drawImage(item.img, -item.width / 2, -item.height / 2, item.width, item.height);
+            ctx.drawImage(
+              item.img,
+              -item.width / 2,
+              -item.height / 2,
+              item.width,
+              item.height,
+            );
           }
           ctx.restore();
-          
+
           const base64 = tempCanvas.toDataURL("image/png");
           svg += `\n  <g id="${layerId}">\n    <image xlink:href="${base64}" href="${base64}" x="0" y="0" width="${width}" height="${height}" />\n  </g>`;
         });
-        
+
         svg += `\n</svg>`;
         return svg;
       },
@@ -3095,7 +3297,7 @@ const Canvas = forwardRef(
         const pdf = new jsPDF({
           orientation: width > height ? "landscape" : "portrait",
           unit: "px",
-          format: [width, height]
+          format: [width, height],
         });
 
         if (showUv && currentMeshRef.current) {
@@ -3112,6 +3314,8 @@ const Canvas = forwardRef(
             width,
             height,
             fullUv,
+            modelUrl,
+            uvTapeMergedRef.current,
           );
           const uvBase64 = uvCanvas.toDataURL("image/png");
           pdf.addImage(uvBase64, "PNG", 0, 0, width, height);
@@ -3122,13 +3326,13 @@ const Canvas = forwardRef(
           tempCanvas.width = width;
           tempCanvas.height = height;
           const ctx = tempCanvas.getContext("2d");
-          
+
           ctx.save();
           ctx.globalAlpha = item.opacity;
           ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
           ctx.rotate(item.rotation);
           ctx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
-          
+
           if (item instanceof DraggableText) {
             const scaleX = item.width / item.nativeWidth;
             const scaleY = item.height / item.nativeHeight;
@@ -3137,7 +3341,7 @@ const Canvas = forwardRef(
             ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
             const lines = item.text.split("\n");
             const lineHeight = item.fontSize * 1.3;
-            const startY = -(lines.length - 1) * lineHeight / 2;
+            const startY = (-(lines.length - 1) * lineHeight) / 2;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             lines.forEach((line, i) => {
@@ -3157,10 +3361,16 @@ const Canvas = forwardRef(
               }
             });
           } else {
-            ctx.drawImage(item.img, -item.width / 2, -item.height / 2, item.width, item.height);
+            ctx.drawImage(
+              item.img,
+              -item.width / 2,
+              -item.height / 2,
+              item.width,
+              item.height,
+            );
           }
           ctx.restore();
-          
+
           const base64 = tempCanvas.toDataURL("image/png");
           if (index > 0) {
             // pdf.addPage(); // Use this if we want actual pages, but layered usually means on same page
@@ -3168,7 +3378,7 @@ const Canvas = forwardRef(
           }
           pdf.addImage(base64, "PNG", 0, 0, width, height);
         });
-        
+
         return pdf.output("bloburl");
       },
     }));
@@ -3544,12 +3754,12 @@ const Canvas = forwardRef(
                       setEraserTargetColor(null);
                       redrawDisplay();
                     }}
-                    className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${(toolMode === "eraser" || toolMode === "eraser-pick") ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${toolMode === "eraser" || toolMode === "eraser-pick" ? "bg-black" : "bg-transparent hover:bg-gray-50"}`}
                   >
                     <img
                       src={erraserIcon}
                       alt="Eraser"
-                      className={`w-6 h-6 opacity-80 hover:opacity-100 ${(toolMode === "eraser" || toolMode === "eraser-pick") ? "brightness-0 invert" : ""}`}
+                      className={`w-6 h-6 opacity-80 hover:opacity-100 ${toolMode === "eraser" || toolMode === "eraser-pick" ? "brightness-0 invert" : ""}`}
                     />
                   </button>
                 </Tooltip>
@@ -3561,29 +3771,48 @@ const Canvas = forwardRef(
                       </span>
                     </div>
 
-                    <div 
-                      onClick={() => setToolMode(toolMode === "eraser-pick" ? "eraser" : "eraser-pick")}
+                    <div
+                      onClick={() =>
+                        setToolMode(
+                          toolMode === "eraser-pick" ? "eraser" : "eraser-pick",
+                        )
+                      }
                       className="flex items-center gap-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100/80 transition-colors"
                       title="Pick Color from Image"
                     >
                       <div
                         className={`w-8 h-8 rounded flex items-center justify-center transition-colors shrink-0 ${toolMode === "eraser-pick" ? "bg-indigo-100 text-indigo-600 border border-indigo-200" : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100"}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m15 11.25 1.5 1.5.75-.375a1.5 1.5 0 0 1 1.5 1.5l5.25 5.25c.375.375.375.982 0 1.357-.375.375-.982.375-1.357 0l-5.25-5.25a1.5 1.5 0 0 1-1.5-1.5l.375-.75-1.5-1.5M15 11.25l-2.25-2.25M15 11.25l-2.25 2.25m-6-6 2.25-2.25m0 0L7.5 4.5m1.5 1.5L5.25 9.75M12 9l-3 3" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor"
+                          className="w-4 h-4"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="m15 11.25 1.5 1.5.75-.375a1.5 1.5 0 0 1 1.5 1.5l5.25 5.25c.375.375.375.982 0 1.357-.375.375-.982.375-1.357 0l-5.25-5.25a1.5 1.5 0 0 1-1.5-1.5l.375-.75-1.5-1.5M15 11.25l-2.25-2.25M15 11.25l-2.25 2.25m-6-6 2.25-2.25m0 0L7.5 4.5m1.5 1.5L5.25 9.75M12 9l-3 3"
+                          />
                         </svg>
                       </div>
                       <div className="text-xs text-gray-500 font-medium flex-1">
-                        {eraserTargetColor ? "Color Selected" : "Click to select"}
+                        {eraserTargetColor
+                          ? "Color Selected"
+                          : "Click to select"}
                       </div>
-                      <div 
-                        className="w-8 h-8 rounded border border-gray-200 shadow-sm shrink-0" 
-                        style={{ 
-                          backgroundColor: eraserTargetColor 
-                            ? `rgb(${eraserTargetColor.r}, ${eraserTargetColor.g}, ${eraserTargetColor.b})` 
-                            : 'transparent',
-                          backgroundImage: !eraserTargetColor ? 'radial-gradient(#e5e7eb 1px, transparent 0)' : 'none',
-                          backgroundSize: '4px 4px'
+                      <div
+                        className="w-8 h-8 rounded border border-gray-200 shadow-sm shrink-0"
+                        style={{
+                          backgroundColor: eraserTargetColor
+                            ? `rgb(${eraserTargetColor.r}, ${eraserTargetColor.g}, ${eraserTargetColor.b})`
+                            : "transparent",
+                          backgroundImage: !eraserTargetColor
+                            ? "radial-gradient(#e5e7eb 1px, transparent 0)"
+                            : "none",
+                          backgroundSize: "4px 4px",
                         }}
                       />
                     </div>
@@ -3606,8 +3835,14 @@ const Canvas = forwardRef(
                         setEraserTolerance(val);
                         // Update tolerance if already erasing
                         const img = selectedImageRef.current;
-                        if (img && img.erasedColors && img.erasedColors.length > 0) {
-                          img.erasedColors[img.erasedColors.length - 1].tolerance = val;
+                        if (
+                          img &&
+                          img.erasedColors &&
+                          img.erasedColors.length > 0
+                        ) {
+                          img.erasedColors[
+                            img.erasedColors.length - 1
+                          ].tolerance = val;
                           img.applyEraser();
                           redrawDisplay();
                           bakeTexture();
@@ -3621,7 +3856,12 @@ const Canvas = forwardRef(
                       onClick={() => {
                         const img = selectedImageRef.current;
                         if (img && eraserTargetColor) {
-                          img.removeColor(eraserTargetColor.r, eraserTargetColor.g, eraserTargetColor.b, eraserTolerance);
+                          img.removeColor(
+                            eraserTargetColor.r,
+                            eraserTargetColor.g,
+                            eraserTargetColor.b,
+                            eraserTolerance,
+                          );
                           saveState();
                           redrawDisplay();
                           bakeTexture();
@@ -3629,8 +3869,19 @@ const Canvas = forwardRef(
                       }}
                       className="w-full py-2 bg-red-50 text-red-600 font-bold text-xs rounded-lg border border-red-100 hover:bg-red-100 hover:border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                        />
                       </svg>
                       Remove Color
                     </button>
@@ -3716,6 +3967,21 @@ const Canvas = forwardRef(
                   +
                 </button>
               </Tooltip>
+            </div>
+
+            <div className="absolute bottom-8 right-[7%] -translate-x-1/2 z-30">
+              {onOpenTapeLayout && modelUrl?.includes("Tape") && (
+                <>
+                  <Tooltip label="Tape Layout">
+                    <button
+                      onClick={onOpenTapeLayout}
+                      className=" px-4 h-11 rounded-full cursor-pointer bg-yellow-400 border-[2px] border-[#c0623a] text-black hover:bg-yellow-500 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer flex items-center justify-center font-bold text-[14px] leading-tight text-center"
+                    >
+                      Tape Layout
+                    </button>
+                  </Tooltip>
+                </>
+              )}
             </div>
           </div>
 

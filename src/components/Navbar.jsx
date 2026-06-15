@@ -2,7 +2,7 @@ import fistoLogo from '../assets/images/fisto-logo.png';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
-import foldingBoxUrl from '../assets/models/Carton box/Folding/Folding.glb?url';
+import ovalContainerUrl from '../assets/models/Food Containers/Oval/oval .glb?url';
 
 const navLinks = ['Home','Mockups', 'Features', 'Contact'];
 
@@ -48,7 +48,7 @@ export default function Navbar({ onTogglePanel }) {
   };
 
   const handleUploadIMLClick = () => {
-    navigate('/editor', { state: { initialModelUrl: foldingBoxUrl } });
+    navigate('/editor', { state: { initialModelUrl: ovalContainerUrl } });
   };
 
   return (

@@ -46,7 +46,7 @@ import zipLockPouchesImg from "../../assets/models/Food Packaging/zip lock Pouch
 import boxSealingTapeUrl from "../../assets/models/Packaging tapes/Box sealing Tape/Box_Tape.glb?url";
 import boxSealingTapeImg from "../../assets/models/Packaging tapes/Box sealing Tape/Tape.webp";
 
-const MODELS = [
+export const MODELS = [
   // Carton Box
   { id: 'beverage-cup', name: 'Beverage Carton Box', modelUrl: beverageCupUrl, category: 'Carton box', imageUrl: beverageCupImg },
   { id: 'die-cut-box', name: 'Die-Cut Carton Box', modelUrl: dieCutBoxUrl, category: 'Carton box', imageUrl: dieCutBoxImg },

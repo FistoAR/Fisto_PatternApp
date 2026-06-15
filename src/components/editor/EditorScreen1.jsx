@@ -147,6 +147,8 @@ function AutoSizedModelWithDimensions({
   onMaterialsLoaded,
   onBaseDimensionsLoaded,
   onSceneLoaded,
+  onTextureLoadStart,
+  onTextureLoadEnd,
 }) {
   const { scene } = useGLTF(modelUrl);
   const { invalidate } = useThree();
@@ -276,8 +278,23 @@ function AutoSizedModelWithDimensions({
     ];
   }, [baseDims, customSize]);
 
-  // Optimize texture loader by memoizing it
-  const loader = useMemo(() => new THREE.TextureLoader(), []);
+  // Optimize texture loader by memoizing it and tracking loading state
+  const callbacksRef = useRef({ onTextureLoadStart, onTextureLoadEnd });
+  callbacksRef.current = { onTextureLoadStart, onTextureLoadEnd };
+
+  const loader = useMemo(() => {
+    const mgr = new THREE.LoadingManager();
+    mgr.onStart = () => {
+      if (callbacksRef.current.onTextureLoadStart) callbacksRef.current.onTextureLoadStart();
+    };
+    mgr.onLoad = () => {
+      // Small timeout to allow the GPU upload to complete before hiding the spinner
+      setTimeout(() => {
+        if (callbacksRef.current.onTextureLoadEnd) callbacksRef.current.onTextureLoadEnd();
+      }, 100);
+    };
+    return new THREE.TextureLoader(mgr);
+  }, []);
 
   useEffect(() => {
     if (!clonedScene) return;
@@ -892,6 +909,8 @@ export default function EditorScreen1({
                 }}
                 onBaseDimensionsLoaded={handleBaseDimensionsLoaded}
                 onSceneLoaded={setActiveScene}
+                onTextureLoadStart={() => setIsModelLoading(true)}
+                onTextureLoadEnd={() => setIsModelLoading(false)}
               />
             )}
           </Suspense>
@@ -934,7 +953,7 @@ export default function EditorScreen1({
               currentModelUrl={modelUrl}
             />
           )}
-          {activeTab === "layout" && <LayoutPopup />}
+          {activeTab === "layout" && <LayoutPopup currentModelUrl={modelUrl} onSelectLayout={setModelUrl} />}
           {activeTab === "scene" && (
             <ScenePopup
               bgColor={bgColor}
@@ -1209,10 +1228,16 @@ export default function EditorScreen1({
                     <button
                       key={texture.id}
                       title={texture.name}
-                      onClick={() =>
-                        onApplyMaterial &&
-                        onApplyMaterial(selectedMaterial, texture)
-                      }
+                      onClick={() => {
+                        if (!onApplyMaterial) return;
+                        // Force the loading spinner to appear before blocking the main thread
+                        setIsModelLoading(true);
+                        setTimeout(() => {
+                          onApplyMaterial(selectedMaterial, texture);
+                          // Fallback to hide spinner if texture was fully cached and didn't trigger onLoad
+                          setTimeout(() => setIsModelLoading(false), 500);
+                        }, 50);
+                      }}
                       className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center cursor-pointer transition-all ${appliedMaterials?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
                     >
                       {texture.preview ? (

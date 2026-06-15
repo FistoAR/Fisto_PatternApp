@@ -2,13 +2,13 @@ import { useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import EditorScreen1 from "../components/editor/EditorScreen1";
 import EditorScreen2 from "../components/editor/EditorScreen2";
-import foldingBoxUrl from "../assets/models/Carton box/Folding/Folding.glb?url";
+import ovalContainerUrl from "../assets/models/Food Containers/Oval/oval .glb?url";
 
 export default function EditorPage() {
   const location = useLocation();
   const [currentScreen, setCurrentScreen] = useState(1);
   const [modelUrl, setModelUrl] = useState(
-    location.state?.initialModelUrl || foldingBoxUrl,
+    location.state?.initialModelUrl || ovalContainerUrl,
   );
   const [selectedMaterial, setSelectedMaterial] = useState(null);
 
@@ -20,11 +20,7 @@ export default function EditorPage() {
   const [canvasResetKey, setCanvasResetKey] = useState(0);
 
   // Lift activeTab state here to preserve it when switching screens
-  const [activeTab, setActiveTab] = useState(() => {
-    return modelUrl && modelUrl.includes("Folding.glb")
-      ? "models"
-      : "edit";
-  });
+  const [activeTab, setActiveTab] = useState("models");
 
   // Unified state for size, textures, colors, and physical materials
   const [editorState, setEditorState] = useState({
@@ -97,14 +93,34 @@ export default function EditorPage() {
   };
 
   // Optional: Transition back to Screen 1
-  const handleBackToModelViewer = (textureDataUrl) => {
+  const handleBackToModelViewer = (textureDataUrl, colorHex) => {
+    const targetMat = selectedMaterial || "all";
+    
+    let newTextures = { ...editorState.textures };
+    let newColors = { ...editorState.colors };
+    let newLastApplied = { ...editorState.lastApplied };
+    let updated = false;
+
     if (typeof textureDataUrl === "string") {
-      const targetMat = selectedMaterial || "all";
+      newTextures[targetMat] = textureDataUrl;
+      newLastApplied[targetMat] = "texture";
+      updated = true;
+    }
+    
+    if (typeof colorHex === "string" && colorHex !== "none") {
+      newColors[targetMat] = colorHex;
+      newLastApplied[targetMat] = "color";
+      updated = true;
+    }
+
+    if (updated) {
       pushHistory({
-        textures: { ...editorState.textures, [targetMat]: textureDataUrl },
-        lastApplied: { ...editorState.lastApplied, [targetMat]: "texture" },
+        textures: newTextures,
+        colors: newColors,
+        lastApplied: newLastApplied,
       });
     }
+
     setSelectedMaterial(null);
     setCurrentScreen(1);
   };

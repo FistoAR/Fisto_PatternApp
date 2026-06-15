@@ -40,114 +40,88 @@ import sharableDesignIcon from '../assets/images/featureSection/Icons/sharableDe
 
 const FEATURES = [
   {
-    title: "High-Quality Mockups",
-    description: "Access premium, photorealistic mockups for all your packaging needs.",
-    icon: highQualityIcon
-  },
-  {
-    title: "Easy Customization",
-    description: "Edit colors, texts and designs in just a few clicks with our smart tools.",
-    icon: editIcon
-  },
-  {
-    title: "Organized Categories",
-    description: "Browse mockups by category to quickly find exactly what you need.",
-    icon: categoriesIcon
-  },
-  {
-    title: "Multi-Format Files",
-    description: "Download in multiple formats including PSD, AI, PNG and more.",
-    icon: multiFormatIcon
-  },
-  {
-    title: "Realistic Shadows & Lighting",
-    description: "Built-in lighting and shadows for ultra-realistic results.",
-    icon: realisticIcon
-  },
-  {
-    title: "Fast & Reliable",
-    description: "Optimized for speed and performance to save your time.",
-    icon: fastIcon
-  },
-
-  {
     title: "Real-Time 3D Preview",
-    description: "Instantly preview your packaging in interactive 3D.",
+    description: "Instantly visualize your packaging designs in an interactive 3D environment before production.",
     icon: realTime3DIcon
   },
   {
     title: "Realistic Material & Texture Mapping",
-    description: "Apply realistic materials and textures for a true-to-life look.",
+    description: "Apply realistic materials, finishes, and textures to create true-to-life packaging presentations.",
     icon: smartIcon
   },
   {
     title: "High-Quality Rendering",
-    description: "Generate high-resolution renders for professional presentations.",
+    description: "Generate high-resolution, professional-grade renders suitable for marketing and client approvals.",
     icon: highQualityRenderingIcon
   },
   {
     title: "Real-Time Lighting & Shadow Effects",
-    description: "Experience realistic lighting and shadow simulations instantly.",
+    description: "Experience dynamic lighting and realistic shadow simulations that enhance product visualization.",
     icon: realTimeLightningIcon
   },
   {
     title: "Multiple Viewing Angles",
-    description: "Inspect your packaging design from every perspective.",
+    description: "Inspect your packaging design from every angle for complete design accuracy and presentation.",
     icon: multipleViewingIcon
   },
   {
     title: "QR Code-Based AR Experience",
-    description: "Generate QR codes to view packaging in Augmented Reality.",
+    description: "Generate QR codes that allow customers to view packaging designs in Augmented Reality.",
     icon: qrCodeIcon
   },
   {
     title: "Multi-Layer Artwork Support",
-    description: "Manage multiple artwork layers with complete control.",
+    description: "Manage complex artwork files with multiple layers while maintaining full design flexibility.",
     icon: multilayerIcon
   },
   {
     title: "Upload Your Own Graphics",
-    description: "Upload logos, images, and custom graphics effortlessly.",
+    description: "Upload logos, images, brand assets, and custom artwork directly into your designs.",
     icon: uploadOwnIcon
   },
   {
-    title: "Easy Design Customization",
-    description: "Customize colors, logos, text, and branding elements easily.",
+    title: "Easy Design Customization (Color, Logo)",
+    description: "Quickly customize colors, logos, text, and branding elements with intuitive editing tools.",
     icon: editIcon
   },
   {
     title: "Export Multi-Format File Support",
-    description: "Export designs in PNG, JPG, PDF, SVG, and more.",
+    description: "Export designs in multiple formats including PNG, JPG, PDF, SVG, and more.",
     icon: exportMultiformatIcon
   },
   {
     title: "Organized Product Categories",
-    description: "Browse products through structured and easy-to-use categories.",
+    description: "Browse products through structured categories for faster and more efficient design workflows.",
     icon: organizedProductIcon
   },
   {
+    title: "Fast & Reliable Performance",
+    description: "Enjoy smooth design experiences with optimized performance and rapid loading speeds.",
+    icon: fastIcon
+  },
+  {
     title: "360° Product Visualization",
-    description: "Rotate and explore packaging designs in full 360° view.",
+    description: "Rotate and explore packaging designs in a complete 360-degree interactive view.",
     icon: icon360d
   },
   {
     title: "Print-Ready Packaging Preview",
-    description: "Validate print-ready artwork with accurate production previews.",
+    description: "Validate print-ready files with accurate production previews before final output.",
     icon: printreadyIcon
   },
   {
     title: "Desktop Compatibility",
-    description: "Fully compatible with Windows and macOS desktop platforms.",
+    description: "Fully compatible across major desktop platforms for a seamless design experience.",
     icon: desktopCompatibilityIcon
   },
   {
     title: "Cloud-Based Design Storage",
-    description: "Store and access your projects securely from the cloud.",
+    description: "Securely save, access, and manage your projects anytime through cloud storage.",
     icon: cloudBasedDesignIcon
   },
   {
     title: "Shareable Design Links",
-    description: "Share designs instantly with clients, teams, and stakeholders.",
+    description: "Share live design links instantly with clients, team members, and stakeholders for feedback and collaboration.",
     icon: sharableDesignIcon
   }
 ];
