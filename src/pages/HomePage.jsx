@@ -1104,13 +1104,13 @@ export default function HomePage({ onLoaded }) {
               <div className="category-cards-container w-full  pb-4">
                 <div
                   ref={cardsRowRef}
-                  className="category-cards category-cards-row flex  md:gap-8 justify-start lg:justify-center  scrollbar-hide scroll-smooth snap-x snap-mandatory  w-full lg:flex-nowrap"
+                  className="category-cards category-cards-row flex gap-4 md:gap-6 lg:gap-8 justify-start lg:justify-center scrollbar-hide scroll-smooth snap-x snap-mandatory w-full lg:flex-wrap lg:px-12"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
                   {cardsConfig.map((card, idx) => (
                     <div
                       key={idx}
-                      className="explore-card w-[260px] sm:w-[280px] lg:flex-1 lg:max-w-[220px] shrink-0 snap-center cursor-pointer bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.12)] transition-shadow duration-300 p-2 border border-gray-50"
+                      className="explore-card w-[260px] sm:w-[280px] lg:w-[calc(25%-2rem)] xl:w-[calc(25%-2rem)] max-w-[320px] shrink-0 snap-center cursor-pointer bg-white rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.12)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.20)] transition-shadow duration-300 p-6 sm:p-8 border border-gray-50 flex items-center justify-center relative"
                       onClick={() =>
                         navigate("/modelsMockup", {
                           state: { activeCategory: card.category },
