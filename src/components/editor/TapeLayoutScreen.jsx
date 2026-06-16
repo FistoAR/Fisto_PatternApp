@@ -3,15 +3,15 @@ import React, { useState, useEffect, useRef } from "react";
 export default function TapeLayoutScreen({ onSave, onCancel }) {
   const [image, setImage] = useState(null);
   const [canvasWidth, setCanvasWidth] = useState(360);
-  const [matterWidth, setMatterWidth] = useState(60);
-  const [matterHeight, setMatterHeight] = useState(48);
+  const [layoutWidth, setLayoutWidth] = useState(60);
+  const [layoutHeight, setLayoutHeight] = useState(48);
   const [repeatGap, setRepeatGap] = useState(30);
   const [copies, setCopies] = useState(5);
 
   const canvasRef = useRef(null);
 
-  const totalCanvasHeight = matterHeight + 12; // As seen in screenshot "Calculated as Matter Height + 12mm"
-  const printSpan = matterWidth * copies + repeatGap * (copies - 1);
+  const totalCanvasHeight = layoutHeight + 12; // Calculated as Layout Height + 12mm
+  const printSpan = layoutWidth * copies + repeatGap * (copies - 1);
 
   // Canvas pixel resolution
   const PPI = 300;
@@ -19,9 +19,9 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
   
   // Auto-update canvas width when dimensions or copies change
   useEffect(() => {
-    const minRequiredWidth = matterWidth * copies + repeatGap * (copies + 1);
+    const minRequiredWidth = layoutWidth * copies + repeatGap * (copies + 1);
     setCanvasWidth(minRequiredWidth);
-  }, [matterWidth, repeatGap, copies]);
+  }, [layoutWidth, repeatGap, copies]);
 
   const canvasResWidth = Math.round(mmToPx(canvasWidth));
   const canvasResHeight = Math.round(mmToPx(totalCanvasHeight));
@@ -55,35 +55,35 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
     if (!image) return;
 
     // Calculate dimensions in pixels
-    const matterWidthPx = mmToPx(matterWidth);
-    const matterHeightPx = mmToPx(matterHeight);
+    const layoutWidthPx = mmToPx(layoutWidth);
+    const layoutHeightPx = mmToPx(layoutHeight);
     const repeatGapPx = mmToPx(repeatGap);
 
     // Draw copies centered vertically and starting from left (or centered horizontally)
     const printSpanPx = mmToPx(printSpan);
     const startX = (widthPx - printSpanPx) / 2;
-    const startY = (heightPx - matterHeightPx) / 2;
+    const startY = (heightPx - layoutHeightPx) / 2;
 
     for (let i = 0; i < copies; i++) {
-      const x = startX + i * (matterWidthPx + repeatGapPx);
+      const x = startX + i * (layoutWidthPx + repeatGapPx);
       
       // Preserve aspect ratio (object-fit: contain)
       const imgW = image.naturalWidth || image.width;
       const imgH = image.naturalHeight || image.height;
       const imgAspect = imgW && imgH ? imgW / imgH : 1;
-      const boxAspect = matterWidthPx / matterHeightPx;
+      const boxAspect = layoutWidthPx / layoutHeightPx;
       let drawW, drawH, drawX, drawY;
       
       if (imgAspect > boxAspect) {
-        drawW = matterWidthPx;
-        drawH = matterWidthPx / imgAspect;
+        drawW = layoutWidthPx;
+        drawH = layoutWidthPx / imgAspect;
       } else {
-        drawH = matterHeightPx;
-        drawW = matterHeightPx * imgAspect;
+        drawH = layoutHeightPx;
+        drawW = layoutHeightPx * imgAspect;
       }
       
-      drawX = x + (matterWidthPx - drawW) / 2;
-      drawY = startY + (matterHeightPx - drawH) / 2;
+      drawX = x + (layoutWidthPx - drawW) / 2;
+      drawY = startY + (layoutHeightPx - drawH) / 2;
 
       ctx.drawImage(image, drawX, drawY, drawW, drawH);
     }
@@ -91,7 +91,7 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
 
   useEffect(() => {
     drawCanvas(false);
-  }, [image, canvasWidth, matterWidth, matterHeight, repeatGap, copies]);
+  }, [image, canvasWidth, layoutWidth, layoutHeight, repeatGap, copies]);
 
   const handleSave = () => {
     drawCanvas(false); // Ensure transparent background for applied texture
@@ -113,13 +113,20 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
     drawCanvas(false); // Restore transparent preview
   };
 
+  const handleReset = () => {
+    setLayoutWidth(60);
+    setLayoutHeight(48);
+    setRepeatGap(30);
+    setCopies(5);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm font-sans">
       <div className="bg-[#f8fafc] w-full max-w-[1200px] h-[85vh] mt-[5vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col relative border border-white/20">
         {/* Main Content */}
         <div className="flex flex-1 overflow-hidden p-6 gap-6 min-h-0">
           {/* Left Sidebar */}
-          <div className="w-80 shrink-0 flex flex-col gap-6 overflow-y-auto pr-2 pb-6">
+          <div className="w-80 shrink-0 flex flex-col gap-4">
             {/* Image Upload */}
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
               <h3 className="text-xs font-bold text-[#c0623a] uppercase tracking-wider mb-3 mt-0">
@@ -135,56 +142,59 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
                     className="hidden"
                   />
                 </label>
-                <span className="text-sm text-slate-500 truncate">
-                  {image ? "Image selected" : "No file chosen"}
+                <span className="text-xs text-slate-500 truncate">
+                  {image ? "Image loaded" : "No file chosen"}
                 </span>
               </div>
             </div>
 
             {/* Dimensions */}
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider m-0">
+              <h3 className="text-xs font-bold text-[#c0623a] uppercase tracking-wider m-0">
                 2. Dimensions (MM)
               </h3>
 
-              <div className="flex flex-col gap-1.5">
+              {/* Canvas Width */}
+              <div>
                 <label className="text-xs font-medium text-slate-500">
                   Canvas Width
                 </label>
                 <input
                   type="number"
                   value={canvasWidth}
-                  onChange={(e) => setCanvasWidth(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-[#c0623a] focus:ring-1 focus:ring-[#c0623a]"
+                  disabled
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-500 font-semibold focus:outline-none"
                 />
               </div>
 
-              <div className="flex gap-3">
-                <div className="flex flex-col gap-1.5 flex-1">
+              {/* Layout Width & Height */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="text-xs font-medium text-slate-500">
-                    Matter Width
+                    Layout Width
                   </label>
                   <input
                     type="number"
-                    value={matterWidth}
-                    onChange={(e) => setMatterWidth(Number(e.target.value))}
+                    value={layoutWidth}
+                    onChange={(e) => setLayoutWidth(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-[#c0623a] focus:ring-1 focus:ring-[#c0623a]"
                   />
                 </div>
-                <div className="flex flex-col gap-1.5 flex-1">
+                <div>
                   <label className="text-xs font-medium text-slate-500">
-                    Matter Height
+                    Layout Height
                   </label>
                   <input
                     type="number"
-                    value={matterHeight}
-                    onChange={(e) => setMatterHeight(Number(e.target.value))}
+                    value={layoutHeight}
+                    onChange={(e) => setLayoutHeight(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-[#c0623a] focus:ring-1 focus:ring-[#c0623a]"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              {/* Repeat Gap */}
+              <div>
                 <label className="text-xs font-medium text-slate-500">
                   Repeat Gap
                 </label>
@@ -196,7 +206,8 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              {/* Copies */}
+              <div>
                 <label className="text-xs font-medium text-slate-500">
                   Copies
                 </label>
@@ -217,31 +228,35 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
                   {totalCanvasHeight}mm
                 </div>
                 <div className="text-[11px] text-white/80">
-                  Calculated as Matter Height + 12mm
+                  Calculated as Layout Height + 12mm
                 </div>
               </div>
+
+              {/* Reset Button */}
+              <button
+                onClick={handleReset}
+                className="mt-2 w-full py-2.5 rounded-xl font-bold text-sm text-[#c0623a] bg-[#fdfdfd] border border-[#eabfb0] hover:bg-[#f8ede8] transition-colors cursor-pointer shadow-sm"
+              >
+                Reset Default Values
+              </button>
             </div>
           </div>
 
           {/* Right Preview Area */}
           <div className="flex-1 flex flex-col gap-4 min-w-0">
             <div
-              className="flex-1 bg-[#f1f1f1] rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center p-8 overflow-auto"
-              style={{
-                backgroundImage:
-                  "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)",
-                backgroundSize: "20px 20px",
-                backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
-              }}
+              className="flex-1 bg-[#f1f1f1] rounded-2xl border border-slate-200 shadow-inner flex items-center justify-start p-8 overflow-auto"
             >
               {/* Visual representation of the layout */}
               <div
-                className="relative shadow-md"
+                className="relative shadow-md bg-white shrink-0"
                 style={{
-                  width: `${(canvasWidth / 360) * 100}%`,
-                  maxWidth: "100%",
-                  aspectRatio: `${canvasWidth} / ${totalCanvasHeight}`,
-                  backgroundColor: "rgba(255, 255, 255, 0.4)",
+                  height: "180px",
+                  width: `${(canvasWidth / totalCanvasHeight) * 180}px`,
+                  backgroundImage:
+                    "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)",
+                  backgroundSize: "20px 20px",
+                  backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
                 }}
               >
                 {/* This is the invisible actual canvas used for generating the output image */}
@@ -259,7 +274,7 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
                       className="relative border border-red-400/50 flex"
                       style={{
                         width: `${(printSpan / canvasWidth) * 100}%`,
-                        height: `${(matterHeight / totalCanvasHeight) * 100}%`,
+                        height: `${(layoutHeight / totalCanvasHeight) * 100}%`,
                       }}
                     >
                       {Array.from({ length: copies }).map((_, i) => (
@@ -267,8 +282,8 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
                           key={i}
                           className="absolute h-full flex items-center justify-center"
                           style={{
-                            width: `${(matterWidth / printSpan) * 100}%`,
-                            left: `${((i * (matterWidth + repeatGap)) / printSpan) * 100}%`,
+                            width: `${(layoutWidth / printSpan) * 100}%`,
+                            left: `${((i * (layoutWidth + repeatGap)) / printSpan) * 100}%`,
                           }}
                         >
                           <img

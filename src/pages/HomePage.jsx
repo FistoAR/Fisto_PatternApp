@@ -170,12 +170,12 @@ const slideConfigs = [
       },
       {
         src: plant5,
-        css: { left: "83.5%", top: "15.4%", width: "25%", height: "auto" },
+        css: { left: "83.2%", top: "15.4%", width: "25%", height: "auto" },
         isLeaf: true,
       },
       {
         src: prod5,
-        css: { right: "13%", top: "19%", width: "35%", height: "auto" },
+        css: { right: "10%", top: "19%", width: "35%", height: "auto" },
       },
     ],
   },
@@ -341,15 +341,17 @@ const slideContents = [
   {
     title: (
       <>
-        <span className="hero-title-line block">Stronger Sealing.</span>
-        <span className="hero-title-line block">Safer Shipping.</span>
+        <span className="hero-title-line block">Secure Every Shipment.</span>
         <span className="hero-title-line block" style={{ color: "#2B4326" }}>
-          FIST-O Tape
+          Deliver With
+        </span>
+        <span className="hero-title-line block" style={{ color: "#2B4326" }}>
+          Confidence.
         </span>
       </>
     ),
     description:
-      "High-quality adhesive tapes for secure sealing, packing, and protection. Built for performance. Made to last.",
+      "Premium packaging solutions designed to protect products, reduce damage, and ensure safe delivery from warehouse to customer.",
     buttonBg: "#2B4326",
     themeColor: "#2B4326",
     features: [
@@ -361,17 +363,14 @@ const slideContents = [
   {
     title: (
       <>
-        <span className="hero-title-line block">Design Modern</span>
-        <span className="hero-title-line block">
-          T-Shirt <span style={{ color: "#1E3D59" }}>Mockups</span>
-        </span>
+        <span className="hero-title-line block">Bring Your</span>
         <span className="hero-title-line block" style={{ color: "#1E3D59" }}>
-          Like a pro
+          Designs to Life
         </span>
       </>
     ),
     description:
-      "Upload your artwork and visual it on realistic t-shirt mockups perfect for fashion brands, print shops and online stores.",
+      "Create realistic product mockups in minutes. Showcase your artwork with professional-quality visuals for websites, marketing, and online stores.",
     buttonBg: "#1E3D59",
     themeColor: "#1E3D59",
     features: [
@@ -1010,15 +1009,15 @@ export default function HomePage({ onLoaded }) {
             </button>
 
             {/* Carousel Slide Indicators */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
               {slideConfigs.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => changeSlide(index)}
-                  className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  className={`h-3.5 rounded-full transition-all duration-300 cursor-pointer ${
                     currentSlide === index
                       ? "w-8 bg-[#C15F27]"
-                      : "w-2.5 bg-black/20 hover:bg-black/40"
+                      : "w-3.5 bg-black/20 hover:bg-black/40"
                   }`}
                   aria-label={`Go to slide ${index + 1}`}
                 />
@@ -1104,13 +1103,13 @@ export default function HomePage({ onLoaded }) {
               <div className="category-cards-container w-full  pb-4">
                 <div
                   ref={cardsRowRef}
-                  className="category-cards category-cards-row flex gap-4 md:gap-6 lg:gap-8 justify-start lg:justify-center scrollbar-hide scroll-smooth snap-x snap-mandatory w-full lg:flex-wrap lg:px-12"
+                  className="category-cards category-cards-row flex gap-8 md:gap-12 lg:gap-14 xl:gap-18 justify-start lg:justify-center scrollbar-hide scroll-smooth snap-x snap-mandatory w-full lg:flex-wrap lg:px-12"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
                   {cardsConfig.map((card, idx) => (
                     <div
                       key={idx}
-                      className="explore-card w-[260px] sm:w-[280px] lg:w-[calc(25%-2rem)] xl:w-[calc(25%-2rem)] max-w-[320px] shrink-0 snap-center cursor-pointer bg-white rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.12)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.20)] transition-shadow duration-300 p-6 sm:p-8 border border-gray-50 flex items-center justify-center relative"
+                      className="explore-card w-[260px] sm:w-[280px] lg:w-[calc(25%-36px)] xl:w-[calc(20%-42px)] max-w-[320px] shrink-0 snap-center cursor-pointer bg-white rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.12)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.20)] transition-shadow duration-300 p-6 sm:p-8 border border-gray-50 flex items-center justify-center relative"
                       onClick={() =>
                         navigate("/modelsMockup", {
                           state: { activeCategory: card.category },

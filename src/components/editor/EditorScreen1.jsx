@@ -3,6 +3,7 @@ import {
   useState,
   useMemo,
   useEffect,
+  useCallback,
   Suspense,
   forwardRef,
   useImperativeHandle,
@@ -291,7 +292,7 @@ function AutoSizedModelWithDimensions({
       // Small timeout to allow the GPU upload to complete before hiding the spinner
       setTimeout(() => {
         if (callbacksRef.current.onTextureLoadEnd) callbacksRef.current.onTextureLoadEnd();
-      }, 100);
+      }, 3000);
     };
     return new THREE.TextureLoader(mgr);
   }, []);
@@ -356,6 +357,11 @@ function AutoSizedModelWithDimensions({
             loader.load(textureUrl, (texture) => {
               texture.colorSpace = THREE.SRGBColorSpace;
               texture.flipY = false;
+              if (modelUrl && modelUrl.includes("Tape")) {
+                texture.center.set(0.5, 0.5);
+                texture.rotation = -Math.PI / 2;
+              }
+              if (decalMat.map) decalMat.map.dispose();
               decalMat.map = texture;
               decalMat.color.setHex(0xffffff);
               decalMat.needsUpdate = true;
@@ -364,6 +370,7 @@ function AutoSizedModelWithDimensions({
           }
         } else {
           m.userData.decalMesh.visible = false;
+          if (decalMat.map) decalMat.map.dispose();
           decalMat.map = null;
           decalMat.userData.currentTextureUrl = null;
           decalMat.needsUpdate = true;
@@ -375,25 +382,39 @@ function AutoSizedModelWithDimensions({
           m.color.set(colorHex);
           // Only clear m.map if it's NOT a PBR material
           if (!m.userData.currentPbrId) {
+             if (m.map) m.map.dispose();
              m.map = null;
           }
           m.needsUpdate = true;
           invalidate();
-        } else if (!materialType) {
-          // Restore Originals (No custom color, no PBR material)
-          m.color.setHex(m.userData.originalColorHex);
-          m.userData.currentPbrId = null;
-          if (textureUrl) {
-            m.map = null;
+        } else {
+          // Reset color if no custom color is specified
+          if (m.userData.currentPbrId) {
+            m.color.setHex(0xffffff); // PBR active: base color white
           } else {
-            m.map = m.userData.originalMap;
+            m.color.setHex(m.userData.originalColorHex); // Restore original
           }
-          m.normalMap = null;
-          m.roughnessMap = null;
-          m.metalnessMap = null;
-          m.aoMap = null;
-          m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.5;
-          m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
+
+          if (!materialType) {
+            // Restore Originals (No custom color, no PBR material)
+            m.userData.currentPbrId = null;
+            if (textureUrl) {
+              if (m.map) m.map.dispose();
+              m.map = null;
+            } else {
+              m.map = m.userData.originalMap;
+            }
+            if (m.normalMap) m.normalMap.dispose();
+            if (m.roughnessMap) m.roughnessMap.dispose();
+            if (m.metalnessMap) m.metalnessMap.dispose();
+            if (m.aoMap) m.aoMap.dispose();
+            m.normalMap = null;
+            m.roughnessMap = null;
+            m.metalnessMap = null;
+            m.aoMap = null;
+            m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.5;
+            m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
+          }
           m.needsUpdate = true;
           invalidate();
         }
@@ -427,6 +448,13 @@ function AutoSizedModelWithDimensions({
             // Set base color to white so textures show accurately
             m.color.setHex(0xffffff);
 
+            // Dispose old maps first
+            if (m.map) m.map.dispose();
+            if (m.normalMap) m.normalMap.dispose();
+            if (m.roughnessMap) m.roughnessMap.dispose();
+            if (m.metalnessMap) m.metalnessMap.dispose();
+            if (m.aoMap) m.aoMap.dispose();
+
             // Initialize maps
             m.map = null;
             m.normalMap = null;
@@ -440,6 +468,7 @@ function AutoSizedModelWithDimensions({
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
                 if (isColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
+                if (m[mapType]) m[mapType].dispose();
                 m[mapType] = texture;
                 m.needsUpdate = true;
                 invalidate();
@@ -596,6 +625,16 @@ export default function EditorScreen1({
   const [isTextureDropdownOpen, setIsTextureDropdownOpen] = useState(false);
 
   const [isModelLoading, setIsModelLoading] = useState(false);
+  const textureTimeoutRef = useRef(null);
+  const textureFallbackTimeoutRef = useRef(null);
+
+  // Clean up timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (textureTimeoutRef.current) clearTimeout(textureTimeoutRef.current);
+      if (textureFallbackTimeoutRef.current) clearTimeout(textureFallbackTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (modelUrl) {
@@ -674,12 +713,28 @@ export default function EditorScreen1({
   };
 
   // Initialize custom size inputs when base dimensions load
-  const handleBaseDimensionsLoaded = (dims) => {
-    if (!baseDimensions) {
-      setBaseDimensions(dims);
-      setCustomSizeInput(dims); // default inputs to base size
-    }
-  };
+  const handleBaseDimensionsLoaded = useCallback((dims) => {
+    setBaseDimensions((prev) => {
+      if (!prev) {
+        setCustomSizeInput(dims); // default inputs to base size
+        return dims;
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleMaterialsLoaded = useCallback((mats) => {
+    setModelMaterials(mats);
+    setIsModelLoading(false);
+  }, []);
+
+  const handleTextureLoadStart = useCallback(() => {
+    setIsModelLoading(true);
+  }, []);
+
+  const handleTextureLoadEnd = useCallback(() => {
+    setIsModelLoading(false);
+  }, []);
 
   // Tools state
   const [zoom, setZoom] = useState(1);
@@ -903,14 +958,11 @@ export default function EditorScreen1({
                 shadowEnabled={shadowEnabled}
                 customSize={appliedCustomSize}
                 selectedMaterialId={selectedMaterial}
-                onMaterialsLoaded={(mats) => {
-                  setModelMaterials(mats);
-                  setIsModelLoading(false);
-                }}
+                onMaterialsLoaded={handleMaterialsLoaded}
                 onBaseDimensionsLoaded={handleBaseDimensionsLoaded}
                 onSceneLoaded={setActiveScene}
-                onTextureLoadStart={() => setIsModelLoading(true)}
-                onTextureLoadEnd={() => setIsModelLoading(false)}
+                onTextureLoadStart={handleTextureLoadStart}
+                onTextureLoadEnd={handleTextureLoadEnd}
               />
             )}
           </Suspense>
@@ -1015,7 +1067,7 @@ export default function EditorScreen1({
 
             <button
               onClick={() => onProceed(selectedMaterial)}
-              className="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-[#c05520] bg-orange-50 hover:bg-orange-100 transition-all duration-300 cursor-pointer group shadow-sm"
+              className="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-[#c05520] bg-transparent hover:bg-orange-50 transition-all duration-300 cursor-pointer group shadow-sm"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center border border-orange-200">
@@ -1129,9 +1181,12 @@ export default function EditorScreen1({
                   Texture Library
                 </label>
                 <button
-                  onClick={() =>
-                    onApplyMaterial && onApplyMaterial(selectedMaterial, null)
-                  }
+                  onClick={() => {
+                    if (textureTimeoutRef.current) clearTimeout(textureTimeoutRef.current);
+                    if (textureFallbackTimeoutRef.current) clearTimeout(textureFallbackTimeoutRef.current);
+                    setIsModelLoading(false);
+                    if (onApplyMaterial) onApplyMaterial(selectedMaterial, null);
+                  }}
                   className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
                 >
                   <svg
@@ -1228,17 +1283,22 @@ export default function EditorScreen1({
                     <button
                       key={texture.id}
                       title={texture.name}
+                      disabled={isModelLoading}
                       onClick={() => {
-                        if (!onApplyMaterial) return;
+                        if (isModelLoading || !onApplyMaterial) return;
+
+                        if (textureTimeoutRef.current) clearTimeout(textureTimeoutRef.current);
+                        if (textureFallbackTimeoutRef.current) clearTimeout(textureFallbackTimeoutRef.current);
+
                         // Force the loading spinner to appear before blocking the main thread
                         setIsModelLoading(true);
-                        setTimeout(() => {
+                        textureTimeoutRef.current = setTimeout(() => {
                           onApplyMaterial(selectedMaterial, texture);
-                          // Fallback to hide spinner if texture was fully cached and didn't trigger onLoad
-                          setTimeout(() => setIsModelLoading(false), 500);
-                        }, 50);
+                          // Fallback to hide spinner to cover the WebGL shader compilation block
+                          textureFallbackTimeoutRef.current = setTimeout(() => setIsModelLoading(false), 3000);
+                        }, 150);
                       }}
-                      className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center cursor-pointer transition-all ${appliedMaterials?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
+                      className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center transition-all ${isModelLoading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${appliedMaterials?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
                     >
                       {texture.preview ? (
                         <img

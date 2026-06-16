@@ -107,10 +107,19 @@ export default function EditorPage() {
       updated = true;
     }
     
-    if (typeof colorHex === "string" && colorHex !== "none") {
-      newColors[targetMat] = colorHex;
-      newLastApplied[targetMat] = "color";
-      updated = true;
+    if (typeof colorHex === "string") {
+      if (colorHex === "none") {
+        if (newColors[targetMat] !== undefined) {
+          delete newColors[targetMat];
+          updated = true;
+        }
+      } else {
+        if (newColors[targetMat] !== colorHex) {
+          newColors[targetMat] = colorHex;
+          newLastApplied[targetMat] = "color";
+          updated = true;
+        }
+      }
     }
 
     if (updated) {

@@ -170,7 +170,7 @@ export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected
       </div>
 
       <div className="px-6 pb-4 border-b border-gray-100 mb-4 shrink-0">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+        <h3 className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2.5">
           Image Formatting
         </h3>
         <div className="bg-gray-50 p-1 rounded-xl flex gap-1 border border-gray-100/80">
@@ -202,6 +202,10 @@ export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected
             </svg>
             Cover
           </button>
+        </div>
+
+        <div className="mt-2 py-1 px-1 text-[11px] text-gray-600 font-medium leading-relaxed">
+          Click the image and a frame from the UV layout, then select a format (Contain or Cover) to apply.
         </div>
         
         {warningMessage && (

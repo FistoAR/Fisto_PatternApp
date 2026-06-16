@@ -399,7 +399,16 @@ export default function ModelsMockupPage() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTo(0, 0);
+      if (activeCategory === "All") {
+        scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setTimeout(() => {
+          const firstSection = scrollRef.current?.querySelector(".space-y-10 > section");
+          if (firstSection) {
+            firstSection.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 100);
+      }
     }
   }, [activeCategory]);
 
@@ -547,7 +556,7 @@ export default function ModelsMockupPage() {
 
               <div className="space-y-10">
                 {displayedSections.map((section, sectionIndex) => (
-                  <section key={section.title}>
+                  <section key={section.title} className="scroll-mt-12">
                     <div className="group/heading mb-5 flex w-fit cursor-default items-center gap-3">
                       <span className="text-[#7d8478] transition-colors duration-200 group-hover/heading:text-[#cc6428]">
                         {iconFor(section.icon, "h-7 w-7")}

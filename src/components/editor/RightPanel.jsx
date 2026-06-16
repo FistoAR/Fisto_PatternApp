@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { Canvas as R3FCanvas, useThree, useLoader } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
+import { OrbitControls, useGLTF, useProgress } from "@react-three/drei";
 import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
@@ -38,6 +38,24 @@ const packageColors = [
   { id: "green", color: "#4a7c59" },
   { id: "silver", color: "#d4d4d8" },
 ];
+
+function LoaderOverlay() {
+  const { active, progress } = useProgress();
+  if (!active) return null;
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px] pointer-events-none">
+      <div className="relative w-10 h-10 mb-2">
+        <div className="absolute inset-0 rounded-full border-4 border-white/20" />
+        <div
+          className="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin"
+          style={{ animationDuration: "0.8s" }}
+        />
+      </div>
+      <p className="text-white font-bold text-xs">Loading Model...</p>
+      <p className="text-white/70 text-[10px] mt-0.5">{Math.round(progress)}%</p>
+    </div>
+  );
+}
 
 export default function RightPanel({
   canvasRef,
@@ -235,6 +253,7 @@ export default function RightPanel({
           className="relative rounded-xl overflow-hidden aspect-square"
           style={{ background: sceneBgColor }}
         >
+          <LoaderOverlay />
           <R3FCanvas
             className="w-full h-full"
             camera={{ position: [0, 0.2, 3.2], fov: 40 }}
@@ -841,6 +860,10 @@ function AutoSizedModel({
       tex.magFilter = THREE.LinearFilter;
       tex.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
       tex.flipY = false;
+      if (modelUrl && modelUrl.includes("Tape")) {
+        tex.center.set(0.5, 0.5);
+        tex.rotation = -Math.PI / 2;
+      }
       canvasTextureRef.current = tex;
     }
 

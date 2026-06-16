@@ -43,7 +43,7 @@ const HANDLE = {
 class DraggableImage {
   constructor(img, textureSize) {
     this.img = img;
-    this.width = textureSize.width * 0.4;
+    this.width = textureSize.width * 0.2;
     this.height = (this.width / img.width) * img.height;
 
     // Center initially
@@ -164,7 +164,7 @@ class DraggableImage {
     };
   }
 
-  draw(ctx, scale, uvComponents = []) {
+  draw(ctx, scale, uvComponents = [], isTape = false) {
     ctx.save();
 
     // Clip to the selected faces if any to show image contained inside selected frame/face
@@ -174,20 +174,19 @@ class DraggableImage {
       uvComponents &&
       uvComponents.length > 0
     ) {
+      const cw = ctx.canvas.width;
+      const ch = ctx.canvas.height;
+      const isTapeCanvas = isTape;
       ctx.beginPath();
       let hasPath = false;
       this.selectedFaceIds.forEach((fId) => {
         const comp = uvComponents.find((c) => c.id === fId);
         if (comp && comp.path && comp.path.length > 0) {
-          ctx.moveTo(
-            comp.path[0].u * ctx.canvas.width,
-            comp.path[0].v * ctx.canvas.height,
-          );
+          const p0 = uvToPx(comp.path[0].u, comp.path[0].v, cw, ch, isTapeCanvas);
+          ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < comp.path.length; i++) {
-            ctx.lineTo(
-              comp.path[i].u * ctx.canvas.width,
-              comp.path[i].v * ctx.canvas.height,
-            );
+            const p = uvToPx(comp.path[i].u, comp.path[i].v, cw, ch, isTapeCanvas);
+            ctx.lineTo(p.x, p.y);
           }
           hasPath = true;
         }
@@ -452,7 +451,7 @@ class DraggableText {
     };
   }
 
-  draw(ctx, scale, uvComponents = []) {
+  draw(ctx, scale, uvComponents = [], isTape = false) {
     ctx.save();
 
     // Clip to the selected faces if any
@@ -462,20 +461,20 @@ class DraggableText {
       uvComponents &&
       uvComponents.length > 0
     ) {
+      const cw = ctx.canvas.width;
+      const ch = ctx.canvas.height;
+      // Tape model canvas is landscape (width > height after dimension swap)
+      const isTapeCanvas = isTape || (cw > ch * 1.2);
       ctx.beginPath();
       let hasPath = false;
       this.selectedFaceIds.forEach((fId) => {
         const comp = uvComponents.find((c) => c.id === fId);
         if (comp && comp.path && comp.path.length > 0) {
-          ctx.moveTo(
-            comp.path[0].u * ctx.canvas.width,
-            comp.path[0].v * ctx.canvas.height,
-          );
+          const p0 = uvToPx(comp.path[0].u, comp.path[0].v, cw, ch, isTapeCanvas);
+          ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < comp.path.length; i++) {
-            ctx.lineTo(
-              comp.path[i].u * ctx.canvas.width,
-              comp.path[i].v * ctx.canvas.height,
-            );
+            const p = uvToPx(comp.path[i].u, comp.path[i].v, cw, ch, isTapeCanvas);
+            ctx.lineTo(p.x, p.y);
           }
           hasPath = true;
         }
@@ -732,6 +731,24 @@ class DraggableText {
   }
 }
 
+// Helper: converts UV coordinates to canvas pixel coordinates.
+// For tape models, rotates 90° CCW so the UV layout appears horizontal.
+function uvToPx(u, v, w, h, isTape) {
+  if (isTape) {
+    return { x: (1 - v) * w, y: u * h };
+  }
+  return { x: u * w, y: v * h };
+}
+
+// Helper: inverse of uvToPx — converts canvas pixel back to UV for hit-testing.
+function pxToUv(px, py, w, h, isTape) {
+  if (isTape) {
+    // Inverse of: x=(1-v)*w, y=u*h  →  v=1-px/w, u=py/h
+    return { u: py / h, v: 1 - px / w };
+  }
+  return { u: px / w, v: py / h };
+}
+
 function drawUVs(
   mesh,
   components,
@@ -758,6 +775,8 @@ function drawUVs(
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
+  const isTapeModel = modelUrl && modelUrl.includes("Tape");
+
   // 1. Draw filled components (faces)
   components.forEach((comp) => {
     if (!comp.loops || comp.loops.length === 0) return;
@@ -765,9 +784,11 @@ function drawUVs(
     ctx.beginPath();
     comp.loops.forEach((loop) => {
       if (loop.length === 0) return;
-      ctx.moveTo(loop[0].u * w, loop[0].v * h);
+      const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel);
+      ctx.moveTo(p0.x, p0.y);
       for (let i = 1; i < loop.length; i++) {
-        ctx.lineTo(loop[i].u * w, loop[i].v * h);
+        const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel);
+        ctx.lineTo(p.x, p.y);
       }
       ctx.closePath();
     });
@@ -786,7 +807,6 @@ function drawUVs(
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
 
-  const isTapeModel = modelUrl && modelUrl.includes("Tape");
   const shouldDrawFull =
     !isTapeModel && (drawFull || !components || components.length === 0);
 
@@ -797,8 +817,10 @@ function drawUVs(
       const v1 = uvAttr.getY(idx1);
       const u2 = uvAttr.getX(idx2);
       const v2 = uvAttr.getY(idx2);
-      ctx.moveTo(u1 * w, v1 * h);
-      ctx.lineTo(u2 * w, v2 * h);
+      const p1 = uvToPx(u1, v1, w, h, isTapeModel);
+      const p2 = uvToPx(u2, v2, w, h, isTapeModel);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
     };
 
     if (index) {
@@ -823,13 +845,17 @@ function drawUVs(
       const { mergedGroups, nonMerged } = uvTapeMerged;
 
       Object.values(mergedGroups).forEach((group) => {
+        // For tape: draw rotated bounding rect using uvToPx
+        const tl = uvToPx(group.minU, group.minV, w, h, true);
+        const tr = uvToPx(group.maxU, group.minV, w, h, true);
+        const br = uvToPx(group.maxU, group.maxV, w, h, true);
+        const bl = uvToPx(group.minU, group.maxV, w, h, true);
         ctx.beginPath();
-        ctx.rect(
-          group.minU * w,
-          group.minV * h,
-          (group.maxU - group.minU) * w,
-          (group.maxV - group.minV) * h,
-        );
+        ctx.moveTo(tl.x, tl.y);
+        ctx.lineTo(tr.x, tr.y);
+        ctx.lineTo(br.x, br.y);
+        ctx.lineTo(bl.x, bl.y);
+        ctx.closePath();
         ctx.stroke();
       });
 
@@ -837,9 +863,11 @@ function drawUVs(
         ctx.beginPath();
         comp.loops.forEach((loop) => {
           if (loop.length === 0) return;
-          ctx.moveTo(loop[0].u * w, loop[0].v * h);
+          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel);
+          ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < loop.length; i++) {
-            ctx.lineTo(loop[i].u * w, loop[i].v * h);
+            const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel);
+            ctx.lineTo(p.x, p.y);
           }
           ctx.closePath();
         });
@@ -852,9 +880,11 @@ function drawUVs(
         ctx.beginPath();
         comp.loops.forEach((loop) => {
           if (loop.length === 0) return;
-          ctx.moveTo(loop[0].u * w, loop[0].v * h);
+          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel);
+          ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < loop.length; i++) {
-            ctx.lineTo(loop[i].u * w, loop[i].v * h);
+            const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel);
+            ctx.lineTo(p.x, p.y);
           }
           ctx.closePath();
         });
@@ -889,13 +919,16 @@ function drawUVs(
       });
 
       Object.values(selectedMergedGroups).forEach((group) => {
+        const tl = uvToPx(group.minU, group.minV, w, h, true);
+        const tr = uvToPx(group.maxU, group.minV, w, h, true);
+        const br = uvToPx(group.maxU, group.maxV, w, h, true);
+        const bl = uvToPx(group.minU, group.maxV, w, h, true);
         ctx.beginPath();
-        ctx.rect(
-          group.minU * w,
-          group.minV * h,
-          (group.maxU - group.minU) * w,
-          (group.maxV - group.minV) * h,
-        );
+        ctx.moveTo(tl.x, tl.y);
+        ctx.lineTo(tr.x, tr.y);
+        ctx.lineTo(br.x, br.y);
+        ctx.lineTo(bl.x, bl.y);
+        ctx.closePath();
         ctx.strokeStyle = "#3b82f6"; // solid blue-500
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -905,9 +938,11 @@ function drawUVs(
         ctx.beginPath();
         comp.loops.forEach((loop) => {
           if (loop.length === 0) return;
-          ctx.moveTo(loop[0].u * w, loop[0].v * h);
+          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, true);
+          ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < loop.length; i++) {
-            ctx.lineTo(loop[i].u * w, loop[i].v * h);
+            const p = uvToPx(loop[i].u, loop[i].v, w, h, true);
+            ctx.lineTo(p.x, p.y);
           }
           ctx.closePath();
         });
@@ -922,9 +957,11 @@ function drawUVs(
           ctx.beginPath();
           comp.loops.forEach((loop) => {
             if (loop.length === 0) return;
-            ctx.moveTo(loop[0].u * w, loop[0].v * h);
+            const p0 = uvToPx(loop[0].u, loop[0].v, w, h, false);
+            ctx.moveTo(p0.x, p0.y);
             for (let i = 1; i < loop.length; i++) {
-              ctx.lineTo(loop[i].u * w, loop[i].v * h);
+              const p = uvToPx(loop[i].u, loop[i].v, w, h, false);
+              ctx.lineTo(p.x, p.y);
             }
             ctx.closePath();
           });
@@ -1500,9 +1537,12 @@ const Canvas = forwardRef(
     }, [onTextureUpdated]);
 
     const resizeTextureCanvas = useCallback(
-      (nextSize) => {
-        const width = Math.max(1, Math.round(nextSize.width));
-        const height = Math.max(1, Math.round(nextSize.height));
+      (nextSize, forTapeModel = false) => {
+        // For tape models, swap width/height so the canvas is landscape (horizontal UV)
+        const rawW = Math.max(1, Math.round(nextSize.width));
+        const rawH = Math.max(1, Math.round(nextSize.height));
+        const width = forTapeModel ? Math.max(rawW, rawH) : rawW;
+        const height = forTapeModel ? Math.min(rawW, rawH) : rawH;
         const previousSize = textureSizeRef.current;
 
         if (previousSize.width !== width || previousSize.height !== height) {
@@ -1596,8 +1636,9 @@ const Canvas = forwardRef(
       }
 
       const scale = canvasScaleRef.current;
+      const isTapeModel = !!(modelUrl && modelUrl.includes("Tape"));
       imagesRef.current.forEach((img) => {
-        img.draw(ctx, scale, uvComponentsRef.current);
+        img.draw(ctx, scale, uvComponentsRef.current, isTapeModel);
       });
 
       // Draw controls for selected image LAST (on top)
@@ -1608,7 +1649,7 @@ const Canvas = forwardRef(
       ) {
         selectedImageRef.current.drawControls(ctx, scale);
       }
-    }, [showUv, fullUv, faceColors, selectedFaces]);
+    }, [showUv, fullUv, faceColors, selectedFaces, modelUrl]);
 
     const bakeTexture = useCallback(
       (ignoreSelection = false) => {
@@ -1623,19 +1664,16 @@ const Canvas = forwardRef(
         // We do NOT fill the background with bgColor here anymore.
 
         // Bake Face Colors first
+        const isTapeBake = !!(modelUrl && modelUrl.includes("Tape"));
         uvComponentsRef.current.forEach((comp) => {
           const color = faceColors[comp.id];
           if (color && comp.path && comp.path.length > 0) {
             bakeCtx.beginPath();
-            bakeCtx.moveTo(
-              comp.path[0].u * bakeCanvas.width,
-              comp.path[0].v * bakeCanvas.height,
-            );
+            const bp0 = uvToPx(comp.path[0].u, comp.path[0].v, bakeCanvas.width, bakeCanvas.height, isTapeBake);
+            bakeCtx.moveTo(bp0.x, bp0.y);
             for (let i = 1; i < comp.path.length; i++) {
-              bakeCtx.lineTo(
-                comp.path[i].u * bakeCanvas.width,
-                comp.path[i].v * bakeCanvas.height,
-              );
+              const bp = uvToPx(comp.path[i].u, comp.path[i].v, bakeCanvas.width, bakeCanvas.height, isTapeBake);
+              bakeCtx.lineTo(bp.x, bp.y);
             }
             bakeCtx.closePath();
             bakeCtx.fillStyle = color;
@@ -1650,15 +1688,11 @@ const Canvas = forwardRef(
             if (comp && comp.path && comp.path.length > 0) {
               bakeCtx.save();
               bakeCtx.beginPath();
-              bakeCtx.moveTo(
-                comp.path[0].u * bakeCanvas.width,
-                comp.path[0].v * bakeCanvas.height,
-              );
+              const hsp0 = uvToPx(comp.path[0].u, comp.path[0].v, bakeCanvas.width, bakeCanvas.height, isTapeBake);
+              bakeCtx.moveTo(hsp0.x, hsp0.y);
               for (let i = 1; i < comp.path.length; i++) {
-                bakeCtx.lineTo(
-                  comp.path[i].u * bakeCanvas.width,
-                  comp.path[i].v * bakeCanvas.height,
-                );
+                const hsp = uvToPx(comp.path[i].u, comp.path[i].v, bakeCanvas.width, bakeCanvas.height, isTapeBake);
+                bakeCtx.lineTo(hsp.x, hsp.y);
               }
               bakeCtx.closePath();
 
@@ -1679,12 +1713,12 @@ const Canvas = forwardRef(
           });
         }
         imagesRef.current.forEach((item) => {
-          item.draw(bakeCtx, 1, uvComponentsRef.current);
+          item.draw(bakeCtx, 1, uvComponentsRef.current, isTapeBake);
         });
 
         onTextureUpdatedRef.current();
       },
-      [bgColor, faceColors, selectedFaces, textureCanvasRef, appliedMaterials],
+      [bgColor, faceColors, selectedFaces, textureCanvasRef, appliedMaterials, modelUrl],
     );
 
     // --- History Logic ---
@@ -1711,6 +1745,8 @@ const Canvas = forwardRef(
                 bold: item.bold,
                 italic: item.italic,
                 underline: item.underline,
+                bend: item.bend || 0,
+                letterSpacing: item.letterSpacing || 0,
               };
             }
             return {
@@ -1758,6 +1794,8 @@ const Canvas = forwardRef(
                 bold: itemData.bold,
                 italic: itemData.italic,
                 underline: itemData.underline,
+                bend: itemData.bend || 0,
+                letterSpacing: itemData.letterSpacing || 0,
               },
             );
             dt.x = itemData.x;
@@ -2138,9 +2176,11 @@ const Canvas = forwardRef(
           uvTapeMergedRef.current = null;
         }
 
+        const isTapeGlb = modelUrl && modelUrl.includes("Tape");
         const materialSize = getTextureSizeFromGltf(gltf);
         resizeTextureCanvas(
           materialSize || estimateTextureSizeFromUv(bestMesh),
+          isTapeGlb,
         );
         resizeDisplayCanvas();
         redrawAll();
@@ -2298,8 +2338,8 @@ const Canvas = forwardRef(
           }
         } else {
           // Check if we clicked a face to select
-          const u = mx / displayCanvas.width;
-          const v = my / displayCanvas.height;
+          const isTapeHit = !!(modelUrl && modelUrl.includes("Tape"));
+          const { u, v } = pxToUv(mx, my, displayCanvas.width, displayCanvas.height, isTapeHit);
           let clickedFace = null;
           let clickedUv = null;
           for (const comp of uvComponentsRef.current) {
@@ -2378,8 +2418,8 @@ const Canvas = forwardRef(
         startRenderLoop();
 
         // Also check if we should select/toggle the UV face underneath
-        const u = mx / displayCanvas.width;
-        const v = my / displayCanvas.height;
+        const isTapeHit2 = !!(modelUrl && modelUrl.includes("Tape"));
+        const { u, v } = pxToUv(mx, my, displayCanvas.width, displayCanvas.height, isTapeHit2);
         let clickedFace = null;
         let clickedUv = null;
         for (const comp of uvComponentsRef.current) {
@@ -2453,8 +2493,8 @@ const Canvas = forwardRef(
         }
       } else {
         // Check for UV face click
-        const u = mx / displayCanvas.width;
-        const v = my / displayCanvas.height;
+        const isTapeHit = !!(modelUrl && modelUrl.includes("Tape"));
+        const { u, v } = pxToUv(mx, my, displayCanvas.width, displayCanvas.height, isTapeHit);
         let clickedFace = null;
         let clickedUv = null;
         for (const comp of uvComponentsRef.current) {
@@ -2895,13 +2935,21 @@ const Canvas = forwardRef(
           }
         });
 
-        if (hasSelected && fitType) {
-          const widthInTex = (maxU - minU) * textureSizeRef.current.width;
-          const heightInTex = (maxV - minV) * textureSizeRef.current.height;
-          const centerXInTex =
+        if (hasSelected) {
+          const isTapeModel = !!(modelUrl && modelUrl.includes("Tape"));
+          let widthInTex = (maxU - minU) * textureSizeRef.current.width;
+          let heightInTex = (maxV - minV) * textureSizeRef.current.height;
+          let centerXInTex =
             ((minU + maxU) / 2) * textureSizeRef.current.width;
-          const centerYInTex =
+          let centerYInTex =
             ((minV + maxV) / 2) * textureSizeRef.current.height;
+
+          if (isTapeModel) {
+            widthInTex = (maxV - minV) * textureSizeRef.current.width;
+            heightInTex = (maxU - minU) * textureSizeRef.current.height;
+            centerXInTex = (1 - ((minV + maxV) / 2)) * textureSizeRef.current.width;
+            centerYInTex = ((minU + maxU) / 2) * textureSizeRef.current.height;
+          }
 
           let imgWidth, imgHeight;
           if (fitType === "cover") {
@@ -2929,6 +2977,25 @@ const Canvas = forwardRef(
             } else {
               imgHeight = heightInTex;
               imgWidth = heightInTex * imgAspect;
+            }
+          } else {
+            // Initial click: No fitType (it's null/undefined)
+            // Center the image inside the frame, but limit its size to a sensible portion of the frame (e.g. 35% of the frame)
+            const boxAspect = widthInTex / heightInTex;
+            const imgW = img.naturalWidth || img.width || 300;
+            const imgH = img.naturalHeight || img.height || 300;
+            const imgAspect = imgW / imgH;
+
+            // Target size is 35% of the frame's containment size
+            const targetMaxW = widthInTex * 0.35;
+            const targetMaxH = heightInTex * 0.35;
+
+            if (imgAspect > boxAspect) {
+              imgWidth = targetMaxW;
+              imgHeight = targetMaxW / imgAspect;
+            } else {
+              imgHeight = targetMaxH;
+              imgWidth = targetMaxH * imgAspect;
             }
           }
 
@@ -3039,12 +3106,20 @@ const Canvas = forwardRef(
         });
 
         if (hasSelected && fitType) {
-          const widthInTex = (maxU - minU) * textureSizeRef.current.width;
-          const heightInTex = (maxV - minV) * textureSizeRef.current.height;
-          const centerXInTex =
+          const isTapeModel = !!(modelUrl && modelUrl.includes("Tape"));
+          let widthInTex = (maxU - minU) * textureSizeRef.current.width;
+          let heightInTex = (maxV - minV) * textureSizeRef.current.height;
+          let centerXInTex =
             ((minU + maxU) / 2) * textureSizeRef.current.width;
-          const centerYInTex =
+          let centerYInTex =
             ((minV + maxV) / 2) * textureSizeRef.current.height;
+
+          if (isTapeModel) {
+            widthInTex = (maxV - minV) * textureSizeRef.current.width;
+            heightInTex = (maxU - minU) * textureSizeRef.current.height;
+            centerXInTex = (1 - ((minV + maxV) / 2)) * textureSizeRef.current.width;
+            centerYInTex = ((minU + maxU) / 2) * textureSizeRef.current.height;
+          }
 
           const img = sel.img;
           let imgWidth, imgHeight;
@@ -3119,51 +3194,10 @@ const Canvas = forwardRef(
         exportCanvas.width = textureSizeRef.current.width;
         exportCanvas.height = textureSizeRef.current.height;
         const ctx = exportCanvas.getContext("2d");
+        // Use item.draw() so curved text (bend), letter spacing, and
+        // image color-removal (filteredCanvas) are all rendered correctly.
         imagesRef.current.forEach((item) => {
-          ctx.save();
-          ctx.globalAlpha = item.opacity;
-          ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
-          ctx.rotate(item.rotation);
-          ctx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
-          if (item instanceof DraggableText) {
-            const scaleX = item.width / item.nativeWidth;
-            const scaleY = item.height / item.nativeHeight;
-            ctx.scale(scaleX, scaleY);
-
-            ctx.fillStyle = item.color;
-            ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
-            const lines = item.text.split("\n");
-            const lineHeight = item.fontSize * 1.3;
-            const startY = (-(lines.length - 1) * lineHeight) / 2;
-
-            lines.forEach((line, i) => {
-              const lineY = startY + i * lineHeight;
-              ctx.fillText(line, 0, lineY);
-
-              if (item.underline) {
-                const metrics = ctx.measureText(line);
-                const textWidth = metrics.width;
-                const underlineY = lineY + item.fontSize * 0.4;
-                const thickness = Math.max(1, item.fontSize / 15);
-
-                ctx.beginPath();
-                ctx.strokeStyle = item.color;
-                ctx.lineWidth = thickness;
-                ctx.moveTo(-textWidth / 2, underlineY);
-                ctx.lineTo(textWidth / 2, underlineY);
-                ctx.stroke();
-              }
-            });
-          } else {
-            ctx.drawImage(
-              item.img,
-              -item.width / 2,
-              -item.height / 2,
-              item.width,
-              item.height,
-            );
-          }
-          ctx.restore();
+          item.draw(ctx, 1, uvComponentsRef.current, modelUrl && modelUrl.includes("Tape"));
         });
         return exportCanvas.toDataURL("image/png");
       },
@@ -3239,49 +3273,7 @@ const Canvas = forwardRef(
           tempCanvas.height = height;
           const ctx = tempCanvas.getContext("2d");
 
-          ctx.save();
-          ctx.globalAlpha = item.opacity;
-          ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
-          ctx.rotate(item.rotation);
-          ctx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
-
-          if (item instanceof DraggableText) {
-            const scaleX = item.width / item.nativeWidth;
-            const scaleY = item.height / item.nativeHeight;
-            ctx.scale(scaleX, scaleY);
-            ctx.fillStyle = item.color;
-            ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
-            const lines = item.text.split("\n");
-            const lineHeight = item.fontSize * 1.3;
-            const startY = (-(lines.length - 1) * lineHeight) / 2;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            lines.forEach((line, i) => {
-              const lineY = startY + i * lineHeight;
-              ctx.fillText(line, 0, lineY);
-              if (item.underline) {
-                const metrics = ctx.measureText(line);
-                const textWidth = metrics.width;
-                const underlineY = lineY + item.fontSize * 0.4;
-                const thickness = Math.max(1, item.fontSize / 15);
-                ctx.beginPath();
-                ctx.strokeStyle = item.color;
-                ctx.lineWidth = thickness;
-                ctx.moveTo(-textWidth / 2, underlineY);
-                ctx.lineTo(textWidth / 2, underlineY);
-                ctx.stroke();
-              }
-            });
-          } else {
-            ctx.drawImage(
-              item.img,
-              -item.width / 2,
-              -item.height / 2,
-              item.width,
-              item.height,
-            );
-          }
-          ctx.restore();
+          item.draw(ctx, 1, uvComponentsRef.current, modelUrl && modelUrl.includes("Tape"));
 
           const base64 = tempCanvas.toDataURL("image/png");
           svg += `\n  <g id="${layerId}">\n    <image xlink:href="${base64}" href="${base64}" x="0" y="0" width="${width}" height="${height}" />\n  </g>`;
@@ -3327,49 +3319,7 @@ const Canvas = forwardRef(
           tempCanvas.height = height;
           const ctx = tempCanvas.getContext("2d");
 
-          ctx.save();
-          ctx.globalAlpha = item.opacity;
-          ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
-          ctx.rotate(item.rotation);
-          ctx.scale(item.flipX ? -1 : 1, item.flipY ? -1 : 1);
-
-          if (item instanceof DraggableText) {
-            const scaleX = item.width / item.nativeWidth;
-            const scaleY = item.height / item.nativeHeight;
-            ctx.scale(scaleX, scaleY);
-            ctx.fillStyle = item.color;
-            ctx.font = `${item.italic ? "italic " : ""}${item.bold ? "bold " : ""}${item.fontSize}px ${item.fontFamily}`;
-            const lines = item.text.split("\n");
-            const lineHeight = item.fontSize * 1.3;
-            const startY = (-(lines.length - 1) * lineHeight) / 2;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            lines.forEach((line, i) => {
-              const lineY = startY + i * lineHeight;
-              ctx.fillText(line, 0, lineY);
-              if (item.underline) {
-                const metrics = ctx.measureText(line);
-                const textWidth = metrics.width;
-                const underlineY = lineY + item.fontSize * 0.4;
-                const thickness = Math.max(1, item.fontSize / 15);
-                ctx.beginPath();
-                ctx.strokeStyle = item.color;
-                ctx.lineWidth = thickness;
-                ctx.moveTo(-textWidth / 2, underlineY);
-                ctx.lineTo(textWidth / 2, underlineY);
-                ctx.stroke();
-              }
-            });
-          } else {
-            ctx.drawImage(
-              item.img,
-              -item.width / 2,
-              -item.height / 2,
-              item.width,
-              item.height,
-            );
-          }
-          ctx.restore();
+          item.draw(ctx, 1, uvComponentsRef.current, modelUrl && modelUrl.includes("Tape"));
 
           const base64 = tempCanvas.toDataURL("image/png");
           if (index > 0) {
@@ -3435,13 +3385,18 @@ const Canvas = forwardRef(
 
       const unscaledW = displayCanvasRef.current.width;
       const unscaledH = displayCanvasRef.current.height;
+      const isTapePos = !!(modelUrl && modelUrl.includes("Tape"));
 
-      const cx_unscaled = selectedFaceUv
-        ? selectedFaceUv.u * unscaledW
-        : ((comp.minU + comp.maxU) / 2) * unscaledW;
-      let top_unscaled = selectedFaceUv
-        ? selectedFaceUv.v * unscaledH - 30 / zoom
-        : comp.minV * unscaledH - 15 / zoom;
+      let cx_unscaled, top_unscaled;
+      if (selectedFaceUv) {
+        const p = uvToPx(selectedFaceUv.u, selectedFaceUv.v, unscaledW, unscaledH, isTapePos);
+        cx_unscaled = p.x;
+        top_unscaled = p.y - 30 / zoom;
+      } else {
+        const p = uvToPx((comp.minU + comp.maxU) / 2, comp.minV, unscaledW, unscaledH, isTapePos);
+        cx_unscaled = p.x;
+        top_unscaled = p.y - 15 / zoom;
+      }
 
       const left =
         canvasRect.left - containerRect.left + cx_unscaled * renderScale;
@@ -3455,6 +3410,7 @@ const Canvas = forwardRef(
         pointerEvents: "auto",
       };
     };
+
     return (
       <div
         className="flex-1 flex flex-col relative"
@@ -3967,15 +3923,15 @@ const Canvas = forwardRef(
                   +
                 </button>
               </Tooltip>
-            </div>
 
-            <div className="absolute bottom-8 right-[7%] -translate-x-1/2 z-30">
+              {/* Tape Layout button — only shows for tape models, inline with toolbar */}
               {onOpenTapeLayout && modelUrl?.includes("Tape") && (
                 <>
+                  <div className="w-px h-6 bg-gray-200 mx-1" />
                   <Tooltip label="Tape Layout">
                     <button
                       onClick={onOpenTapeLayout}
-                      className=" px-4 h-11 rounded-full cursor-pointer bg-yellow-400 border-[2px] border-[#c0623a] text-black hover:bg-yellow-500 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer flex items-center justify-center font-bold text-[14px] leading-tight text-center"
+                      className="px-4 h-11 rounded-full cursor-pointer bg-yellow-400 border-[2px] border-[#c0623a] text-black hover:bg-yellow-500 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center font-bold text-[14px] leading-tight text-center whitespace-nowrap"
                     >
                       Tape Layout
                     </button>
@@ -3983,6 +3939,7 @@ const Canvas = forwardRef(
                 </>
               )}
             </div>
+
           </div>
 
           {contextMenu.open && (

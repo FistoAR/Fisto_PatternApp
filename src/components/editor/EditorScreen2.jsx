@@ -292,6 +292,10 @@ export default function EditorScreen2({
       setSelectedLayer(null);
       setIsFrameSelected(false);
       setCurrentSelectedFaces(new Set());
+      setPendingTapeLayoutDataUrl(null);
+      setShowTapeLayout(false);
+      setBgColor("#ffffff");
+      setSelectedColor("none");
       setTextProps({
         color: "#000000",
         fontSize: 80,
@@ -865,20 +869,8 @@ export default function EditorScreen2({
                 disabled={currentSelectedFaces.size === 0}
                 onClick={() => {
                   if (canvasRef.current && canvasRef.current.uploadImage) {
-                    const img = new Image();
-                    img.onload = () => {
-                      // Rotate 90deg clockwise specifically for applying to the vertical frame
-                      const cvs = document.createElement("canvas");
-                      cvs.width = img.height;
-                      cvs.height = img.width;
-                      const ctx = cvs.getContext("2d");
-                      ctx.translate(cvs.width / 2, cvs.height / 2);
-                      ctx.rotate(Math.PI / 2);
-                      ctx.drawImage(img, -img.width / 2, -img.height / 2);
-                      canvasRef.current.uploadImage(cvs.toDataURL("image/png"), "cover");
-                      setPendingTapeLayoutDataUrl(null);
-                    };
-                    img.src = pendingTapeLayoutDataUrl;
+                    canvasRef.current.uploadImage(pendingTapeLayoutDataUrl, "cover");
+                    setPendingTapeLayoutDataUrl(null);
                   } else {
                     setPendingTapeLayoutDataUrl(null);
                   }
