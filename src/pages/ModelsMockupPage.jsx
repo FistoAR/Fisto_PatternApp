@@ -278,7 +278,7 @@ function ProductPlaceholder({ name, index }) {
         const url = modelMappings[name] || null;
         navigate("/editor", { state: { initialModelUrl: url } });
       }}
-      className="group cursor-pointer rounded-[8px] border border-transparent bg-white p-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d7c9bd] hover:shadow-[0_18px_34px_rgba(15,23,42,0.16)]"
+      className="group cursor-pointer rounded-[8px] border border-transparent bg-white p-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-[#d7c9bd] hover:shadow-[0_18px_34px_rgba(15,23,42,0.16)] max-w-[330px] xl:max-w-none w-full"
     >
       <div
         className={`relative aspect-[5/4] overflow-hidden rounded-[8px] bg-gradient-to-br ${tones[index % tones.length]}`}
@@ -347,7 +347,7 @@ function SidebarItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] py-3 px-4 transition-all duration-300 ${finalClass} text-[clamp(13px,1.45vw,16px)] font-semibold`}
+      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] py-2 px-3 xl:py-3 xl:px-4 transition-all duration-300 ${finalClass} text-[13px] xl:text-[clamp(13px,1.45vw,16px)] font-bold`}
     >
       <div className="flex items-center gap-3">
         <img
@@ -452,9 +452,9 @@ export default function ModelsMockupPage() {
   }, [activeCategory]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden  pt-[5vh]  text-[#292929]">
+    <div className="h-[calc(100vh-64px)] w-full overflow-hidden text-[#292929]">
       <main className="flex h-full w-full flex-col">
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(180px,34%)_minmax(0,1fr)] bg-[#FBF9F6] md:grid-cols-[28%_72%] lg:grid-cols-[22%_78%]">
+        <div className="grid min-h-0 flex-1 grid-cols-[290px_1fr] bg-[#FBF9F6] md:grid-cols-[290px_1fr] lg:grid-cols-[300px_1fr] xl:grid-cols-[22%_78%]">
           <aside className="flex min-h-0 flex-col border-r border-[#e5ded9] px-3 pb-6 pt-6 sm:px-4 lg:pt-8 xl:px-7">
             <header className="shrink-0 pb-7">
               <h1 className="m-0 text-[clamp(16px,2.8vw,23px)] font-bold leading-[1.05]">
@@ -556,7 +556,7 @@ export default function ModelsMockupPage() {
 
               <div className="space-y-10">
                 {displayedSections.map((section, sectionIndex) => (
-                  <section key={section.title} className="scroll-mt-12">
+                  <section key={section.title} className="scroll-mt-7">
                     <div className="group/heading mb-5 flex w-fit cursor-default items-center gap-3">
                       <span className="text-[#7d8478] transition-colors duration-200 group-hover/heading:text-[#cc6428]">
                         {iconFor(section.icon, "h-7 w-7")}
@@ -565,7 +565,7 @@ export default function ModelsMockupPage() {
                         {section.title}
                       </h2>
                     </div>
-                    <div className="grid grid-cols-1 gap-9 sm:grid-cols-2 2xl:grid-cols-3">
+                     <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,330px))] gap-8 xl:grid-cols-2 xl:gap-9 2xl:grid-cols-3">
                       {section.products.map((product, productIndex) => (
                         <ProductPlaceholder
                           key={product}

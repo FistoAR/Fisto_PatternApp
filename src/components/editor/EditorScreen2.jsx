@@ -910,7 +910,7 @@ export default function EditorScreen2({
         {/* ── Right Panel ───────────────────────────────────────────────── */}
         <div
           className={`
-          shrink-0 py-6 pr-6
+          shrink-0 py-6 pr-6 h-full
           lg:relative lg:block
           ${
             showMobilePanel
@@ -919,7 +919,7 @@ export default function EditorScreen2({
           }
         `}
         >
-          <div className="h-fit rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 bg-white">
+          <div className="h-full rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 bg-white flex flex-col">
             <RightPanel
               canvasRef={canvasRef}
               textureCanvasRef={textureCanvasRef}

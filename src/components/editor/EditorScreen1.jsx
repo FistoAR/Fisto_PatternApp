@@ -986,7 +986,7 @@ export default function EditorScreen1({
 
         {/* Popups */}
         <div
-          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" ? "w-[350px]" : "w-0"}`}
+          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto h-full ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" ? "w-[350px]" : "w-0"}`}
         >
           {activeTab === "models" && (
             <ModelsPopup
@@ -1030,7 +1030,7 @@ export default function EditorScreen1({
 
         {/* Edit Popup Panel */}
         {activeTab === "edit" && !showCustomSize && (
-          <div className="pointer-events-auto w-[280px] h-fit bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4">
+          <div className="pointer-events-auto w-[280px] h-full bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4 overflow-y-auto">
             <div className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">

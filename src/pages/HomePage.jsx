@@ -31,8 +31,6 @@ import prod4 from "../assets/images/Home/Hero/slide4/product.webp";
 // Slide 5 (Eco-Friendly Bags)
 import bg5 from "../assets/images/Home/Hero/slide5/bg.webp";
 import prod5 from "../assets/images/Home/Hero/slide5/product.webp";
-import plant5 from "../assets/images/Home/Hero/slide5/plant.webp";
-import pot5 from "../assets/images/Home/Hero/slide5/pot.webp";
 
 // Slide 6 (Packaging Tapes)
 import bg6 from "../assets/images/Home/Hero/slide6/bg.webp";
@@ -127,9 +125,9 @@ const slideConfigs = [
         src: prod2,
         css: {
           left: "47.97%",
-          top: "11.85%",
-          width: "42.03%",
-          height: "72.31%",
+          top: "18.85%",
+          width: "38.03%",
+          height: "auto",
         },
       },
     ],
@@ -138,7 +136,6 @@ const slideConfigs = [
     id: 3,
     bg: bg3,
     assets: [
-      
       {
         src: prod3,
         css: { right: "12%", bottom: "5%", width: "55%", height: "auto" },
@@ -163,19 +160,12 @@ const slideConfigs = [
   {
     id: 5,
     bg: bg5,
+    bgPosition: "center -10%",
     assets: [
-      {
-        src: pot5,
-        css: { right: "-1.5%", top: "60%", width: "12%", height: "auto" },
-      },
-      {
-        src: plant5,
-        css: { left: "83.2%", top: "15.4%", width: "25%", height: "auto" },
-        isLeaf: true,
-      },
+      
       {
         src: prod5,
-        css: { right: "10%", top: "19%", width: "35%", height: "auto" },
+        css: { right: "17%", top: "19%", width: "35%", height: "auto" },
       },
     ],
   },
@@ -185,43 +175,57 @@ const slideConfigs = [
     assets: [
       {
         src: prod6_1,
-        css: { left: "51%", top: "27%", width: "25%", objectFit: "contain" },
+        css: { left: "54%", top: "29%", width: "27%", objectFit: "contain" },
       },
       {
         src: prod6_2,
-        css: { left: "61%", top: "34%", width: "19%", objectFit: "contain" },
+        css: { left: "64%", top: "36%", width: "21%", objectFit: "contain" },
       },
       {
         src: prod6_3,
-        css: { left: "72%", top: "54%", width: "15%", objectFit: "contain" },
+        css: { left: "75%", top: "56%", width: "17%", objectFit: "contain" },
       },
     ],
   },
   {
     id: 7,
     bg: bg7,
+    bgPosition: "bottom",
     assets: [
       {
         src: rightLeaf7,
-        css: { right: "-8%", top: "15.46%", width: "26.23%", height: "56.32%" },
+        css: {
+          right: "-7%",
+          top: "33%",
+          width: "22.23%",
+          height: "auto",
+          filter: "grayscale(20%) brightness(90%)",
+        },
         isLeaf: true,
       },
       {
         src: rightPoy7,
-        css: { right: "0%", top: "70.51%", width: "13.39%", height: "17.28%" },
+        css: {
+          right: "0%",
+          top: "80.5%",
+          width: "11.39%",
+          height: "1auto",
+          filter: "grayscale(20%) brightness(90%)",
+        },
       },
       {
         src: centerBootmPot7,
         css: {
           left: "41.75%",
-          top: "69.01%",
+          top: "75%",
           width: "13.88%",
           height: "24.68%",
+          filter: "grayscale(20%) brightness(90%)",
         },
       },
       {
         src: prod7,
-        css: { left: "44%", top: "17%", width: "45%", objectFit: "contain" },
+        css: { left: "44%", top: "22%", width: "45%", objectFit: "contain" },
       },
     ],
   },
@@ -387,17 +391,19 @@ export default function HomePage({ onLoaded }) {
 
   const handleStartDesigning = () => {
     const slideToModelIdMap = {
-      0: 'oval-container',
-      1: 'kraft-paper',
-      2: 'glass-bottle',
-      3: 'beverage-cup',
-      4: 'biodegradable-bags',
-      5: 'box-sealing-tape',
-      6: 't-shirt',
+      0: "oval-container",
+      1: "kraft-paper",
+      2: "glass-bottle",
+      3: "beverage-cup",
+      4: "biodegradable-bags",
+      5: "box-sealing-tape",
+      6: "t-shirt",
     };
-    const modelId = slideToModelIdMap[currentSlide] || 'oval-container';
-    const selectedModel = MODELS.find(m => m.id === modelId);
-    navigate('/editor', { state: { initialModelUrl: selectedModel?.modelUrl } });
+    const modelId = slideToModelIdMap[currentSlide] || "oval-container";
+    const selectedModel = MODELS.find((m) => m.id === modelId);
+    navigate("/editor", {
+      state: { initialModelUrl: selectedModel?.modelUrl },
+    });
   };
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -492,7 +498,7 @@ export default function HomePage({ onLoaded }) {
                 ease: "power3.out",
                 onComplete: () => {
                   setIsTransitioning(false);
-                }
+                },
               },
             );
           }, 50);
@@ -579,41 +585,154 @@ export default function HomePage({ onLoaded }) {
 
     const activeAssets = activeSlideEl.querySelectorAll(".hero-slide-asset");
     if (activeAssets.length > 0) {
-      gsap.set(activeAssets, { transformOrigin: "center center", opacity: 0, scale: 1, x: 0, y: 0 });
+      gsap.set(activeAssets, {
+        transformOrigin: "center center",
+        opacity: 0,
+        scale: 1,
+        x: 0,
+        y: 0,
+      });
 
       const tl = gsap.timeline({ overwrite: "auto" });
 
       if (currentSlide === 0) {
         // Slide 1: 1st wood from right, next flower pot, third product from bottom
-        if (activeAssets[0]) tl.fromTo(activeAssets[0], { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
-        if (activeAssets[1]) tl.fromTo(activeAssets[1], { x: -50, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
-        if (activeAssets[2]) tl.fromTo(activeAssets[2], { x: 50, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
-        if (activeAssets[3]) tl.fromTo(activeAssets[3], { y: -50, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
-        if (activeAssets[4]) tl.fromTo(activeAssets[4], { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.4);
+        if (activeAssets[0])
+          tl.fromTo(
+            activeAssets[0],
+            { x: 100, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0,
+          );
+        if (activeAssets[1])
+          tl.fromTo(
+            activeAssets[1],
+            { x: -50, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.2,
+          );
+        if (activeAssets[2])
+          tl.fromTo(
+            activeAssets[2],
+            { x: 50, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.2,
+          );
+        if (activeAssets[3])
+          tl.fromTo(
+            activeAssets[3],
+            { y: -50, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.2,
+          );
+        if (activeAssets[4])
+          tl.fromTo(
+            activeAssets[4],
+            { y: 100, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.4,
+          );
       } else if (currentSlide === 1) {
         // Slide 2: product from right
-        tl.fromTo(activeAssets[0], { x: 150, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+        tl.fromTo(
+          activeAssets[0],
+          { x: 150, opacity: 0 },
+          { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+          0,
+        );
       } else if (currentSlide === 2) {
         // Slide 3: product from bottom and leaf appear
-        if (activeAssets[0]) tl.fromTo(activeAssets[0], { y: 150, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
-        if (activeAssets[1]) tl.fromTo(activeAssets[1], { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 1.5, ease: "power2.out" }, 0.2);
+        if (activeAssets[0])
+          tl.fromTo(
+            activeAssets[0],
+            { y: 150, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0,
+          );
+        if (activeAssets[1])
+          tl.fromTo(
+            activeAssets[1],
+            { opacity: 0, scale: 0.8 },
+            { opacity: 1, scale: 1, duration: 1.5, ease: "power2.out" },
+            0.2,
+          );
       } else if (currentSlide === 3) {
         // Slide 4: product from right side
-        if (activeAssets[0]) tl.fromTo(activeAssets[0], { x: 150, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
+        if (activeAssets[0])
+          tl.fromTo(
+            activeAssets[0],
+            { x: 150, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0,
+          );
       } else if (currentSlide === 4) {
         // Slide 5: leaf from right, product from top
-        if (activeAssets[0]) tl.fromTo(activeAssets[0], { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
-        if (activeAssets[1]) tl.fromTo(activeAssets[1], { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
-        if (activeAssets[2]) tl.fromTo(activeAssets[2], { y: -150, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.4);
+        if (activeAssets[0])
+          tl.fromTo(
+            activeAssets[0],
+            { y: 50, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0,
+          );
+        if (activeAssets[1])
+          tl.fromTo(
+            activeAssets[1],
+            { x: 100, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.2,
+          );
+        if (activeAssets[2])
+          tl.fromTo(
+            activeAssets[2],
+            { y: -150, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.4,
+          );
       } else if (currentSlide === 5) {
         // Slide 6: product appear one by one from bottom right corner
-        tl.fromTo(activeAssets, { x: 100, y: 100, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 1.5, stagger: 0.2, ease: "power2.out" }, 0);
+        tl.fromTo(
+          activeAssets,
+          { x: 100, y: 100, opacity: 0 },
+          {
+            x: 0,
+            y: 0,
+            opacity: 1,
+            duration: 1.5,
+            stagger: 0.2,
+            ease: "power2.out",
+          },
+          0,
+        );
       } else if (currentSlide === 6) {
         // Slide 7: leaf and pot from bottom, product from left
-        if (activeAssets[0]) tl.fromTo(activeAssets[0], { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0);
-        if (activeAssets[1]) tl.fromTo(activeAssets[1], { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.1);
-        if (activeAssets[2]) tl.fromTo(activeAssets[2], { y: 100, opacity: 0 }, { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.2);
-        if (activeAssets[3]) tl.fromTo(activeAssets[3], { x: -150, opacity: 0 }, { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 0.4);
+        if (activeAssets[0])
+          tl.fromTo(
+            activeAssets[0],
+            { y: 100, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0,
+          );
+        if (activeAssets[1])
+          tl.fromTo(
+            activeAssets[1],
+            { y: 100, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.1,
+          );
+        if (activeAssets[2])
+          tl.fromTo(
+            activeAssets[2],
+            { y: 100, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.2,
+          );
+        if (activeAssets[3])
+          tl.fromTo(
+            activeAssets[3],
+            { x: -150, opacity: 0 },
+            { x: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            0.4,
+          );
       }
     }
   }, [currentSlide, bannersContent]);
@@ -854,6 +973,42 @@ export default function HomePage({ onLoaded }) {
         ref={pageRef}
         className="flex flex-col min-h-full bg-white font-['Inter'] flex-1 w-full"
       >
+        <style>{`
+          @media (max-height: 780px) {
+            .hero-section {
+              min-height: 520px !important;
+              height: 100vh !important;
+            }
+            .hero-left-content {
+              padding-top: 2rem !important;
+            }
+            .hero-left-content h1 {
+              margin-bottom: 0.75rem !important;
+            }
+            .hero-left-content p {
+              font-size: 0.95rem !important;
+              margin-bottom: 1.25rem !important;
+              max-width: 500px !important;
+              line-height: 1.4 !important;
+            }
+            .hero-btn {
+              margin-bottom: 1.5rem !important;
+              padding: 0.6rem 1.2rem !important;
+              font-size: 0.95rem !important;
+            }
+            .hero-left-content .w-12 {
+              width: 2.25rem !important;
+              height: 2.25rem !important;
+            }
+            .hero-left-content .w-12 img {
+              width: 1.1rem !important;
+              height: 1.1rem !important;
+            }
+            .hero-left-content .text-sm {
+              font-size: 0.75rem !important;
+            }
+          }
+        `}</style>
         <main className="flex flex-col w-full flex-1">
           {/* Hero Section */}
           <div
@@ -870,11 +1025,16 @@ export default function HomePage({ onLoaded }) {
                       key={index}
                       className={`absolute inset-0 transition-opacity duration-700 ease-in-out flex justify-center items-center select-none ${isActive ? "opacity-100 z-10" : "opacity-0 z-0"}`}
                     >
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vh] min-w-[177.777vh] min-h-[56.25vw]">
+                      <div
+                        className={`absolute left-1/2 -translate-x-1/2 w-[100vw] h-[100vh] min-w-[177.777vh] min-h-[56.25vw] ${banner.bgPosition === "bottom" ? "bottom-0" : "top-1/2 -translate-y-1/2"}`}
+                      >
                         {/* Background */}
                         <img
                           src={banner.bg}
                           className="absolute inset-0 w-full h-full object-cover hero-slide-bg"
+                          style={{
+                            objectPosition: banner.bgPosition || "center",
+                          }}
                           alt="Background"
                         />
 
@@ -1103,13 +1263,13 @@ export default function HomePage({ onLoaded }) {
               <div className="category-cards-container w-full  pb-4">
                 <div
                   ref={cardsRowRef}
-                  className="category-cards category-cards-row flex gap-8 md:gap-12 lg:gap-14 xl:gap-18 justify-start lg:justify-center scrollbar-hide scroll-smooth snap-x snap-mandatory w-full lg:flex-wrap lg:px-12"
+                  className="category-cards category-cards-row flex gap-8 md:gap-14 lg:gap-16 xl:gap-20 justify-start lg:justify-center scrollbar-hide scroll-smooth snap-x snap-mandatory w-full lg:flex-wrap lg:px-12"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
                   {cardsConfig.map((card, idx) => (
                     <div
                       key={idx}
-                      className="explore-card w-[260px] sm:w-[280px] lg:w-[calc(25%-36px)] xl:w-[calc(20%-42px)] max-w-[320px] shrink-0 snap-center cursor-pointer bg-white rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.12)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.20)] transition-shadow duration-300 p-6 sm:p-8 border border-gray-50 flex items-center justify-center relative"
+                      className="explore-card w-[260px] sm:w-[280px] lg:w-[calc(25%-36px)] xl:w-[calc(20%-42px)] max-w-[320px] shrink-0 snap-center cursor-pointer bg-white rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.12)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.20)] transition-shadow duration-300 p-1 sm:p-2 border border-gray-50 flex items-center justify-center relative"
                       onClick={() =>
                         navigate("/modelsMockup", {
                           state: { activeCategory: card.category },

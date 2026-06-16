@@ -43,7 +43,7 @@ function AppContent() {
         </div>
       )}
       <Navbar />
-      <div className={`flex-1 flex flex-col min-h-0 relative ${isEditor ? '' : '-mt-[5vh]'}`}>
+      <div className={`flex-1 flex flex-col min-h-0 relative ${pathname === '/' ? '-mt-[5vh]' : ''}`}>
         <Routes location={location}>
           <Route path="/" element={<HomePage onLoaded={() => setAppLoaded(true)} />} />
           <Route path="/modelsMockup" element={<ModelsMockupPage />} />

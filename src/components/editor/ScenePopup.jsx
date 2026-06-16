@@ -66,7 +66,7 @@ export default function ScenePopup({
     };
   };
   return (
-    <div className="w-[350px] h-[670px] shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
+    <div className="w-[350px] h-full shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
       <div className="p-5 pb-3 border-b border-gray-100">
         <h2 className="text-xl font-bold text-gray-900 m-0">Environment</h2>
       </div>

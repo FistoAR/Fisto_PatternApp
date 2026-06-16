@@ -28,12 +28,12 @@ function PinIcon() {
 export default function Footer() {
   return (
     <footer id="contact" className="w-full px-6 py-16 font-[poppins] text-black lg:px-12 xl:px-20 bg-[#BDC0B0] border-t border-gray-100">
-      <div className="mx-auto grid w-full  grid-cols-1 gap-10 md:grid-cols-[1.5fr_1.25fr_1.25fr_1.5fr] md:items-center md:gap-8">
-        <div className="flex items-center justify-center md:justify-start">
+      <div className="mx-auto grid w-full grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 items-start gap-y-12 lg:gap-8">
+        <div className="flex items-center justify-start">
           <img src={fistoLogo} alt="FIST-O Tech Pvt Ltd" className="h-auto w-[190px] object-contain" />
         </div>
 
-        <div className="flex flex-col items-start text-left -ml-4">
+        <div className="flex flex-col items-start text-left">
           <div className="mb-3 flex items-center gap-2 ">
             <MailIcon />
             <h3 className="m-0 text-[17px] text-black font-bold uppercase leading-none tracking-[-0.01em]">Email Support</h3>
@@ -55,7 +55,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="flex flex-col items-start text-left -ml-4">
+        <div className="flex flex-col items-start text-left">
           <div className="mb-3 flex items-center gap-2">
             <PinIcon />
             <h3 className="m-0 text-[17px] text-black font-bold uppercase leading-none tracking-[-0.01em]">Address</h3>

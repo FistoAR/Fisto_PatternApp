@@ -217,7 +217,7 @@ export default function RightPanel({
   return (
     <aside
       style={{ width: panelWidth, minWidth: "20vw" }}
-      className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-auto overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px]"
+      className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-full overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px]"
     >
       <div className="flex gap-2 px-3 pb-2 pt-1">
 
