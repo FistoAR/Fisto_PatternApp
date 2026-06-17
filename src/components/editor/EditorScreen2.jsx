@@ -354,7 +354,7 @@ export default function EditorScreen2({
             const scene = gltf.scene;
             const texture = new THREE.CanvasTexture(textureCanvasRef.current);
             texture.colorSpace = THREE.SRGBColorSpace;
-            texture.flipY = false;
+            texture.flipY = true;
             texture.needsUpdate = true;
             scene.traverse((obj) => {
               if (!obj.isMesh) return;

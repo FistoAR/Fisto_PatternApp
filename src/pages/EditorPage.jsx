@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import EditorScreen1 from "../components/editor/EditorScreen1";
 import EditorScreen2 from "../components/editor/EditorScreen2";
 import ovalContainerUrl from "../assets/models/Food Containers/Oval/oval .glb?url";
+import { getSingleModelUrl } from "../components/editor/LayoutPopup";
 
 export default function EditorPage() {
   const location = useLocation();
@@ -94,7 +95,10 @@ export default function EditorPage() {
 
   // Optional: Transition back to Screen 1
   const handleBackToModelViewer = (textureDataUrl, colorHex) => {
-    const targetMat = selectedMaterial || "all";
+    let targetMat = selectedMaterial || "all";
+    if (targetMat === "none") {
+      targetMat = "all";
+    }
     
     let newTextures = { ...editorState.textures };
     let newColors = { ...editorState.colors };
@@ -225,7 +229,7 @@ export default function EditorPage() {
         className={`absolute inset-0 transition-opacity duration-300 ${currentScreen === 2 ? "z-10 opacity-100" : "-z-10 opacity-0 pointer-events-none"}`}
       >
         <EditorScreen2
-          modelUrl={modelUrl}
+          modelUrl={getSingleModelUrl(modelUrl)}
           setModelUrl={setModelUrl}
           appliedMaterials={editorState.materials}
           appliedColors={editorState.colors}

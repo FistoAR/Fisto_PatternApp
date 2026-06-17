@@ -18,25 +18,24 @@ import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.j
 function BackgroundImage({ url }) {
   const { scene } = useThree();
   const texture = useLoader(THREE.TextureLoader, url);
-  
+
   useEffect(() => {
     if (texture) {
       texture.colorSpace = THREE.SRGBColorSpace;
       scene.background = texture;
     }
-    return () => { scene.background = null; }
+    return () => {
+      scene.background = null;
+    };
   }, [texture, scene]);
 
   return null;
 }
 
 const packageColors = [
-  { id: "cream", color: "#f5e6d3" },
-  { id: "tan", color: "#c9a96e" },
-  { id: "brown", color: "#8b7355" },
-  { id: "darkbrown", color: "#4a3728" },
-  { id: "green", color: "#4a7c59" },
-  { id: "silver", color: "#d4d4d8" },
+  { id: "white", color: "#ffffff" },
+  { id: "black", color: "#000000" },
+  { id: "transparent", color: "transparent" },
 ];
 
 function LoaderOverlay() {
@@ -52,7 +51,9 @@ function LoaderOverlay() {
         />
       </div>
       <p className="text-white font-bold text-xs">Loading Model...</p>
-      <p className="text-white/70 text-[10px] mt-0.5">{Math.round(progress)}%</p>
+      <p className="text-white/70 text-[10px] mt-0.5">
+        {Math.round(progress)}%
+      </p>
     </div>
   );
 }
@@ -153,7 +154,7 @@ export default function RightPanel({
         const scene = gltf.scene;
         const texture = new THREE.CanvasTexture(textureCanvasRef.current);
         texture.colorSpace = THREE.SRGBColorSpace;
-        texture.flipY = false;
+        texture.flipY = true;
         // No uv layout offset/scale applying, exactly 1:1 raw mapping
         texture.needsUpdate = true;
         scene.traverse((obj) => {
@@ -219,9 +220,7 @@ export default function RightPanel({
       style={{ width: panelWidth, minWidth: "20vw" }}
       className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-full overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px]"
     >
-      <div className="flex gap-2 px-3 pb-2 pt-1">
-
-      </div>
+      <div className="flex gap-2 px-3 pb-2 pt-1"></div>
 
       <div className="px-3 pb-2" style={{ display: "none" }}>
         <div className="flex items-center justify-center gap-3 bg-white border border-gray-100 px-3 py-2 rounded-xl text-[11px] shadow-sm flex-wrap">
@@ -263,10 +262,13 @@ export default function RightPanel({
               gl.outputColorSpace = THREE.SRGBColorSpace;
               gl.toneMapping = THREE.NeutralToneMapping;
               gl.toneMappingExposure = 1;
-              if (!sceneBgImage) gl.setClearColor(new THREE.Color(sceneBgColor), 1);
+              if (!sceneBgImage)
+                gl.setClearColor(new THREE.Color(sceneBgColor), 1);
             }}
           >
-            {!sceneBgImage && <color attach="background" args={[sceneBgColor]} />}
+            {!sceneBgImage && (
+              <color attach="background" args={[sceneBgColor]} />
+            )}
             {sceneBgImage && (
               <Suspense fallback={null}>
                 <BackgroundImage url={sceneBgImage} />
@@ -281,6 +283,7 @@ export default function RightPanel({
                 <AutoSizedModel
                   key={modelUrl}
                   modelUrl={modelUrl}
+                  canvasRef={canvasRef}
                   textureCanvasRef={textureCanvasRef}
                   textureVersion={textureVersion}
                   wireframe={wireframe}
@@ -642,25 +645,42 @@ export default function RightPanel({
           Package Color
         </h3>
         <div className="flex items-center gap-[6px]">
-          {packageColors.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => {
-                setSelectedColor(c.id);
-                setBgColor(c.color);
-              }}
-              className="w-[26px] h-[26px] rounded-full cursor-pointer transition-all duration-200 hover:scale-110 p-0"
-              style={{
-                background: c.color,
-                border:
-                  selectedColor === c.id
+          {packageColors.map((c) => {
+            const isSelected =
+              selectedColor === c.id ||
+              (c.id === "transparent" && selectedColor === "none");
+            const isWhite = c.color === "#ffffff";
+            const backgroundStyle =
+              c.id === "transparent"
+                ? "linear-gradient(45deg, transparent 40%, #ef4444 40%, #ef4444 60%, transparent 60%), #ffffff"
+                : c.color;
+
+            return (
+              <button
+                key={c.id}
+                onClick={() => {
+                  if (c.id === "transparent") {
+                    setSelectedColor("transparent");
+                    setBgColor("transparent");
+                  } else {
+                    setSelectedColor(c.id);
+                    setBgColor(c.color);
+                  }
+                }}
+                className="w-[26px] h-[26px] rounded-full cursor-pointer transition-all duration-200 hover:scale-110 p-0"
+                style={{
+                  background: backgroundStyle,
+                  border: isSelected
                     ? "2px solid #c0623a"
-                    : "2px solid transparent",
-                outline: selectedColor === c.id ? "1px solid #c0623a" : "none",
-                outlineOffset: "1px",
-              }}
-            />
-          ))}
+                    : isWhite
+                      ? "2px solid #e5e7eb"
+                      : "2px solid transparent",
+                  outline: isSelected ? "1px solid #c0623a" : "none",
+                  outlineOffset: "1px",
+                }}
+              />
+            );
+          })}
           {/* Add color button */}
           <button
             onClick={() => customColorInputRef.current?.click()}
@@ -758,6 +778,7 @@ function MaterialItem({ icon, title, subtitle, hasArrow }) {
 
 function AutoSizedModel({
   modelUrl,
+  canvasRef,
   textureCanvasRef,
   textureVersion,
   wireframe,
@@ -773,15 +794,34 @@ function AutoSizedModel({
   const clonedScene = useMemo(() => {
     if (!scene) return null;
 
+    let meshCount = 0;
+    scene.traverse((o) => {
+      if (o.isMesh) meshCount++;
+    });
+
     const clone = cloneSkeleton(scene);
     clone.traverse((obj) => {
+      // Hide measurement meshes entirely in Editor 2
+      const name = obj.name || "";
+      const isMeasurement = /^(plane|text)/i.test(name);
+      if (isMeasurement && meshCount > 1) {
+        obj.visible = false;
+      }
+
       if (!obj.isMesh || !obj.material) return;
-      
+
       const processMat = (mat) => {
         if (!mat) return mat;
         const m = mat.clone();
         m.userData.originalMap = m.map;
         m.userData.originalColorHex = m.color.getHex();
+        m.userData.originalRoughness = m.roughness;
+        m.userData.originalMetalness = m.metalness;
+        m.userData.originalTransparent = m.transparent;
+        m.userData.originalOpacity = m.opacity;
+        m.userData.originalSide = m.side;
+        m.userData.originalTransmission =
+          m.transmission !== undefined ? m.transmission : 0;
         // Remove the default map so "Upload your design" is hidden immediately
         m.map = null;
         return m;
@@ -859,7 +899,7 @@ function AutoSizedModel({
       tex.minFilter = THREE.LinearMipmapLinearFilter;
       tex.magFilter = THREE.LinearFilter;
       tex.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
-      tex.flipY = false;
+      tex.flipY = true;
       if (modelUrl && modelUrl.includes("Tape")) {
         tex.center.set(0.5, 0.5);
         tex.rotation = -Math.PI / 2;
@@ -867,14 +907,24 @@ function AutoSizedModel({
       canvasTextureRef.current = tex;
     }
 
+    let meshCount = 0;
+    clonedScene.traverse((o) => {
+      if (o.isMesh && !o.userData.isDecal) meshCount++;
+    });
+
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || obj.userData.isDecal) return;
+
+      const name = obj.name || "";
+      const isMeasurement = /^(plane|text)/i.test(name);
+      if (isMeasurement && meshCount > 1) return;
+
       const materials = Array.isArray(obj.material)
         ? obj.material
         : [obj.material];
       for (const mat of materials) {
         if (!mat) continue;
-        
+
         // --- OVERLAY CANVAS TEXTURE VIA DECAL MESH ---
         if (!obj.userData.decalMesh) {
           const decalMat = new THREE.MeshStandardMaterial({
@@ -882,16 +932,14 @@ function AutoSizedModel({
             depthWrite: false,
             polygonOffset: true,
             polygonOffsetFactor: -1,
-            polygonOffsetUnits: -1,
+            polygonOffsetUnits: -4,
           });
           const decal = new THREE.Mesh(obj.geometry, decalMat);
           decal.userData.isDecal = true;
-          // Scale slightly to avoid z-fighting
-          decal.scale.set(1.002, 1.002, 1.002);
           obj.add(decal);
           obj.userData.decalMesh = decal;
         }
-        
+
         const decalMat = obj.userData.decalMesh.material;
         decalMat.map = canvasTextureRef.current;
         decalMat.color.set(0xffffff);
@@ -924,11 +972,16 @@ function AutoSizedModel({
               });
             };
 
-            if (materialType.maps.albedo) loadMap(materialType.maps.albedo, "map", true);
-            if (materialType.maps.normal) loadMap(materialType.maps.normal, "normalMap", false);
-            if (materialType.maps.roughness) loadMap(materialType.maps.roughness, "roughnessMap", false);
-            if (materialType.maps.metallic) loadMap(materialType.maps.metallic, "metalnessMap", false);
-            if (materialType.maps.ao) loadMap(materialType.maps.ao, "aoMap", false);
+            if (materialType.maps.albedo)
+              loadMap(materialType.maps.albedo, "map", true);
+            if (materialType.maps.normal)
+              loadMap(materialType.maps.normal, "normalMap", false);
+            if (materialType.maps.roughness)
+              loadMap(materialType.maps.roughness, "roughnessMap", false);
+            if (materialType.maps.metallic)
+              loadMap(materialType.maps.metallic, "metalnessMap", false);
+            if (materialType.maps.ao)
+              loadMap(materialType.maps.ao, "aoMap", false);
 
             mat.roughness = 1.0;
             mat.metalness = 1.0;
@@ -949,67 +1002,132 @@ function AutoSizedModel({
         }
 
         // --- APPLY COLORS ---
-        // Precedence: 
+        // Precedence:
         // 1. If Editor 2 swatch is used (not default cream), use `bgColor`.
         // 2. Else fallback to `appliedColors` from Editor 1.
         let finalColorHex = null;
 
         // "cream" (#f5e6d3) is the default unselected state for selectedColor in Editor 2.
         // Wait, what if they actually want cream? It sets selectedColor="cream".
-        // But if they haven't touched it, it's "cream" by default. If we ALWAYS apply `bgColor`, 
-        // we override Editor 1's `appliedColors` immediately on load. 
+        // But if they haven't touched it, it's "cream" by default. If we ALWAYS apply `bgColor`,
+        // we override Editor 1's `appliedColors` immediately on load.
         // We only want to override if they actually changed it!
         // A better heuristic: we can track if they clicked a swatch by checking if we have a state change,
         // but it's simpler: if appliedColors has a value, use it, UNLESS selectedColor changes.
-        // Let's use `bgColor` as the base if it's explicitly set. Actually, the user asked to 
+        // Let's use `bgColor` as the base if it's explicitly set. Actually, the user asked to
         // "removwe that old color and update new one without collapse those"
         // Let's check if the current bgColor matches the Editor 1 color, or if it has been updated.
-        const editor1Color = appliedColors ? (appliedColors[mat.name] || appliedColors["all"]) : null;
+        const editor1Color = appliedColors
+          ? appliedColors[mat.name] || appliedColors["all"]
+          : null;
 
         // We can give precedence to bgColor. Since we don't have a perfect dirty flag,
-        // we apply editor1Color on first mount, but if they click a swatch in Editor 2, 
+        // we apply editor1Color on first mount, but if they click a swatch in Editor 2,
         // we apply bgColor.
         // If Editor 1 passed a color, and Editor 2's bgColor is default "#ffffff" or "cream" (#f5e6d3)
         // and hasn't been explicitly clicked, we might accidentally override it.
-        // Let's just use `bgColor` but we need to know if `bgColor` is user-selected or default.
-        // We will just use `bgColor` directly. The parent sets it.
-        // Wait, the parent's default `bgColor` is "#ffffff" (in EditorScreen2). 
-        // Wait, packageColors default is "cream". EditorScreen2 state is "#ffffff".
-        // Let's just use `bgColor` if it differs from "#ffffff", or if `selectedColor` !== "cream" (or actually, if Editor 2 color is actively used).
-        
-        if (selectedColor && selectedColor !== "none") {
-           finalColorHex = bgColor;
+        const hasArtwork = canvasRef?.current?.hasArtwork?.();
+        let isTransparent = false;
+        if (selectedColor === "transparent" && !hasArtwork && !materialType) {
+          isTransparent = true;
+        } else if (selectedColor && selectedColor !== "none") {
+          finalColorHex = bgColor;
         } else if (editor1Color) {
-           finalColorHex = editor1Color;
+          if (editor1Color === "transparent" && !hasArtwork && !materialType) {
+            isTransparent = true;
+          } else {
+            finalColorHex = editor1Color;
+          }
         }
 
-        if (finalColorHex) {
+        if (isTransparent) {
+          mat.transparent = true;
+          mat.opacity = 0.35;
+          mat.roughness = 0.1;
+          mat.metalness = 0.1;
+          if ("transmission" in mat) mat.transmission = 0.9;
+          mat.color.setHex(0xffffff);
+          if (!mat.userData.currentPbrId && mat.map !== null) {
+            mat.map = null;
+          }
+          mat.needsUpdate = true;
+        } else if (finalColorHex) {
+          // A custom color is applied, override properties to look opaque
+          mat.transparent = false;
+          mat.opacity = 1.0;
+          mat.roughness = 0.72;
+          mat.metalness = 0.0;
+          if ("transmission" in mat) mat.transmission = 0;
           mat.color.set(finalColorHex);
           // Hide base map so 'your design here' doesn't show under the decal
           if (!mat.userData.currentPbrId && mat.map !== null) {
             mat.map = null;
           }
           mat.needsUpdate = true;
-        } else if (!materialType) {
-          // Restore Original color only, keep map null to hide "upload your design"
-          if (mat.userData.originalColorHex !== undefined) {
-             mat.color.setHex(mat.userData.originalColorHex);
+        } else {
+          // Restore original model properties!
+          if (hasArtwork || materialType) {
+            mat.transparent = false;
+            mat.opacity = 1.0;
+            if ("transmission" in mat) mat.transmission = 0;
+            mat.roughness =
+              mat.userData.originalRoughness !== undefined
+                ? mat.userData.originalRoughness
+                : 0.5;
+            mat.metalness =
+              mat.userData.originalMetalness !== undefined
+                ? mat.userData.originalMetalness
+                : 0.1;
+          } else {
+            mat.transparent =
+              mat.userData.originalTransparent !== undefined
+                ? mat.userData.originalTransparent
+                : false;
+            mat.opacity =
+              mat.userData.originalOpacity !== undefined
+                ? mat.userData.originalOpacity
+                : 1.0;
+            mat.roughness =
+              mat.userData.originalRoughness !== undefined
+                ? mat.userData.originalRoughness
+                : 0.5;
+            mat.metalness =
+              mat.userData.originalMetalness !== undefined
+                ? mat.userData.originalMetalness
+                : 0.1;
+            if (
+              mat.userData.originalTransmission !== undefined &&
+              "transmission" in mat
+            ) {
+              mat.transmission = mat.userData.originalTransmission;
+            }
           }
-          if (mat.map !== null && !mat.userData.currentPbrId) {
-             mat.map = null;
+
+          if (!materialType) {
+            // Restore Original color only, keep map null to hide "upload your design"
+            if (mat.userData.originalColorHex !== undefined) {
+              mat.color.setHex(mat.userData.originalColorHex);
+            }
+            if (mat.map !== null && !mat.userData.currentPbrId) {
+              mat.map = null;
+            }
+            mat.needsUpdate = true;
+          } else if (materialType) {
+            // For PBR materials with no custom color, default to white
+            mat.color.setHex(0xffffff);
+            if (mat.map !== null && !mat.userData.currentPbrId) {
+              mat.map = null;
+            }
+            mat.needsUpdate = true;
           }
-          mat.needsUpdate = true;
-        } else if (materialType) {
-           // For PBR materials with no custom color, default to white
-           mat.color.setHex(0xffffff);
-           if (mat.map !== null && !mat.userData.currentPbrId) {
-             mat.map = null;
-           }
-           mat.needsUpdate = true;
         }
 
         if ("envMapIntensity" in mat) mat.envMapIntensity = 0.08;
-        if (mat.side !== undefined) mat.side = THREE.DoubleSide;
+        if (mat.userData.originalSide !== undefined) {
+          mat.side = mat.userData.originalSide;
+        } else if (mat.side !== undefined) {
+          mat.side = THREE.DoubleSide;
+        }
         if ("toneMapped" in mat) mat.toneMapped = true;
         mat.needsUpdate = true;
       }
@@ -1041,12 +1159,22 @@ function AutoSizedModel({
     appliedBgColorRef.current = bgColor;
     appliedSelectedColorRef.current = selectedColor;
     appliedActiveRef.current = true;
-  }, [clonedScene, gl, textureCanvasRef, wireframe, appliedMaterials, appliedColors, bgColor, selectedColor, isActive]);
+  }, [
+    clonedScene,
+    gl,
+    textureCanvasRef,
+    wireframe,
+    appliedMaterials,
+    appliedColors,
+    bgColor,
+    selectedColor,
+    isActive,
+  ]);
 
   // Fast-path for just updating the texture without re-traversing the scene
   useEffect(() => {
     if (textureVersion === appliedTextureVersionRef.current) return;
-    
+
     if (canvasTextureRef.current && textureCanvasRef?.current) {
       // Just mark needsUpdate. Three.js will upload the new canvas pixels to GPU.
       canvasTextureRef.current.needsUpdate = true;

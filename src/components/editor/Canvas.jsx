@@ -1037,7 +1037,7 @@ function orderEdgesToPaths(edges) {
   return loops;
 }
 
-export function extractUvComponents(mesh, modelUrl) {
+export function extractUvComponents(mesh, modelUrl, startId = 0) {
   const geometry = mesh?.geometry;
   if (!geometry || !geometry.attributes.uv) return [];
 
@@ -1226,7 +1226,7 @@ export function extractUvComponents(mesh, modelUrl) {
   });
 
   const finalComponents = [];
-  let faceCounter = 0;
+  let faceCounter = startId;
 
   for (const triIds of faceMap.values()) {
     const faceTriSet = new Set(triIds);
@@ -1658,13 +1658,20 @@ const Canvas = forwardRef(
         const bakeCtx = bakeCanvas.getContext("2d");
 
         bakeCtx.clearRect(0, 0, bakeCanvas.width, bakeCanvas.height);
+        
+        const isTapeBake = !!(modelUrl && modelUrl.includes("Tape"));
+        
+        bakeCtx.save();
+        if (!isTapeBake) {
+          bakeCtx.translate(0, bakeCanvas.height);
+          bakeCtx.scale(1, -1);
+        }
 
         // We always want a transparent background for the base texture
         // so that PBR materials can show through where no artwork/color is applied.
         // We do NOT fill the background with bgColor here anymore.
 
         // Bake Face Colors first
-        const isTapeBake = !!(modelUrl && modelUrl.includes("Tape"));
         uvComponentsRef.current.forEach((comp) => {
           const color = faceColors[comp.id];
           if (color && comp.path && comp.path.length > 0) {
@@ -1716,6 +1723,7 @@ const Canvas = forwardRef(
           item.draw(bakeCtx, 1, uvComponentsRef.current, isTapeBake);
         });
 
+        bakeCtx.restore();
         onTextureUpdatedRef.current();
       },
       [bgColor, faceColors, selectedFaces, textureCanvasRef, appliedMaterials, modelUrl],
@@ -2048,12 +2056,19 @@ const Canvas = forwardRef(
       redrawDisplay();
     }, [redrawDisplay]);
 
+    const lastBakeTimeRef = useRef(0);
+
     // RAF loop for smooth interaction rendering
     const startRenderLoop = useCallback(() => {
       if (rafIdRef.current) return;
       const loop = () => {
         if (needsDisplayRedrawRef.current) {
           redrawDisplay();
+          const now = performance.now();
+          if (now - lastBakeTimeRef.current >= 33) {
+            bakeTexture();
+            lastBakeTimeRef.current = now;
+          }
           needsDisplayRedrawRef.current = false;
         }
         if (interactionRef.current.isDragging) {
@@ -2063,7 +2078,7 @@ const Canvas = forwardRef(
         }
       };
       rafIdRef.current = requestAnimationFrame(loop);
-    }, [redrawDisplay]);
+    }, [redrawDisplay, bakeTexture]);
 
     useEffect(() => {
       const canvas = displayCanvasRef.current;
@@ -3022,6 +3037,9 @@ const Canvas = forwardRef(
     }
 
     useImperativeHandle(ref, () => ({
+      hasArtwork: () => {
+        return imagesRef.current && imagesRef.current.length > 0;
+      },
       hasSelectedFace: () => {
         return selectedFacesRef.current.size > 0;
       },

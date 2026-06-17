@@ -3,7 +3,7 @@ import { MODELS } from './ModelsPopup';
 
 // Use import.meta.glob to efficiently find all GLB and PNG files in layouts
 const layoutModelsGlob = import.meta.glob('../../assets/layouts/**/*.glb', { eager: true, import: 'default' });
-const layoutImagesGlob = import.meta.glob('../../assets/layouts/**/*.png', { eager: true, import: 'default' });
+const layoutImagesGlob = import.meta.glob('../../assets/layouts/**/*.webp', { eager: true, import: 'default' });
 
 const LAYOUT_MAPPING = {
   'beverage-cup': 'Carton Boxes/Beverage Bottle',
@@ -23,6 +23,22 @@ const LAYOUT_MAPPING = {
   'zip-lock-pouches': 'Food Packaging/Zip lock',
   'box-sealing-tape': 'Packaging tapes/Sealing tapes'
 };
+
+export function getSingleModelUrl(layoutModelUrl) {
+  if (!layoutModelUrl) return layoutModelUrl;
+  let found = MODELS.find(m => m.modelUrl === layoutModelUrl);
+  if (found) return layoutModelUrl;
+
+  const layoutPath = Object.keys(layoutModelsGlob).find(p => layoutModelsGlob[p] === layoutModelUrl);
+  if (layoutPath) {
+     const mappedEntry = Object.entries(LAYOUT_MAPPING).find(([id, path]) => layoutPath.includes(path));
+     if (mappedEntry) {
+        const baseModel = MODELS.find(m => m.id === mappedEntry[0]);
+        if (baseModel) return baseModel.modelUrl;
+     }
+  }
+  return layoutModelUrl;
+}
 
 export default function LayoutPopup({ currentModelUrl, onSelectLayout }) {
   // Find the currently selected model by matching URL or checking if it's already a layout

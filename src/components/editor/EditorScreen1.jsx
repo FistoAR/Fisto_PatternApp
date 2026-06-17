@@ -8,7 +8,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Canvas as R3FCanvas, useThree, useLoader } from "@react-three/fiber";
+import { Canvas as R3FCanvas, useThree, useLoader, useFrame } from "@react-three/fiber";
 import {
   OrbitControls,
   useGLTF,
@@ -114,9 +114,25 @@ function TextureActiveOverlay() {
   return (
     <div className="absolute inset-0 bg-[#c05520]/20 flex items-center justify-center backdrop-blur-[1px]">
       {active ? (
-        <svg className="animate-spin h-5 w-5 text-white drop-shadow-md" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        <svg
+          className="animate-spin h-5 w-5 text-white drop-shadow-md"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          ></circle>
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
         </svg>
       ) : (
         <svg
@@ -150,6 +166,7 @@ function AutoSizedModelWithDimensions({
   onSceneLoaded,
   onTextureLoadStart,
   onTextureLoadEnd,
+  showMeasurements,
 }) {
   const { scene } = useGLTF(modelUrl);
   const { invalidate } = useThree();
@@ -171,6 +188,25 @@ function AutoSizedModelWithDimensions({
     }
   }, [clonedScene, onSceneLoaded]);
 
+  // Handle toggling measurements visibility
+  useEffect(() => {
+    if (!clonedScene) return;
+
+    let meshCount = 0;
+    clonedScene.traverse((obj) => {
+      if (obj.isMesh) meshCount++;
+    });
+
+    clonedScene.traverse((obj) => {
+      const name = obj.name || "";
+      const isMeasurement = /^(plane|text)/i.test(name);
+      if (isMeasurement && meshCount > 1) {
+        obj.visible = !!showMeasurements;
+      }
+    });
+    invalidate();
+  }, [clonedScene, showMeasurements, invalidate]);
+
   // Apply shadow settings whenever shadowEnabled changes
   useEffect(() => {
     if (!clonedScene) return;
@@ -184,9 +220,20 @@ function AutoSizedModelWithDimensions({
   // Extract materials
   useEffect(() => {
     if (!clonedScene) return;
+
+    let meshCount = 0;
+    clonedScene.traverse((obj) => {
+      if (obj.isMesh && !obj.userData.isDecal) meshCount++;
+    });
+
     const mats = [];
     clonedScene.traverse((obj) => {
-      if (!obj.isMesh || !obj.material) return;
+      if (!obj.isMesh || !obj.material || obj.userData.isDecal) return;
+
+      const name = obj.name || "";
+      const isMeasurement = /^(plane|text)/i.test(name);
+      if (isMeasurement && meshCount > 1) return;
+
       const mArray = Array.isArray(obj.material)
         ? obj.material
         : [obj.material];
@@ -286,12 +333,14 @@ function AutoSizedModelWithDimensions({
   const loader = useMemo(() => {
     const mgr = new THREE.LoadingManager();
     mgr.onStart = () => {
-      if (callbacksRef.current.onTextureLoadStart) callbacksRef.current.onTextureLoadStart();
+      if (callbacksRef.current.onTextureLoadStart)
+        callbacksRef.current.onTextureLoadStart();
     };
     mgr.onLoad = () => {
       // Small timeout to allow the GPU upload to complete before hiding the spinner
       setTimeout(() => {
-        if (callbacksRef.current.onTextureLoadEnd) callbacksRef.current.onTextureLoadEnd();
+        if (callbacksRef.current.onTextureLoadEnd)
+          callbacksRef.current.onTextureLoadEnd();
       }, 3000);
     };
     return new THREE.TextureLoader(mgr);
@@ -300,8 +349,18 @@ function AutoSizedModelWithDimensions({
   useEffect(() => {
     if (!clonedScene) return;
 
+    let meshCount = 0;
+    clonedScene.traverse((obj) => {
+      if (obj.isMesh && !obj.userData.isDecal) meshCount++;
+    });
+
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || !obj.material || obj.userData.isDecal) return;
+
+      const name = obj.name || "";
+      const isMeasurement = /^(plane|text)/i.test(name);
+      if (isMeasurement && meshCount > 1) return;
+
       const mArray = Array.isArray(obj.material)
         ? obj.material
         : [obj.material];
@@ -315,6 +374,11 @@ function AutoSizedModelWithDimensions({
           m.userData.originalMap = m.map;
           m.userData.originalRoughness = m.roughness;
           m.userData.originalMetalness = m.metalness;
+          m.userData.originalTransparent = m.transparent;
+          m.userData.originalOpacity = m.opacity;
+          m.userData.originalSide = m.side;
+          m.userData.originalTransmission =
+            m.transmission !== undefined ? m.transmission : 0;
         }
 
         const colorHex = appliedColors
@@ -334,29 +398,28 @@ function AutoSizedModelWithDimensions({
           : null;
 
         // --- HANDLE DECAL MESH FOR CANVAS EDITS ---
-        if (!m.userData.decalMesh) {
+        if (!obj.userData.decalMesh) {
           const decalMat = new THREE.MeshStandardMaterial({
             transparent: true,
             depthWrite: false,
             polygonOffset: true,
             polygonOffsetFactor: -1,
-            polygonOffsetUnits: -1,
+            polygonOffsetUnits: -4,
           });
           const decal = new THREE.Mesh(obj.geometry, decalMat);
           decal.userData.isDecal = true;
-          decal.scale.set(1.002, 1.002, 1.002);
           obj.add(decal);
-          m.userData.decalMesh = decal;
+          obj.userData.decalMesh = decal;
         }
 
-        const decalMat = m.userData.decalMesh.material;
+        const decalMat = obj.userData.decalMesh.material;
         if (textureUrl) {
-          m.userData.decalMesh.visible = true;
+          obj.userData.decalMesh.visible = true;
           if (decalMat.userData.currentTextureUrl !== textureUrl) {
             decalMat.userData.currentTextureUrl = textureUrl;
             loader.load(textureUrl, (texture) => {
               texture.colorSpace = THREE.SRGBColorSpace;
-              texture.flipY = false;
+              texture.flipY = textureUrl.startsWith("data:image");
               if (modelUrl && modelUrl.includes("Tape")) {
                 texture.center.set(0.5, 0.5);
                 texture.rotation = -Math.PI / 2;
@@ -369,7 +432,7 @@ function AutoSizedModelWithDimensions({
             });
           }
         } else {
-          m.userData.decalMesh.visible = false;
+          obj.userData.decalMesh.visible = false;
           if (decalMat.map) decalMat.map.dispose();
           decalMat.map = null;
           decalMat.userData.currentTextureUrl = null;
@@ -379,15 +442,77 @@ function AutoSizedModelWithDimensions({
 
         // --- HANDLE BASE MESH (PBR OR COLOR) ---
         if (colorHex) {
-          m.color.set(colorHex);
+          if (colorHex === "transparent" && !textureUrl && !materialType) {
+            m.transparent = true;
+            m.opacity = 0.35;
+            m.roughness = 0.1;
+            m.metalness = 0.1;
+            if ("transmission" in m) m.transmission = 0.9;
+            m.color.setHex(0xffffff);
+          } else {
+            m.transparent = false;
+            m.opacity = 1.0;
+            m.roughness =
+              m.userData.originalRoughness !== undefined
+                ? m.userData.originalRoughness
+                : 0.5;
+            m.metalness =
+              m.userData.originalMetalness !== undefined
+                ? m.userData.originalMetalness
+                : 0.1;
+            if ("transmission" in m) m.transmission = 0;
+            if (colorHex === "transparent") {
+              m.color.setHex(0xffffff);
+            } else {
+              m.color.set(colorHex);
+            }
+          }
           // Only clear m.map if it's NOT a PBR material
           if (!m.userData.currentPbrId) {
-             if (m.map) m.map.dispose();
-             m.map = null;
+            if (m.map) m.map.dispose();
+            m.map = null;
           }
           m.needsUpdate = true;
           invalidate();
         } else {
+          // Restore original transparency settings
+          if (textureUrl || materialType) {
+            m.transparent = false;
+            m.opacity = 1.0;
+            if ("transmission" in m) m.transmission = 0;
+            m.roughness =
+              m.userData.originalRoughness !== undefined
+                ? m.userData.originalRoughness
+                : 0.5;
+            m.metalness =
+              m.userData.originalMetalness !== undefined
+                ? m.userData.originalMetalness
+                : 0.1;
+          } else {
+            m.transparent =
+              m.userData.originalTransparent !== undefined
+                ? m.userData.originalTransparent
+                : false;
+            m.opacity =
+              m.userData.originalOpacity !== undefined
+                ? m.userData.originalOpacity
+                : 1.0;
+            m.roughness =
+              m.userData.originalRoughness !== undefined
+                ? m.userData.originalRoughness
+                : 0.5;
+            m.metalness =
+              m.userData.originalMetalness !== undefined
+                ? m.userData.originalMetalness
+                : 0.1;
+            if (
+              m.userData.originalTransmission !== undefined &&
+              "transmission" in m
+            ) {
+              m.transmission = m.userData.originalTransmission;
+            }
+          }
+
           // Reset color if no custom color is specified
           if (m.userData.currentPbrId) {
             m.color.setHex(0xffffff); // PBR active: base color white
@@ -412,8 +537,6 @@ function AutoSizedModelWithDimensions({
             m.roughnessMap = null;
             m.metalnessMap = null;
             m.aoMap = null;
-            m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.5;
-            m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
           }
           m.needsUpdate = true;
           invalidate();
@@ -531,6 +654,136 @@ function AutoSizedModelWithDimensions({
   );
 }
 
+// ─── Screen-space measurement overlay helpers ──────────────────────────────
+function _setMLine(svg, id, x1, y1, x2, y2) {
+  const el = svg.querySelector(`[data-m="${id}"]`);
+  if (!el) return;
+  el.setAttribute("x1", x1);
+  el.setAttribute("y1", y1);
+  el.setAttribute("x2", x2);
+  el.setAttribute("y2", y2);
+}
+
+function _setMText(svg, id, x, y, text) {
+  const textEl = svg.querySelector(`[data-m-t="${id}"]`);
+  if (!textEl) return;
+  textEl.setAttribute("x", x);
+  textEl.setAttribute("y", y);
+  textEl.textContent = text;
+  const bgEl = svg.querySelector(`[data-m-bg="${id}"]`);
+  if (bgEl) {
+    try {
+      const bbox = textEl.getBBox();
+      bgEl.setAttribute("x", bbox.x - 10);
+      bgEl.setAttribute("y", bbox.y - 5);
+      bgEl.setAttribute("width", bbox.width + 20);
+      bgEl.setAttribute("height", bbox.height + 10);
+    } catch (_) {}
+  }
+}
+
+function MeasurementTracker({ activeSceneRef, measureOverlayRef, baseDimensions }) {
+  const { camera, size, invalidate } = useThree();
+
+  // Force one render on mount so measurements appear immediately
+  useEffect(() => {
+    invalidate();
+  }, [invalidate]);
+
+  useFrame(() => {
+    if (!activeSceneRef.current || !measureOverlayRef.current) return;
+
+    const scene = activeSceneRef.current;
+
+    // Ensure world matrices are current (critical for first-frame correctness)
+    scene.updateWorldMatrix(true, true);
+
+    // Compute bounding box excluding baked measurement nodes
+    const box = new THREE.Box3();
+    scene.traverse((obj) => {
+      if (!obj.isMesh) return;
+      const name = obj.name || "";
+      if (/^(plane|text)/i.test(name)) return;
+      box.expandByObject(obj);
+    });
+    if (box.isEmpty()) {
+      // fallback: use whole scene
+      box.setFromObject(scene);
+    }
+    if (box.isEmpty()) return;
+
+    const { min, max } = box;
+    const W = size.width;
+    const H = size.height;
+
+    const project = (x, y, z) => {
+      const v = new THREE.Vector3(x, y, z).project(camera);
+      return { x: (v.x * 0.5 + 0.5) * W, y: (-v.y * 0.5 + 0.5) * H };
+    };
+
+    // 3D bounding box corners projected to 2D
+    const tfl = project(min.x, max.y, max.z); // top-front-left
+    const tfr = project(max.x, max.y, max.z); // top-front-right
+    const tbl = project(min.x, max.y, min.z); // top-back-left
+    const bfl = project(min.x, min.y, max.z); // bottom-front-left
+    const bfr = project(max.x, min.y, max.z); // bottom-front-right
+    const bbr = project(max.x, min.y, min.z); // bottom-back-right
+
+    const overlay = measureOverlayRef.current;
+    if (!overlay) return;
+
+    const lenLabel  = baseDimensions?.length ? `${baseDimensions.length} mm` : "";
+    const wLabel    = baseDimensions?.width  ? `${baseDimensions.width} mm`  : "";
+    const hLabel    = baseDimensions?.height ? `${baseDimensions.height} mm` : "";
+
+    // ── Top Length (horizontal line above top face) ──
+    const tlOffset = 28;
+    const tlY = Math.min(tfl.y, tfr.y, tbl.y) - tlOffset;
+    _setMLine(overlay, "tl-el", tfl.x, tfl.y, tfl.x, tlY);
+    _setMLine(overlay, "tl-er", tfr.x, tfr.y, tfr.x, tlY);
+    _setMLine(overlay, "tl",    tfl.x, tlY,   tfr.x, tlY);
+    _setMText(overlay, "tl",    (tfl.x + tfr.x) / 2, tlY - 6,
+      lenLabel ? `Top Length - ${lenLabel}` : "Top Length");
+
+    // ── Top Breadth (oblique line on left side of top face) ──
+    _setMLine(overlay, "tb", tfl.x, tfl.y, tbl.x, tbl.y);
+    const tbMx = (tfl.x + tbl.x) / 2;
+    const tbMy = (tfl.y + tbl.y) / 2;
+    _setMText(overlay, "tb", tbMx - 6, tbMy - 8,
+      wLabel ? `Top Breadth - ${wLabel}` : "Top Breadth");
+
+    // ── Height (vertical line on the left) ──
+    const hOffset = -32;
+    const hX = Math.min(bfl.x, tfl.x) + hOffset;
+    _setMLine(overlay, "h-eb", bfl.x, bfl.y, hX + 12, bfl.y);
+    _setMLine(overlay, "h-et", tfl.x, tfl.y, hX + 12, tfl.y);
+    _setMLine(overlay, "h",    hX, bfl.y, hX, tfl.y);
+    // tick marks
+    _setMLine(overlay, "h-tb", hX - 6, bfl.y, hX + 6, bfl.y);
+    _setMLine(overlay, "h-tt", hX - 6, tfl.y, hX + 6, tfl.y);
+    _setMText(overlay, "h", hX - 6, (bfl.y + tfl.y) / 2,
+      hLabel ? `H - ${hLabel}` : "H");
+
+    // ── Base Length (horizontal line below bottom face) ──
+    const blOffset = 28;
+    const blY = Math.max(bfl.y, bfr.y) + blOffset;
+    _setMLine(overlay, "bl-el", bfl.x, bfl.y, bfl.x, blY);
+    _setMLine(overlay, "bl-er", bfr.x, bfr.y, bfr.x, blY);
+    _setMLine(overlay, "bl",    bfl.x, blY,   bfr.x, blY);
+    _setMText(overlay, "bl",    (bfl.x + bfr.x) / 2, blY + 6,
+      lenLabel ? `Base Length - ${lenLabel}` : "Base Length");
+
+    // ── Base Breadth (oblique line on right side of bottom face) ──
+    _setMLine(overlay, "bb", bfr.x, bfr.y, bbr.x, bbr.y);
+    const bbMx = (bfr.x + bbr.x) / 2;
+    const bbMy = (bfr.y + bbr.y) / 2;
+    _setMText(overlay, "bb", bbMx + 8, bbMy + 14,
+      wLabel ? `Base Breadth - ${wLabel}` : "Base Breadth");
+  });
+
+  return null;
+}
+
 export default function EditorScreen1({
   modelUrl,
   setModelUrl,
@@ -571,6 +824,9 @@ export default function EditorScreen1({
   // Zoom state
   const [zoomPercent, setZoomPercent] = useState(100);
   const [showLegend, setShowLegend] = useState(false);
+  const [showMeasurements, setShowMeasurements] = useState(true);
+  const activeSceneRef = useRef(null);
+  const measureOverlayRef = useRef(null);
 
   // Scene & Environment States
   const [hdriPreset, setHdriPreset] = useState("studio");
@@ -632,7 +888,8 @@ export default function EditorScreen1({
   useEffect(() => {
     return () => {
       if (textureTimeoutRef.current) clearTimeout(textureTimeoutRef.current);
-      if (textureFallbackTimeoutRef.current) clearTimeout(textureFallbackTimeoutRef.current);
+      if (textureFallbackTimeoutRef.current)
+        clearTimeout(textureFallbackTimeoutRef.current);
     };
   }, []);
 
@@ -734,6 +991,11 @@ export default function EditorScreen1({
 
   const handleTextureLoadEnd = useCallback(() => {
     setIsModelLoading(false);
+  }, []);
+
+  const handleSceneLoaded = useCallback((scene) => {
+    activeSceneRef.current = scene;
+    setActiveScene(scene);
   }, []);
 
   // Tools state
@@ -960,18 +1222,70 @@ export default function EditorScreen1({
                 selectedMaterialId={selectedMaterial}
                 onMaterialsLoaded={handleMaterialsLoaded}
                 onBaseDimensionsLoaded={handleBaseDimensionsLoaded}
-                onSceneLoaded={setActiveScene}
+                onSceneLoaded={handleSceneLoaded}
                 onTextureLoadStart={handleTextureLoadStart}
                 onTextureLoadEnd={handleTextureLoadEnd}
+                showMeasurements={showMeasurements}
               />
             )}
           </Suspense>
+          {showMeasurements && modelUrl && (
+            <MeasurementTracker
+              activeSceneRef={activeSceneRef}
+              measureOverlayRef={measureOverlayRef}
+              baseDimensions={baseDimensions}
+            />
+          )}
           <ScreenshotHelper
             ref={captureRef}
             filename={getModelName()}
             bgColor={bgColor}
           />
         </R3FCanvas>
+
+        {/* Measurement SVG Overlay */}
+        {showMeasurements && modelUrl && (
+          <svg
+            ref={measureOverlayRef}
+            xmlns="http://www.w3.org/2000/svg"
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ zIndex: 3 }}
+          >
+            {/* ── Top Length ── */}
+            <line data-m="tl-el" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
+            <line data-m="tl-er" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
+            <line data-m="tl"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <rect data-m-bg="tl" rx="12" fill="#c2520a" />
+            <text data-m-t="tl" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" dominantBaseline="auto" />
+
+            {/* ── Top Breadth ── */}
+            <line data-m="tb"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <rect data-m-bg="tb" rx="12" fill="#c2520a" />
+            <text data-m-t="tb" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" dominantBaseline="auto" />
+
+            {/* ── Height ── */}
+            <line data-m="h-eb" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
+            <line data-m="h-et" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
+            <line data-m="h"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <line data-m="h-tb" stroke="#b84c00" strokeWidth="2" />
+            <line data-m="h-tt" stroke="#b84c00" strokeWidth="2" />
+            <rect data-m-bg="h"  rx="12" fill="#c2520a" />
+            <text data-m-t="h"  fill="white" fontSize="11" fontWeight="700" textAnchor="end" dominantBaseline="middle" />
+
+            {/* ── Base Length ── */}
+            <line data-m="bl-el" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
+            <line data-m="bl-er" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
+            <line data-m="bl"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <rect data-m-bg="bl" rx="12" fill="#c2520a" />
+            <text data-m-t="bl" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" dominantBaseline="hanging" />
+
+            {/* ── Base Breadth ── */}
+            <line data-m="bb"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <rect data-m-bg="bb" rx="12" fill="#c2520a" />
+            <text data-m-t="bb" fill="white" fontSize="11" fontWeight="700" textAnchor="start" dominantBaseline="hanging" />
+          </svg>
+        )}
+
         {/* Loading overlay sits on top of canvas */}
         {modelUrl && <ModelLoadingOverlay isLoading={isModelLoading} />}
       </div>
@@ -1005,7 +1319,12 @@ export default function EditorScreen1({
               currentModelUrl={modelUrl}
             />
           )}
-          {activeTab === "layout" && <LayoutPopup currentModelUrl={modelUrl} onSelectLayout={setModelUrl} />}
+          {activeTab === "layout" && (
+            <LayoutPopup
+              currentModelUrl={modelUrl}
+              onSelectLayout={setModelUrl}
+            />
+          )}
           {activeTab === "scene" && (
             <ScenePopup
               bgColor={bgColor}
@@ -1148,7 +1467,11 @@ export default function EditorScreen1({
                   <input
                     type="color"
                     value={
-                      appliedColors?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"] || "#ffffff"
+                      appliedColors?.[
+                        selectedMaterial && selectedMaterial !== "none"
+                          ? selectedMaterial
+                          : "all"
+                      ] || "#ffffff"
                     }
                     onChange={(e) =>
                       onApplyColor &&
@@ -1165,7 +1488,7 @@ export default function EditorScreen1({
                         onClick={() =>
                           onApplyColor && onApplyColor(selectedMaterial, color)
                         }
-                        className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${appliedColors?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"] === color ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
+                        className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${appliedColors?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] === color ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
                         style={{ backgroundColor: color }}
                       />
                     ),
@@ -1182,10 +1505,13 @@ export default function EditorScreen1({
                 </label>
                 <button
                   onClick={() => {
-                    if (textureTimeoutRef.current) clearTimeout(textureTimeoutRef.current);
-                    if (textureFallbackTimeoutRef.current) clearTimeout(textureFallbackTimeoutRef.current);
+                    if (textureTimeoutRef.current)
+                      clearTimeout(textureTimeoutRef.current);
+                    if (textureFallbackTimeoutRef.current)
+                      clearTimeout(textureFallbackTimeoutRef.current);
                     setIsModelLoading(false);
-                    if (onApplyMaterial) onApplyMaterial(selectedMaterial, null);
+                    if (onApplyMaterial)
+                      onApplyMaterial(selectedMaterial, null);
                   }}
                   className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
                 >
@@ -1287,18 +1613,23 @@ export default function EditorScreen1({
                       onClick={() => {
                         if (isModelLoading || !onApplyMaterial) return;
 
-                        if (textureTimeoutRef.current) clearTimeout(textureTimeoutRef.current);
-                        if (textureFallbackTimeoutRef.current) clearTimeout(textureFallbackTimeoutRef.current);
+                        if (textureTimeoutRef.current)
+                          clearTimeout(textureTimeoutRef.current);
+                        if (textureFallbackTimeoutRef.current)
+                          clearTimeout(textureFallbackTimeoutRef.current);
 
                         // Force the loading spinner to appear before blocking the main thread
                         setIsModelLoading(true);
                         textureTimeoutRef.current = setTimeout(() => {
                           onApplyMaterial(selectedMaterial, texture);
                           // Fallback to hide spinner to cover the WebGL shader compilation block
-                          textureFallbackTimeoutRef.current = setTimeout(() => setIsModelLoading(false), 3000);
+                          textureFallbackTimeoutRef.current = setTimeout(
+                            () => setIsModelLoading(false),
+                            3000,
+                          );
                         }, 150);
                       }}
-                      className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center transition-all ${isModelLoading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${appliedMaterials?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
+                      className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center transition-all ${isModelLoading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${appliedMaterials?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
                     >
                       {texture.preview ? (
                         <img
@@ -1311,9 +1642,11 @@ export default function EditorScreen1({
                           {texture.name}
                         </div>
                       )}
-                      {appliedMaterials?.[(selectedMaterial && selectedMaterial !== "none") ? selectedMaterial : "all"]?.id === texture.id && (
-                        <TextureActiveOverlay />
-                      )}
+                      {appliedMaterials?.[
+                        selectedMaterial && selectedMaterial !== "none"
+                          ? selectedMaterial
+                          : "all"
+                      ]?.id === texture.id && <TextureActiveOverlay />}
                     </button>
                   ))}
               </div>
@@ -1321,7 +1654,9 @@ export default function EditorScreen1({
           </div>
         )}
 
-        {activeTab === "scene" && <HdriLoadingOverlay isModelLoading={isModelLoading} />}
+        {activeTab === "scene" && (
+          <HdriLoadingOverlay isModelLoading={isModelLoading} />
+        )}
 
         {/* Custom Size Editor */}
         {activeTab === "edit" && showCustomSize && (
@@ -1684,6 +2019,39 @@ export default function EditorScreen1({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
+              />
+            </svg>
+          </button>
+        </Tooltip1>
+
+        <div className="w-6 h-px bg-gray-200 mx-auto" />
+
+        <Tooltip1 label="Measurements" side="left">
+          <button
+            onClick={() => setShowMeasurements((m) => !m)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+              showMeasurements
+                ? "bg-gray-900 text-white hover:bg-gray-700"
+                : "bg-transparent text-gray-500 hover:bg-gray-100"
+            }`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.8}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 12h-15m0 0v1.5m0-1.5v-1.5m15 1.5v1.5m0-1.5v-1.5m-12 1.5v-1.5m3 1.5v-1.5m3 1.5v-1.5m3 1.5v-1.5"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18h12a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v6a3 3 0 0 0 3 3Z"
               />
             </svg>
           </button>
