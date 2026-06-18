@@ -593,9 +593,9 @@ export default function EditorScreen2({
           <div className="flex-1 overflow-hidden flex flex-col pointer-events-auto">
             {leftTab === "uploads" && (
               <UploadsPopup
-                onUpload={(file, url, fitType) => {
-                  if (url && !uploadedImages.includes(url)) {
-                    setUploadedImages((prev) => [url, ...prev]);
+                onUpload={(file, url, fitType, uploadType) => {
+                  if (url && !uploadedImages.some(i => (typeof i === 'string' ? i : i.url) === url)) {
+                    setUploadedImages((prev) => [{ url, type: uploadType || 'image' }, ...prev]);
                   }
                   const target = file || url;
                   if (target) {

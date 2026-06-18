@@ -47,35 +47,35 @@ import boxSealingTapeUrl from "../../assets/models/Packaging tapes/Box sealing T
 import boxSealingTapeImg from "../../assets/models/Packaging tapes/Box sealing Tape/Tape.webp";
 
 export const MODELS = [
-  // Carton Box
-  { id: 'beverage-cup', name: 'Beverage Carton Box', modelUrl: beverageCupUrl, category: 'Carton box', imageUrl: beverageCupImg },
-  { id: 'die-cut-box', name: 'Die-Cut Carton Box', modelUrl: dieCutBoxUrl, category: 'Carton box', imageUrl: dieCutBoxImg },
-  { id: 'folding-box', name: 'Folding Carton Box', modelUrl: foldingBoxUrl, category: 'Carton box', imageUrl: foldingBoxImg },
+  // Food Containers
+  { id: 'round-container', name: 'Round Container', modelUrl: roundContainerUrl, category: 'Food Containers', imageUrl: roundContainerImg },
+  { id: 'tamper-evident', name: 'Tamper Evident Container', modelUrl: tamperEvidentUrl, category: 'Food Containers', imageUrl: tamperEvidentImg },
+  { id: 'oval-container', name: 'Oval Containers', modelUrl: ovalContainerUrl, category: 'Food Containers', imageUrl: ovalContainerImg },
+
+  // Food Packaging
+  { id: 'zip-lock-pouches', name: 'Zip Lock Pouches', modelUrl: zipLockPouchesUrl, category: 'Food Packaging', imageUrl: zipLockPouchesImg },
+  { id: 'kraft-paper', name: 'Kraft Paper Pouches', modelUrl: kraftPaperUrl, category: 'Food Packaging', imageUrl: kraftPaperImg },
 
   // Drinkware Bottles
-  { id: 'glass-bottle', name: 'Glass Water Bottle', modelUrl: glassBottleUrl, category: 'Drinkware Bottles', imageUrl: glassBottleImg },
   { id: 'plastic-water-bottle', name: 'Plastic Water Bottle', modelUrl: plasticWaterBottleUrl, category: 'Drinkware Bottles', imageUrl: plasticWaterBottleImg },
+  { id: 'glass-bottle', name: 'Glass Water Bottle', modelUrl: glassBottleUrl, category: 'Drinkware Bottles', imageUrl: glassBottleImg },
   { id: 'soft-drinks-bottle', name: 'Soft Drink Bottles', modelUrl: softDrinksBottleUrl, category: 'Drinkware Bottles', imageUrl: softDrinksBottleImg },
 
+  // Carton Box
+  { id: 'folding-box', name: 'Folding Carton Box', modelUrl: foldingBoxUrl, category: 'Carton box', imageUrl: foldingBoxImg },
+  { id: 'die-cut-box', name: 'Die-Cut Carton Box', modelUrl: dieCutBoxUrl, category: 'Carton box', imageUrl: dieCutBoxImg },
+  { id: 'beverage-cup', name: 'Beverage Carton Box', modelUrl: beverageCupUrl, category: 'Carton box', imageUrl: beverageCupImg },
+
   // Eco friendly
-  { id: 'biodegradable-bags', name: 'Biodegradable Bags', modelUrl: biodegradableBagsUrl, category: 'Eco friendly', imageUrl: biodegradableBagsImg },
   { id: 'paper-bag', name: 'Paper Bags', modelUrl: paperBagUrl, category: 'Eco friendly', imageUrl: paperBagImg },
+  { id: 'biodegradable-bags', name: 'Biodegradable Bags', modelUrl: biodegradableBagsUrl, category: 'Eco friendly', imageUrl: biodegradableBagsImg },
+
+  // Packaging tapes
+  { id: 'box-sealing-tape', name: 'Box Sealing Tape', modelUrl: boxSealingTapeUrl, category: 'Packaging tapes', imageUrl: boxSealingTapeImg },
 
   // Fashion Wear
   { id: 't-shirt', name: 'T-Shirts', modelUrl: tshirtUrl, category: 'Fashion Wear', imageUrl: tshirtImg },
   { id: 'hoodie', name: 'Hoodies', modelUrl: hoodieUrl, category: 'Fashion Wear', imageUrl: hoodieImg },
-
-  // Food Containers
-  { id: 'oval-container', name: 'Oval Containers', modelUrl: ovalContainerUrl, category: 'Food Containers', imageUrl: ovalContainerImg },
-  { id: 'round-container', name: 'Round Container', modelUrl: roundContainerUrl, category: 'Food Containers', imageUrl: roundContainerImg },
-  { id: 'tamper-evident', name: 'Tamper Evident Container', modelUrl: tamperEvidentUrl, category: 'Food Containers', imageUrl: tamperEvidentImg },
-
-  // Food Packaging
-  { id: 'kraft-paper', name: 'Kraft Paper Pouches', modelUrl: kraftPaperUrl, category: 'Food Packaging', imageUrl: kraftPaperImg },
-  { id: 'zip-lock-pouches', name: 'Zip Lock Pouches', modelUrl: zipLockPouchesUrl, category: 'Food Packaging', imageUrl: zipLockPouchesImg },
-
-  // Packaging tapes
-  { id: 'box-sealing-tape', name: 'Box Sealing Tape', modelUrl: boxSealingTapeUrl, category: 'Packaging tapes', imageUrl: boxSealingTapeImg },
 ];
 
 const CATEGORIES = [

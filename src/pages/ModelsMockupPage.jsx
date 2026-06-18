@@ -325,6 +325,28 @@ function sidebarIconType(label) {
   return normalizeLabel(label);
 }
 
+const categoryColors = {
+  "all": "#D2692B",
+  "food containers": "#6B7062",
+  "food packaging": "#507AA5",
+  "drinkware bottles": "#948C5B",
+  "carton boxes": "#79757A",
+  "eco friendly bags": "#5E6B3C",
+  "packaging tapes": "#967A6C",
+  "fashion wear": "#80715B",
+};
+
+const unselectedIconColors = {
+  "all": "#873E14",
+  "food containers": "#4F5348",
+  "food packaging": "#34577E",
+  "drinkware bottles": "#6D673F",
+  "carton boxes": "#524F53",
+  "eco friendly bags": "#404B27",
+  "packaging tapes": "#6E584D",
+  "fashion wear": "#5A4E3E",
+};
+
 function SidebarItem({
   label,
   active,
@@ -337,9 +359,8 @@ function SidebarItem({
   count,
 }) {
   const inactiveClass = "bg-white/50 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-white/60 text-[#858585] hover:bg-white/80 hover:shadow-[0_4px_15px_rgba(0,0,0,0.06)] hover:text-[#37472F]";
-  const activeClass = "bg-[#D2692B] border border-transparent text-white font-bold shadow-[0_4px_12px_rgba(210,105,43,0.25)]";
-
-  const finalClass = active || parentActive ? activeClass : inactiveClass;
+  const isActive = active || parentActive;
+  const activeBg = categoryColors[normalizeLabel(label)] || "#D2692B";
 
   const iconSrc = sidebarIcons[icon] || (typeof icon === 'string' && icon.includes('/') ? icon : cartonBox);
 
@@ -347,21 +368,41 @@ function SidebarItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] py-2 px-3 xl:py-3 xl:px-4 transition-all duration-300 ${finalClass} text-[13px] xl:text-[clamp(13px,1.45vw,16px)] font-bold`}
+      className={`flex w-full cursor-pointer items-center justify-between rounded-[8px] py-2 px-3 xl:py-3 xl:px-4 transition-all duration-300 ${
+        isActive ? "border border-transparent text-white font-bold" : inactiveClass
+      } text-[13px] xl:text-[clamp(13px,1.45vw,16px)] font-bold`}
+      style={
+        isActive
+          ? {
+              backgroundColor: activeBg,
+              boxShadow: `0 4px 12px ${activeBg}40`,
+            }
+          : {}
+      }
     >
       <div className="flex items-center gap-3">
-        <img
-          src={iconSrc}
-          alt=""
-          className={`h-6 w-6 shrink-0 object-contain transition-all ${
-            active || parentActive ? "brightness-0 invert" : "opacity-60"
-          }`}
+        <div
+          style={{
+            width: "24px",
+            height: "24px",
+            flexShrink: 0,
+            backgroundColor: isActive ? "#ffffff" : (unselectedIconColors[normalizeLabel(label)] || "#873E14"),
+            WebkitMaskImage: `url(${iconSrc})`,
+            maskImage: `url(${iconSrc})`,
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+            transition: "all 0.3s ease",
+          }}
         />
         <span>{label}</span>
       </div>
       {count !== undefined && count > 0 && (
         <span className={`text-[14px] px-2.5 py-0.5 rounded-full transition-colors ${
-          active || parentActive ? "bg-white/25 text-white" : "bg-black/5 text-[#6b6b6b]"
+          isActive ? "bg-white/25 text-white" : "bg-black/5 text-[#6b6b6b]"
         }`}>
           {count}
         </span>

@@ -1,308 +1,470 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import img1 from "../../assets/images/Editor 2/images/1.webp";
-import img2 from "../../assets/images/Editor 2/images/2.webp";
-import img3 from "../../assets/images/Editor 2/images/3.webp";
-import img4 from "../../assets/images/Editor 2/images/4.webp";
-import img5 from "../../assets/images/Editor 2/images/5.webp";
-import img6 from "../../assets/images/Editor 2/images/6.webp";
-import img7 from "../../assets/images/Editor 2/images/7.webp";
-import img8 from "../../assets/images/Editor 2/images/8.webp";
-import img9 from "../../assets/images/Editor 2/images/9.webp";
-import img10 from "../../assets/images/Editor 2/images/10.webp";
-import img11 from "../../assets/images/Editor 2/images/11.webp";
-import img12 from "../../assets/images/Editor 2/images/12.webp";
-import img13 from "../../assets/images/Editor 2/images/13.webp";
-import img14 from "../../assets/images/Editor 2/images/14.webp";
 
-const presetImages = [img1, img2, img3, img4, img5, img6, img7, img8, img9, img10, img11, img12, img13, img14];
+// ── T-Shirt Graphics (14 images) ─────────────────────────────────────────────
+import tsg1  from "../../assets/images/Editor 2/t-shirtGraphics/1.webp";
+import tsg2  from "../../assets/images/Editor 2/t-shirtGraphics/2.webp";
+import tsg3  from "../../assets/images/Editor 2/t-shirtGraphics/3.webp";
+import tsg4  from "../../assets/images/Editor 2/t-shirtGraphics/4.webp";
+import tsg5  from "../../assets/images/Editor 2/t-shirtGraphics/5.webp";
+import tsg6  from "../../assets/images/Editor 2/t-shirtGraphics/6.webp";
+import tsg7  from "../../assets/images/Editor 2/t-shirtGraphics/7.webp";
+import tsg8  from "../../assets/images/Editor 2/t-shirtGraphics/8.webp";
+import tsg9  from "../../assets/images/Editor 2/t-shirtGraphics/9.webp";
+import tsg10 from "../../assets/images/Editor 2/t-shirtGraphics/10.webp";
+import tsg11 from "../../assets/images/Editor 2/t-shirtGraphics/11.webp";
+import tsg12 from "../../assets/images/Editor 2/t-shirtGraphics/12.webp";
+import tsg13 from "../../assets/images/Editor 2/t-shirtGraphics/13.webp";
+import tsg14 from "../../assets/images/Editor 2/t-shirtGraphics/14.webp";
 
-export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected, onApplyFit, selectedLayer }) {
+const tShirtGraphics = [tsg1,tsg2,tsg3,tsg4,tsg5,tsg6,tsg7,tsg8,tsg9,tsg10,tsg11,tsg12,tsg13,tsg14];
+
+// ── Upload type options ───────────────────────────────────────────────────────
+const UPLOAD_TYPES = [
+  {
+    id: 'logo',
+    label: 'Logo',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'pattern',
+    label: 'Pattern',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'image',
+    label: 'Image',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+      </svg>
+    ),
+  },
+];
+
+// ── User asset categories ─────────────────────────────────────────────────────
+const USER_CATEGORIES = ['All', 'Logo', 'Pattern', 'Image'];
+
+// ── Default asset sub-tabs ────────────────────────────────────────────────────
+const DEFAULT_TABS = ['T-Shirt Graphics', 'Patterns', 'Material'];
+
+// ── Small pill tab ────────────────────────────────────────────────────────────
+function PillTab({ label, active, onClick, count }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '4px 12px',
+        borderRadius: '20px',
+        fontSize: '11px',
+        fontWeight: active ? 700 : 500,
+        background: active ? '#c0623a' : 'transparent',
+        color: active ? '#fff' : '#6b7280',
+        border: active ? 'none' : '1.5px solid #e5e7eb',
+        cursor: 'pointer',
+        transition: 'all 0.18s',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+    >
+      {label}
+      {count !== undefined && (
+        <span style={{
+          background: active ? 'rgba(255,255,255,0.25)' : '#f3f4f6',
+          color: active ? '#fff' : '#9ca3af',
+          fontSize: '10px',
+          fontWeight: 700,
+          borderRadius: '10px',
+          padding: '1px 6px',
+          lineHeight: 1.4,
+        }}>
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ── Image tile ────────────────────────────────────────────────────────────────
+function ImageTile({ url, alt, onClick, onContextMenu }) {
+  return (
+    <button
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+      style={{
+        aspectRatio: '1/1',
+        borderRadius: '10px',
+        border: '1.5px solid #e5e7eb',
+        overflow: 'hidden',
+        background: '#f9fafb',
+        padding: 0,
+        cursor: 'pointer',
+        transition: 'border-color 0.15s, box-shadow 0.15s',
+        position: 'relative',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = '#c0623a';
+        e.currentTarget.style.boxShadow = '0 2px 12px rgba(192,98,58,0.18)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = '#e5e7eb';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      <img src={url} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }} />
+    </button>
+  );
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+function EmptyState({ label }) {
+  return (
+    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '28px 0', color: '#9ca3af', fontSize: '12px' }}>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: 32, height: 32, margin: '0 auto 8px', display: 'block', opacity: 0.4 }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75 9 9l4.5 4.5 3-3 5.25 5.25M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+      </svg>
+      {label}
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSelected, onApplyFit, selectedLayer }) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [contextMenu, setContextMenu] = useState(null); // { x: number, y: number, url: string }
+  const [selectedType, setSelectedType] = useState('logo');
+  const [mainTab, setMainTab] = useState('your'); // 'your' | 'default'
+  const [userCategory, setUserCategory] = useState('All');
+  const [defaultTab, setDefaultTab] = useState('T-Shirt Graphics');
+  const [contextMenu, setContextMenu] = useState(null);
   const [warningMessage, setWarningMessage] = useState('');
   const warningTimeoutRef = useRef(null);
 
+  // ── Categorised user uploads (stored per type) ─────────────────────────────
+  // uploadedImages is [{url, type}] or just strings for backward-compat
+  const normalizeUploads = (imgs) =>
+    imgs.map(item =>
+      typeof item === 'string' ? { url: item, type: 'image' } : item
+    );
+  const allUploads = normalizeUploads(uploadedImages);
+
+  const categoryCounts = USER_CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = cat === 'All'
+      ? allUploads.length
+      : allUploads.filter(i => i.type === cat.toLowerCase()).length;
+    return acc;
+  }, {});
+
+  const filteredUploads = userCategory === 'All'
+    ? allUploads
+    : allUploads.filter(i => i.type === userCategory.toLowerCase());
+
+  // ── Default assets by sub-tab ──────────────────────────────────────────────
+  const defaultAssets = {
+    'T-Shirt Graphics': tShirtGraphics,
+    'Patterns': [],      // add pattern imports here when available
+    'Material': [],      // add material imports here when available
+  };
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleApplyFit = (fitType) => {
     if (!isImageSelected) {
       setWarningMessage('Please select a frame and image first');
       if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
-      warningTimeoutRef.current = setTimeout(() => {
-        setWarningMessage('');
-      }, 5000);
+      warningTimeoutRef.current = setTimeout(() => setWarningMessage(''), 5000);
       return;
     }
     onApplyFit(fitType);
   };
 
-  useEffect(() => {
-    return () => {
-      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
-    };
-  }, []);
+  useEffect(() => () => { if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current); }, []);
 
   useEffect(() => {
     if (!contextMenu) return;
-    const handleClose = () => setContextMenu(null);
-    window.addEventListener('click', handleClose);
-    window.addEventListener('contextmenu', handleClose);
-    return () => {
-      window.removeEventListener('click', handleClose);
-      window.removeEventListener('contextmenu', handleClose);
-    };
+    const close = () => setContextMenu(null);
+    window.addEventListener('click', close);
+    window.addEventListener('contextmenu', close);
+    return () => { window.removeEventListener('click', close); window.removeEventListener('contextmenu', close); };
   }, [contextMenu]);
-
-  const handleContextMenu = (e, url) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Position menu slightly offset to avoid blocking cursor
-    setContextMenu({
-      x: e.clientX + 2,
-      y: e.clientY + 2,
-      url,
-    });
-  };
 
   const processFile = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) return;
     const url = URL.createObjectURL(file);
-    onUpload(file, url);
-  }, [onUpload]);
+    onUpload(file, url, undefined, selectedType);
+  }, [onUpload, selectedType]);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-    e.target.value = '';
-  };
+  const handleFileChange = (e) => { const f = e.target.files?.[0]; if (f) processFile(f); e.target.value = ''; };
+  const handleDragOver  = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); };
+  const handleDragEnter = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); if (!e.currentTarget.contains(e.relatedTarget)) setIsDragOver(false); };
+  const handleDrop      = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) processFile(f); };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
-
-  const handleDragEnter = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only reset if leaving the drop zone itself (not a child)
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      setIsDragOver(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
-  };
+  const accentBg    = '#c0623a';
+  const accentLight = '#fff5f0';
+  const borderClr   = '#e5e7eb';
 
   return (
-    <div className="w-full h-full min-h-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
-      {/* Pinned Title Header */}
-      <div className="p-6 pb-2 shrink-0">
-        <h2 className="text-xl font-bold text-gray-900 m-0">Uploads</h2>
+    <div style={{ width: '100%', height: '100%', minHeight: 0, background: '#fff', borderRadius: 15, boxShadow: '0 8px 30px rgba(0,0,0,0.08)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+      {/* ── Header ── */}
+      <div style={{ padding: '18px 20px 10px', flexShrink: 0 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#111827' }}>Uploads</h2>
+        <p style={{ margin: '3px 0 0', fontSize: 11, color: '#9ca3af' }}>Choose a type, then upload or pick from assets</p>
       </div>
 
-      {/* Unified Scrollable Container */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 pt-2 flex flex-col gap-6">
-        {/* Drop zone */}
+      {/* ── Scrollable Body ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        {/* ── 1. Upload Type Selector ── */}
+        <div style={{ flexShrink: 0 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Upload as</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            {UPLOAD_TYPES.map(t => {
+              const active = selectedType === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedType(t.id)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                    padding: '10px 4px',
+                    borderRadius: 10,
+                    border: active ? `2px solid ${accentBg}` : `1.5px solid ${borderClr}`,
+                    background: active ? accentLight : '#f9fafb',
+                    color: active ? accentBg : '#6b7280',
+                    cursor: 'pointer',
+                    fontWeight: active ? 700 : 500,
+                    fontSize: 10,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {t.icon}
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── 2. Drop Zone ── */}
         <div
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onDragOver={handleDragOver} onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave} onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="relative rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none shrink-0"
           style={{
-            border: `2px dashed ${isDragOver ? '#c0623a' : '#d1d5db'}`,
-            background: isDragOver ? '#fff5f0' : '#f9fafb',
+            flexShrink: 0,
+            border: `2px dashed ${isDragOver ? accentBg : borderClr}`,
+            borderRadius: 12,
+            padding: '20px 12px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            background: isDragOver ? accentLight : '#f9fafb',
+            transition: 'all 0.18s',
             transform: isDragOver ? 'scale(1.01)' : 'scale(1)',
           }}
         >
-          {/* Animated upload icon */}
-          <div
-            className="transition-transform duration-200"
-            style={{ transform: isDragOver ? 'translateY(-4px)' : 'translateY(0)' }}
-          >
+          <div style={{ transform: isDragOver ? 'translateY(-4px)' : 'translateY(0)', transition: 'transform 0.2s' }}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}
-              stroke={isDragOver ? '#c0623a' : '#9ca3af'} className="w-10 h-10 mb-3 transition-colors duration-200">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+              stroke={isDragOver ? accentBg : '#9ca3af'} style={{ width: 36, height: 36, marginBottom: 8, display: 'block', margin: '0 auto 8px' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
             </svg>
           </div>
-
           {isDragOver ? (
-            <p className="text-sm font-semibold text-[#c0623a] mb-1">Drop to upload!</p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: accentBg, margin: 0 }}>Drop to upload!</p>
           ) : (
             <>
-              <p className="text-sm font-semibold text-gray-600 mb-1">Drag &amp; drop image here</p>
-              <p className="text-xs text-gray-400 mb-3">or click to browse</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', margin: '0 0 2px' }}>
+                Drag &amp; drop your <strong style={{ color: accentBg }}>{UPLOAD_TYPES.find(t => t.id === selectedType)?.label}</strong> here
+              </p>
+              <p style={{ fontSize: 10, color: '#9ca3af', margin: '0 0 10px' }}>or click to browse</p>
+              <button
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                style={{ padding: '6px 18px', background: accentBg, color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 14, height: 14 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+                Upload {UPLOAD_TYPES.find(t => t.id === selectedType)?.label}
+              </button>
             </>
           )}
-
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-          />
-
-          {!isDragOver && (
-            <button
-              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-              className="px-5 py-1.5 bg-[#c0623a] hover:bg-[#a65330] text-white text-sm font-semibold rounded-lg flex items-center gap-2 transition-colors border-none cursor-pointer"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-              </svg>
-              Upload
-            </button>
-          )}
+          <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
         </div>
+        <p style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', marginTop: -8, flexShrink: 0 }}>Supports PNG, JPG, WEBP, SVG</p>
 
-        <p className="text-[10px] text-gray-400 text-center -mt-4 shrink-0">Supports PNG, JPG, WEBP, SVG</p>
-
-        {/* Image Formatting section */}
-        <div className="shrink-0 border-b border-gray-100 pb-5">
-          <h3 className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2.5">
-            Image Formatting
-          </h3>
-          <div className="bg-gray-50 p-1 rounded-xl flex gap-1 border border-gray-100/80">
-            <button
-              onClick={() => handleApplyFit('contain')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 border-none cursor-pointer transition-all duration-200
-                ${isImageSelected && selectedLayer?.fitType === 'contain'
-                  ? 'bg-white text-[#c0623a] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                  : 'bg-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
-                }`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
-                <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
-              </svg>
-              Contain
-            </button>
-            <button
-              onClick={() => handleApplyFit('cover')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 border-none cursor-pointer transition-all duration-200
-                ${isImageSelected && selectedLayer?.fitType === 'cover'
-                  ? 'bg-white text-[#c0623a] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                  : 'bg-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
-                }`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
-                <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
-              </svg>
-              Cover
-            </button>
+        {/* ── Image Formatting ── */}
+        <div style={{ flexShrink: 0, borderBottom: `1px solid ${borderClr}`, paddingBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Image Formatting</p>
+          <div style={{ background: '#f3f4f6', padding: 4, borderRadius: 10, display: 'flex', gap: 4 }}>
+            {['contain', 'cover'].map(fit => {
+              const active = isImageSelected && selectedLayer?.fitType === fit;
+              return (
+                <button key={fit} onClick={() => handleApplyFit(fit)} style={{
+                  flex: 1, padding: '7px 6px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: active ? '#fff' : 'transparent',
+                  color: active ? accentBg : '#6b7280',
+                  fontSize: 11, fontWeight: active ? 700 : 500,
+                  boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, textTransform: 'capitalize',
+                }}>
+                  {fit === 'contain' ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13 }}>
+                      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+                      <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13 }}>
+                      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+                      <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
+                    </svg>
+                  )}
+                  {fit.charAt(0).toUpperCase() + fit.slice(1)}
+                </button>
+              );
+            })}
           </div>
-
-          <div className="mt-2 py-1 px-1 text-[11px] text-gray-600 font-medium leading-relaxed">
-            Click the image and a frame from the UV layout, then select a format (Contain or Cover) to apply.
-          </div>
-          
           {warningMessage && (
-            <div className="mt-2 text-[11px] text-[#c0623a] bg-[#fff5f0] border border-[#ffebd8] rounded-lg p-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
+            <div style={{ marginTop: 8, fontSize: 11, color: accentBg, background: accentLight, border: `1px solid #ffebd8`, borderRadius: 8, padding: '7px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 15, height: 15, flexShrink: 0 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <span className="font-semibold">{warningMessage}</span>
+              <span style={{ fontWeight: 600 }}>{warningMessage}</span>
             </div>
           )}
         </div>
 
-        {/* Materials */}
-        <div className="flex flex-col gap-6 shrink-0">
-          <div>
-            <h3 className="text-[13px] font-bold text-gray-800 mb-3">Custom Material</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {uploadedImages.map((url, idx) => (
-                <button
-                  key={idx}
-                  onClick={(e) => {
-                    if (e.button === 0) onUpload(null, url);
-                  }}
-                  onContextMenu={(e) => handleContextMenu(e, url)}
-                  className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all relative"
-                >
-                  <img src={url} alt={`Upload ${idx}`} className="w-full h-full object-contain pointer-events-none" />
+        {/* ── 3. Assets Section (Your / Default Tabs) ── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+
+          {/* Main Tab Row */}
+          <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${borderClr}`, marginBottom: 14, flexShrink: 0 }}>
+            {[{ id: 'your', label: 'Your Assets' }, { id: 'default', label: 'Default Assets' }].map(tab => {
+              const active = mainTab === tab.id;
+              return (
+                <button key={tab.id} onClick={() => setMainTab(tab.id)} style={{
+                  flex: 1, padding: '8px 4px', border: 'none', background: 'transparent',
+                  borderBottom: active ? `2.5px solid ${accentBg}` : '2.5px solid transparent',
+                  color: active ? accentBg : '#6b7280',
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  cursor: 'pointer', transition: 'all 0.15s', marginBottom: -1,
+                }}>
+                  {tab.label}
                 </button>
-              ))}
-              {uploadedImages.length === 0 && (
-                <p className="col-span-3 text-xs text-gray-400 text-center py-4">No uploaded materials yet.</p>
-              )}
-            </div>
+              );
+            })}
           </div>
 
-          <div>
-            <h3 className="text-[13px] font-bold text-gray-800 mb-3">Preset Material</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {presetImages.map((url, idx) => (
-                <button
-                  key={`preset-${idx}`}
-                  onClick={(e) => {
-                    if (e.button === 0) onUpload(null, url);
-                  }}
-                  onContextMenu={(e) => handleContextMenu(e, url)}
-                  className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all relative"
-                >
-                  <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-contain pointer-events-none" />
-                </button>
-              ))}
+          {/* ── YOUR ASSETS ── */}
+          {mainTab === 'your' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Category chips with count */}
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
+                {USER_CATEGORIES.map(cat => (
+                  <PillTab
+                    key={cat}
+                    label={cat}
+                    active={userCategory === cat}
+                    count={categoryCounts[cat]}
+                    onClick={() => setUserCategory(cat)}
+                  />
+                ))}
+              </div>
+              {/* Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {filteredUploads.length === 0 ? (
+                  <EmptyState label={`No ${userCategory === 'All' ? '' : userCategory + ' '}assets uploaded yet.`} />
+                ) : (
+                  filteredUploads.map((item, idx) => (
+                    <ImageTile
+                      key={idx}
+                      url={item.url}
+                      alt={`Upload ${idx}`}
+                      onClick={() => onUpload(null, item.url)}
+                      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                    />
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* ── DEFAULT ASSETS ── */}
+          {mainTab === 'default' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Sub-tab chips */}
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
+                {DEFAULT_TABS.map(tab => (
+                  <PillTab
+                    key={tab}
+                    label={tab}
+                    active={defaultTab === tab}
+                    count={defaultAssets[tab].length}
+                    onClick={() => setDefaultTab(tab)}
+                  />
+                ))}
+              </div>
+              {/* Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {defaultAssets[defaultTab].length === 0 ? (
+                  <EmptyState label={`No ${defaultTab} assets yet.`} />
+                ) : (
+                  defaultAssets[defaultTab].map((url, idx) => (
+                    <ImageTile
+                      key={idx}
+                      url={url}
+                      alt={`${defaultTab} ${idx + 1}`}
+                      onClick={() => onUpload(null, url)}
+                      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url }); }}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* ── Context Menu ── */}
       {contextMenu && (
         <div
-          className="fixed z-[9999] bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 py-1.5 min-w-[140px] text-left animate-in fade-in zoom-in-95 duration-100"
           style={{
-            top: `${contextMenu.y}px`,
-            left: `${contextMenu.x}px`,
+            position: 'fixed', zIndex: 9999, top: contextMenu.y, left: contextMenu.x,
+            background: '#fff', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            border: `1px solid ${borderClr}`, padding: '6px 0', minWidth: 140,
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
-          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider select-none">
-            Resize &amp; Fit
-          </div>
-          <button
-            onClick={() => {
-              onUpload(null, contextMenu.url, 'contain');
-              setContextMenu(null);
-            }}
-            className="w-full px-3 py-2 text-xs font-medium text-gray-700 hover:bg-[#fff5f0] hover:text-[#c0623a] flex items-center gap-2 border-none bg-transparent cursor-pointer text-left transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
-              <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
-            </svg>
-            Contain
-          </button>
-          <button
-            onClick={() => {
-              onUpload(null, contextMenu.url, 'cover');
-              setContextMenu(null);
-            }}
-            className="w-full px-3 py-2 text-xs font-medium text-gray-700 hover:bg-[#fff5f0] hover:text-[#c0623a] flex items-center gap-2 border-none bg-transparent cursor-pointer text-left transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
-              <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
-            </svg>
-            Cover
-          </button>
+          <div style={{ padding: '4px 12px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Resize &amp; Fit</div>
+          {['contain', 'cover'].map(fit => (
+            <button key={fit} onClick={() => { onUpload(null, contextMenu.url, fit); setContextMenu(null); }}
+              style={{ width: '100%', padding: '8px 12px', fontSize: 12, fontWeight: 500, color: '#374151', display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = accentLight; e.currentTarget.style.color = accentBg; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+            >
+              {fit === 'contain' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13, flexShrink: 0 }}>
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+                  <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13, flexShrink: 0 }}>
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+                  <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
+                </svg>
+              )}
+              {fit.charAt(0).toUpperCase() + fit.slice(1)}
+            </button>
+          ))}
         </div>
       )}
     </div>

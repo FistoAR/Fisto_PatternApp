@@ -42,11 +42,7 @@ function LoaderOverlay() {
   const { active, progress } = useProgress();
   if (!active) return null;
   return (
-    <Html
-      fullscreen
-      style={{ pointerEvents: "none" }}
-      zIndexRange={[100, 0]}
-    >
+    <Html fullscreen style={{ pointerEvents: "none" }} zIndexRange={[100, 0]}>
       <div
         style={{
           position: "absolute",
@@ -61,7 +57,14 @@ function LoaderOverlay() {
         }}
       >
         {/* Spinner ring */}
-        <div style={{ position: "relative", width: 44, height: 44, marginBottom: 10 }}>
+        <div
+          style={{
+            position: "relative",
+            width: 44,
+            height: 44,
+            marginBottom: 10,
+          }}
+        >
           <div
             style={{
               position: "absolute",
@@ -81,8 +84,18 @@ function LoaderOverlay() {
             }}
           />
         </div>
-        <p style={{ color: "#fff", fontWeight: 700, fontSize: 12, margin: 0 }}>Loading Model...</p>
-        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, margin: "4px 0 0" }}>{Math.round(progress)}%</p>
+        <p style={{ color: "#fff", fontWeight: 700, fontSize: 12, margin: 0 }}>
+          Loading Model...
+        </p>
+        <p
+          style={{
+            color: "rgba(255,255,255,0.65)",
+            fontSize: 10,
+            margin: "4px 0 0",
+          }}
+        >
+          {Math.round(progress)}%
+        </p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </Html>
@@ -1019,14 +1032,6 @@ function AutoSizedModel({
       if (o.isMesh && !o.userData.isDecal) meshCount++;
     });
 
-    const hasOpaqueCustomization = (() => {
-      const hasSolidColor = (selectedColor && selectedColor !== "none" && bgColor !== "transparent" && bgColor !== "none") ||
-                            Object.values(appliedColors || {}).some(c => c && c !== "transparent" && c !== "none");
-      const hasTexture = (canvasRef?.current?.hasArtwork?.()) || !!canvasTextureRef.current;
-      const hasMaterial = Object.keys(appliedMaterials || {}).length > 0;
-      return hasSolidColor || hasTexture || hasMaterial;
-    })();
-
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || obj.userData.isDecal) return;
 
@@ -1034,104 +1039,55 @@ function AutoSizedModel({
       const isMeasurement = /^(plane|text)/i.test(name);
       if (isMeasurement && meshCount > 1) return;
 
-      const matNameLower = (Array.isArray(obj.material) ? obj.material[0]?.name || "" : obj.material.name || "").toLowerCase();
-      const meshNameLower = (obj.name || "").toLowerCase();
-      const isInnerOrLiquid =
-        matNameLower.includes("liquid") ||
-        matNameLower.includes("juice") ||
-        matNameLower.includes("water") ||
-        matNameLower.includes("fluid") ||
-        matNameLower.includes("inner") ||
-        matNameLower.includes("inside") ||
-        meshNameLower.includes("liquid") ||
-        meshNameLower.includes("juice") ||
-        meshNameLower.includes("water") ||
-        meshNameLower.includes("fluid") ||
-        meshNameLower.includes("inner") ||
-        meshNameLower.includes("inside");
-
-      if (isInnerOrLiquid) {
-        obj.visible = !hasOpaqueCustomization;
-        if (hasOpaqueCustomization) return;
-      }
-
       const materials = Array.isArray(obj.material)
         ? obj.material
         : [obj.material];
       for (const mat of materials) {
         if (!mat) continue;
 
-        const matNameLower = (mat.name || "").toLowerCase();
-        const meshNameLower = (obj.name || "").toLowerCase();
-        const isNotCustomizable =
-          matNameLower.includes("cap") ||
-          matNameLower.includes("lid") ||
-          matNameLower.includes("liquid") ||
-          matNameLower.includes("juice") ||
-          matNameLower.includes("water") ||
-          matNameLower.includes("fluid") ||
-          matNameLower.includes("inner") ||
-          matNameLower.includes("inside") ||
-          meshNameLower.includes("cap") ||
-          meshNameLower.includes("lid") ||
-          meshNameLower.includes("liquid") ||
-          meshNameLower.includes("juice") ||
-          meshNameLower.includes("water") ||
-          meshNameLower.includes("fluid") ||
-          meshNameLower.includes("inner") ||
-          meshNameLower.includes("inside");
-
         // --- OVERLAY CANVAS TEXTURE VIA DECAL MESH ---
-        if (!isNotCustomizable) {
-          if (!obj.userData.decalMesh) {
-            const decalMat = new THREE.MeshStandardMaterial({
-              transparent: true,
-              depthWrite: false,
-              polygonOffset: true,
-              polygonOffsetFactor: -10,
-              polygonOffsetUnits: -10,
-            });
-            const decal = new THREE.Mesh(obj.geometry, decalMat);
-            decal.userData.isDecal = true;
-            decal.renderOrder = 10;
-            obj.add(decal);
-            obj.userData.decalMesh = decal;
-          }
-
-          const decalMat = obj.userData.decalMesh.material;
-          decalMat.map = canvasTextureRef.current;
-          decalMat.color.set(0xffffff);
-          decalMat.needsUpdate = true;
-          obj.userData.decalMesh.visible = true;
-        } else {
-          if (obj.userData.decalMesh) {
-            obj.userData.decalMesh.visible = false;
-          }
+        if (!obj.userData.decalMesh) {
+          const decalMat = new THREE.MeshStandardMaterial({
+            transparent: true,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -4,
+          });
+          const decal = new THREE.Mesh(obj.geometry, decalMat);
+          decal.userData.isDecal = true;
+          obj.add(decal);
+          obj.userData.decalMesh = decal;
         }
+
+        const decalMat = obj.userData.decalMesh.material;
+        decalMat.map = canvasTextureRef.current;
+        decalMat.color.set(0xffffff);
+        decalMat.needsUpdate = true;
 
         const hasArtwork = canvasRef?.current?.hasArtwork?.();
         // --- CALCULATE PRIORITY OF ACTIONS ---
         const last =
           selectedColor && selectedColor !== "none"
-            ? (isNotCustomizable ? null : "color")
+            ? "color"
             : appliedLastApplied
-              ? appliedLastApplied[mat.name] || (isNotCustomizable ? null : appliedLastApplied["all"])
+              ? appliedLastApplied[mat.name] || appliedLastApplied["all"]
               : null;
 
         const colorHex =
           last === "material"
             ? null
             : selectedColor && selectedColor !== "none"
-              ? (isNotCustomizable ? null : bgColor)
+              ? bgColor
               : appliedColors
-                ? appliedColors[mat.name] || (isNotCustomizable ? null : appliedColors["all"])
+                ? appliedColors[mat.name] || appliedColors["all"]
                 : null;
 
         const materialType =
           last === "color"
             ? null
             : appliedMaterials
-              ? appliedMaterials[mat.name] || (isNotCustomizable ? null : appliedMaterials["all"])
+              ? appliedMaterials[mat.name] || appliedMaterials["all"]
               : null;
 
         // --- APPLY PBR MATERIALS TO BASE MESH ---
