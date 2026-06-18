@@ -3037,6 +3037,18 @@ const Canvas = forwardRef(
     }
 
     useImperativeHandle(ref, () => ({
+      clearAllArtwork: () => {
+        imagesRef.current = [];
+        setSelectedImage(null);
+        selectedImageRef.current = null;
+        setFaceColors({});
+        faceColorsRef.current = {};
+        needsDisplayRedrawRef.current = true;
+        bakeTexture();
+        saveState();
+        redrawDisplay();
+        onSelectedLayerChangeRef.current?.(null);
+      },
       hasArtwork: () => {
         return imagesRef.current && imagesRef.current.length > 0;
       },

@@ -108,39 +108,31 @@ export default function ScenePopup({
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <label className="text-sm font-bold text-gray-700">Background Image</label>
-            <button 
-              onClick={() => setShowDefaultBgs(!showDefaultBgs)}
-              className="text-xs font-bold text-[#c05520] hover:text-orange-700 bg-transparent border-none cursor-pointer p-0"
-            >
-              {showDefaultBgs ? 'Hide default images' : 'Show default images'}
-            </button>
           </div>
 
-          {showDefaultBgs && (
-            <div className="grid grid-cols-4 gap-2 mb-2">
-              {defaultBgImages.map((bg, index) => (
-                <div 
-                  key={index}
-                  onClick={() => handleApplyDefaultBg(bg)}
-                  className={`relative aspect-square rounded-lg border-2 cursor-pointer overflow-hidden group ${bgImage === bg ? 'border-[#c05520]' : 'border-gray-200 hover:border-gray-300'}`}
-                >
-                  <img src={bg} alt={`bg-${index}`} className="w-full h-full object-cover" />
-                  {loadingBgImage === bg && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex flex-col items-center justify-center z-10">
-                      <div className="w-4 h-4 rounded-full border-2 border-transparent border-t-[#c05520] animate-spin" />
-                    </div>
-                  )}
-                  {bgImage === bg && loadingBgImage !== bg && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white drop-shadow">
-                        <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 0 1 1.04-.208Z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-4 gap-2 mb-2">
+            {defaultBgImages.map((bg, index) => (
+              <div 
+                key={index}
+                onClick={() => handleApplyDefaultBg(bg)}
+                className={`relative aspect-square rounded-lg border-2 cursor-pointer overflow-hidden group ${bgImage === bg ? 'border-[#c05520]' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                <img src={bg} alt={`bg-${index}`} className="w-full h-full object-cover" />
+                {loadingBgImage === bg && (
+                  <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex flex-col items-center justify-center z-10">
+                    <div className="w-4 h-4 rounded-full border-2 border-transparent border-t-[#c05520] animate-spin" />
+                  </div>
+                )}
+                {bgImage === bg && loadingBgImage !== bg && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white drop-shadow">
+                      <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 0 1 1.04-.208Z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
           
           {bgImage ? (
             <div className="flex items-center justify-between p-3 rounded-xl border border-[#c05520] bg-orange-50">

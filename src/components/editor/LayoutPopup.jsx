@@ -73,10 +73,10 @@ export default function LayoutPopup({ currentModelUrl, onSelectLayout }) {
     
     return modelPaths.map((modelPath, index) => {
       const baseName = modelPath.substring(modelPath.lastIndexOf('/') + 1).replace(/\.glb$/, '');
-      const imagePath = modelPath.replace(/\.glb$/, '.png');
+      const imagePath = modelPath.replace(/\.glb$/, '.webp');
       
       let imageUrl = layoutImagesGlob[imagePath];
-      // Fallback fuzzy match for spaces issues (like "Bio de A- 4.png" vs "Bio de A-4.glb")
+      // Fallback fuzzy match for spaces issues (like "Bio de A- 4.webp" vs "Bio de A-4.glb")
       if (!imageUrl) {
          const cleanBase = baseName.replace(/\s+/g, '');
          const fuzzyPath = Object.keys(layoutImagesGlob).find(p => 
@@ -95,7 +95,7 @@ export default function LayoutPopup({ currentModelUrl, onSelectLayout }) {
   }, [currentModel]);
 
   return (
-    <div className="w-[350px] h-full shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
+    <div className="w-[350px] h-fit max-h-full shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
       <div className="p-5 pb-3 flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900 m-0">Layouts</h2>
         <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-md font-semibold">
@@ -117,19 +117,17 @@ export default function LayoutPopup({ currentModelUrl, onSelectLayout }) {
                   key={layout.id}
                   type="button"
                   onClick={() => onSelectLayout(layout.modelUrl)}
-                  className={`relative aspect-[1.2] overflow-hidden rounded-lg border-2 bg-gray-50 p-1 cursor-pointer transition-all hover:border-[#c05520] hover:shadow-sm flex flex-col items-center justify-center gap-1.5 ${
-                    isActive ? 'border-[#c05520] shadow-[0_0_0_2px_rgba(192,85,32,0.18)]' : 'border-gray-200'
+                  className={`relative aspect-[1.2] overflow-hidden rounded-lg cursor-pointer transition-all hover:opacity-90 flex items-center justify-center ${
+                    isActive ? 'ring-2 ring-[#c05520] ring-offset-2' : ''
                   }`}
                 >
-                  <div className="w-full h-full rounded border border-gray-100 bg-white flex items-center justify-center overflow-hidden">
-                    {layout.imageUrl ? (
-                      <img src={layout.imageUrl} alt={layout.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-[10px] text-gray-400">No Preview</span>
-                    )}
-                  </div>
+                  {layout.imageUrl ? (
+                    <img src={layout.imageUrl} alt={layout.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[10px] text-gray-400">No Preview</span>
+                  )}
                   {isActive && (
-                    <div className="absolute top-1 right-1 w-4 h-4 bg-[#c05520] rounded-full flex items-center justify-center shadow-md">
+                    <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#c05520] rounded-full flex items-center justify-center shadow-md">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" className="w-2.5 h-2.5">
                         <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
                       </svg>

@@ -381,21 +381,23 @@ function AutoSizedModelWithDimensions({
             m.transmission !== undefined ? m.transmission : 0;
         }
 
-        const colorHex = appliedColors
-          ? appliedColors[id] || appliedColors["all"]
+        const last = appliedLastApplied
+          ? appliedLastApplied[id] || appliedLastApplied["all"]
           : null;
-        const materialType = appliedMaterials
-          ? appliedMaterials[id] || appliedMaterials["all"]
-          : null;
+
+        const colorHex = (last === "material")
+          ? null
+          : (appliedColors ? appliedColors[id] || appliedColors["all"] : null);
+
+        const materialType = (last === "color")
+          ? null
+          : (appliedMaterials ? appliedMaterials[id] || appliedMaterials["all"] : null);
+
         let textureUrl = null;
         if (appliedTextures) {
           if (typeof appliedTextures === "string") textureUrl = appliedTextures;
           else textureUrl = appliedTextures[id] || appliedTextures["all"];
         }
-
-        const last = appliedLastApplied
-          ? appliedLastApplied[id] || appliedLastApplied["all"]
-          : null;
 
         // --- HANDLE DECAL MESH FOR CANVAS EDITS ---
         if (!obj.userData.decalMesh) {
@@ -442,7 +444,18 @@ function AutoSizedModelWithDimensions({
 
         // --- HANDLE BASE MESH (PBR OR COLOR) ---
         if (colorHex) {
-          if (colorHex === "transparent" && !textureUrl && !materialType) {
+          // Reset PBR material state
+          m.userData.currentPbrId = null;
+          if (m.normalMap) m.normalMap.dispose();
+          if (m.roughnessMap) m.roughnessMap.dispose();
+          if (m.metalnessMap) m.metalnessMap.dispose();
+          if (m.aoMap) m.aoMap.dispose();
+          m.normalMap = null;
+          m.roughnessMap = null;
+          m.metalnessMap = null;
+          m.aoMap = null;
+
+          if (colorHex === "transparent") {
             m.transparent = true;
             m.opacity = 0.35;
             m.roughness = 0.1;
@@ -461,17 +474,10 @@ function AutoSizedModelWithDimensions({
                 ? m.userData.originalMetalness
                 : 0.1;
             if ("transmission" in m) m.transmission = 0;
-            if (colorHex === "transparent") {
-              m.color.setHex(0xffffff);
-            } else {
-              m.color.set(colorHex);
-            }
+            m.color.set(colorHex);
           }
-          // Only clear m.map if it's NOT a PBR material
-          if (!m.userData.currentPbrId) {
-            if (m.map) m.map.dispose();
-            m.map = null;
-          }
+          if (m.map) m.map.dispose();
+          m.map = null;
           m.needsUpdate = true;
           invalidate();
         } else {
@@ -824,7 +830,7 @@ export default function EditorScreen1({
   // Zoom state
   const [zoomPercent, setZoomPercent] = useState(100);
   const [showLegend, setShowLegend] = useState(false);
-  const [showMeasurements, setShowMeasurements] = useState(true);
+  const [showMeasurements, setShowMeasurements] = useState(false);
   const activeSceneRef = useRef(null);
   const measureOverlayRef = useRef(null);
 
@@ -1300,7 +1306,7 @@ export default function EditorScreen1({
 
         {/* Popups */}
         <div
-          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto h-full ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" ? "w-[350px]" : "w-0"}`}
+          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto h-fit max-h-full ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" ? "w-[350px]" : "w-0"}`}
         >
           {activeTab === "models" && (
             <ModelsPopup
@@ -1349,7 +1355,7 @@ export default function EditorScreen1({
 
         {/* Edit Popup Panel */}
         {activeTab === "edit" && !showCustomSize && (
-          <div className="pointer-events-auto w-[280px] h-full bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4 overflow-y-auto">
+          <div className="pointer-events-auto w-[280px] h-fit max-h-full bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4 overflow-y-auto">
             <div className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
@@ -2028,7 +2034,15 @@ export default function EditorScreen1({
 
         <Tooltip1 label="Measurements" side="left">
           <button
-            onClick={() => setShowMeasurements((m) => !m)}
+            onClick={() => {
+              setShowMeasurements((m) => {
+                const nextVal = !m;
+                if (nextVal && setActiveTab) {
+                  setActiveTab(null);
+                }
+                return nextVal;
+              });
+            }}
             className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
               showMeasurements
                 ? "bg-gray-900 text-white hover:bg-gray-700"

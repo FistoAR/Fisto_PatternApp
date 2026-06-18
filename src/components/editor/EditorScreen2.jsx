@@ -205,6 +205,7 @@ export default function EditorScreen2({
   setModelUrl,
   appliedMaterials,
   appliedColors,
+  appliedLastApplied,
   canvasResetKey,
   sceneBgColor,
   sceneBgImage,
@@ -910,7 +911,7 @@ export default function EditorScreen2({
         {/* ── Right Panel ───────────────────────────────────────────────── */}
         <div
           className={`
-          shrink-0 py-6 pr-6 h-full
+          shrink-0 py-6 pr-6 h-fit
           lg:relative lg:block
           ${
             showMobilePanel
@@ -919,7 +920,7 @@ export default function EditorScreen2({
           }
         `}
         >
-          <div className="h-full rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 bg-white flex flex-col">
+          <div className="h-fit rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 bg-white flex flex-col">
             <RightPanel
               canvasRef={canvasRef}
               textureCanvasRef={textureCanvasRef}
@@ -927,6 +928,7 @@ export default function EditorScreen2({
               modelUrl={modelUrl}
               appliedMaterials={appliedMaterials}
               appliedColors={appliedColors}
+              appliedLastApplied={appliedLastApplied}
               wireframe={wireframe}
               setWireframe={setWireframe}
               showUv={showUv}

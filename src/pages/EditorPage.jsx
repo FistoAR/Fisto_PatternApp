@@ -102,6 +102,7 @@ export default function EditorPage() {
     
     let newTextures = { ...editorState.textures };
     let newColors = { ...editorState.colors };
+    let newMaterials = { ...editorState.materials };
     let newLastApplied = { ...editorState.lastApplied };
     let updated = false;
 
@@ -118,10 +119,15 @@ export default function EditorPage() {
           updated = true;
         }
       } else {
-        if (newColors[targetMat] !== colorHex) {
-          newColors[targetMat] = colorHex;
-          newLastApplied[targetMat] = "color";
-          updated = true;
+        newColors[targetMat] = colorHex;
+        newLastApplied[targetMat] = "color";
+        updated = true;
+
+        if (targetMat === "all") {
+          newMaterials = {};
+        } else {
+          delete newMaterials[targetMat];
+          delete newMaterials["all"];
         }
       }
     }
@@ -130,6 +136,7 @@ export default function EditorPage() {
       pushHistory({
         textures: newTextures,
         colors: newColors,
+        materials: newMaterials,
         lastApplied: newLastApplied,
       });
     }
@@ -144,9 +151,18 @@ export default function EditorPage() {
     const targetMat = (materialId && materialId !== "none") ? materialId : "all";
     
     setEditorState((prevState) => {
+      const nextMaterials = { ...prevState.materials };
+      if (targetMat === "all") {
+        Object.keys(nextMaterials).forEach((k) => delete nextMaterials[k]);
+      } else {
+        delete nextMaterials[targetMat];
+        delete nextMaterials["all"];
+      }
+
       const nextState = {
         ...prevState,
         colors: { ...prevState.colors, [targetMat]: colorHex },
+        materials: nextMaterials,
         lastApplied: { ...prevState.lastApplied, [targetMat]: "color" },
       };
 
@@ -181,7 +197,16 @@ export default function EditorPage() {
         });
       }
     } else {
+      const nextColors = { ...editorState.colors };
+      if (targetMat === "all") {
+        Object.keys(nextColors).forEach((k) => delete nextColors[k]);
+      } else {
+        delete nextColors[targetMat];
+        delete nextColors["all"];
+      }
+
       pushHistory({
+        colors: nextColors,
         materials: { ...editorState.materials, [targetMat]: materialType },
         lastApplied: { ...editorState.lastApplied, [targetMat]: "material" },
       });
@@ -233,6 +258,7 @@ export default function EditorPage() {
           setModelUrl={setModelUrl}
           appliedMaterials={editorState.materials}
           appliedColors={editorState.colors}
+          appliedLastApplied={editorState.lastApplied}
           onBack={handleBackToModelViewer}
           isActive={currentScreen === 2}
           canvasResetKey={canvasResetKey}

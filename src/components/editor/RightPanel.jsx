@@ -65,6 +65,7 @@ export default function RightPanel({
   modelUrl,
   appliedMaterials,
   appliedColors,
+  appliedLastApplied,
   wireframe,
   setWireframe,
   showUv,
@@ -218,7 +219,7 @@ export default function RightPanel({
   return (
     <aside
       style={{ width: panelWidth, minWidth: "20vw" }}
-      className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-full overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px]"
+      className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-fit overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px]"
     >
       <div className="flex gap-2 px-3 pb-2 pt-1"></div>
 
@@ -289,6 +290,7 @@ export default function RightPanel({
                   wireframe={wireframe}
                   appliedMaterials={appliedMaterials}
                   appliedColors={appliedColors}
+                  appliedLastApplied={appliedLastApplied}
                   bgColor={bgColor}
                   selectedColor={selectedColor}
                   isActive={isActive}
@@ -646,14 +648,13 @@ export default function RightPanel({
         </h3>
         <div className="flex items-center gap-[6px]">
           {packageColors.map((c) => {
-            const isSelected =
-              selectedColor === c.id ||
-              (c.id === "transparent" && selectedColor === "none");
+            const isSelected = selectedColor === c.id;
             const isWhite = c.color === "#ffffff";
             const backgroundStyle =
               c.id === "transparent"
-                ? "linear-gradient(45deg, transparent 40%, #ef4444 40%, #ef4444 60%, transparent 60%), #ffffff"
+                ? "conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)"
                 : c.color;
+            const backgroundSize = c.id === "transparent" ? "8px 8px" : undefined;
 
             return (
               <button
@@ -670,6 +671,7 @@ export default function RightPanel({
                 className="w-[26px] h-[26px] rounded-full cursor-pointer transition-all duration-200 hover:scale-110 p-0"
                 style={{
                   background: backgroundStyle,
+                  backgroundSize: backgroundSize,
                   border: isSelected
                     ? "2px solid #c0623a"
                     : isWhite
@@ -788,6 +790,7 @@ function AutoSizedModel({
   bgColor,
   selectedColor,
   isActive,
+  appliedLastApplied,
 }) {
   const { scene } = useGLTF(modelUrl);
   const { gl } = useThree();
@@ -945,11 +948,21 @@ function AutoSizedModel({
         decalMat.color.set(0xffffff);
         decalMat.needsUpdate = true;
 
-        // --- APPLY PBR MATERIALS TO BASE MESH ---
-        const materialType = appliedMaterials
-          ? appliedMaterials[mat.name] || appliedMaterials["all"]
-          : null;
+        const hasArtwork = canvasRef?.current?.hasArtwork?.();
+        // --- CALCULATE PRIORITY OF ACTIONS ---
+        const last = (selectedColor && selectedColor !== "none")
+          ? "color"
+          : (appliedLastApplied ? appliedLastApplied[mat.name] || appliedLastApplied["all"] : null);
 
+        const colorHex = (last === "material")
+          ? null
+          : ((selectedColor && selectedColor !== "none") ? bgColor : (appliedColors ? appliedColors[mat.name] || appliedColors["all"] : null));
+
+        const materialType = (last === "color")
+          ? null
+          : (appliedMaterials ? appliedMaterials[mat.name] || appliedMaterials["all"] : null);
+
+        // --- APPLY PBR MATERIALS TO BASE MESH ---
         if (typeof materialType === "object" && materialType !== null) {
           // PBR Material
           if (mat.userData.currentPbrId !== materialType.id) {
@@ -1002,56 +1015,46 @@ function AutoSizedModel({
         }
 
         // --- APPLY COLORS ---
-        // Precedence:
-        // 1. If Editor 2 swatch is used (not default cream), use `bgColor`.
-        // 2. Else fallback to `appliedColors` from Editor 1.
         let finalColorHex = null;
-
-        // "cream" (#f5e6d3) is the default unselected state for selectedColor in Editor 2.
-        // Wait, what if they actually want cream? It sets selectedColor="cream".
-        // But if they haven't touched it, it's "cream" by default. If we ALWAYS apply `bgColor`,
-        // we override Editor 1's `appliedColors` immediately on load.
-        // We only want to override if they actually changed it!
-        // A better heuristic: we can track if they clicked a swatch by checking if we have a state change,
-        // but it's simpler: if appliedColors has a value, use it, UNLESS selectedColor changes.
-        // Let's use `bgColor` as the base if it's explicitly set. Actually, the user asked to
-        // "removwe that old color and update new one without collapse those"
-        // Let's check if the current bgColor matches the Editor 1 color, or if it has been updated.
-        const editor1Color = appliedColors
-          ? appliedColors[mat.name] || appliedColors["all"]
-          : null;
-
-        // We can give precedence to bgColor. Since we don't have a perfect dirty flag,
-        // we apply editor1Color on first mount, but if they click a swatch in Editor 2,
-        // we apply bgColor.
-        // If Editor 1 passed a color, and Editor 2's bgColor is default "#ffffff" or "cream" (#f5e6d3)
-        // and hasn't been explicitly clicked, we might accidentally override it.
-        const hasArtwork = canvasRef?.current?.hasArtwork?.();
         let isTransparent = false;
-        if (selectedColor === "transparent" && !hasArtwork && !materialType) {
+
+        if (colorHex === "transparent") {
           isTransparent = true;
-        } else if (selectedColor && selectedColor !== "none") {
-          finalColorHex = bgColor;
-        } else if (editor1Color) {
-          if (editor1Color === "transparent" && !hasArtwork && !materialType) {
-            isTransparent = true;
-          } else {
-            finalColorHex = editor1Color;
-          }
+        } else if (colorHex) {
+          finalColorHex = colorHex;
         }
 
         if (isTransparent) {
+          mat.userData.currentPbrId = null;
+          if (mat.normalMap) mat.normalMap.dispose();
+          if (mat.roughnessMap) mat.roughnessMap.dispose();
+          if (mat.metalnessMap) mat.metalnessMap.dispose();
+          if (mat.aoMap) mat.aoMap.dispose();
+          mat.normalMap = null;
+          mat.roughnessMap = null;
+          mat.metalnessMap = null;
+          mat.aoMap = null;
+
           mat.transparent = true;
           mat.opacity = 0.35;
           mat.roughness = 0.1;
           mat.metalness = 0.1;
           if ("transmission" in mat) mat.transmission = 0.9;
           mat.color.setHex(0xffffff);
-          if (!mat.userData.currentPbrId && mat.map !== null) {
-            mat.map = null;
-          }
+          if (mat.map) mat.map.dispose();
+          mat.map = null;
           mat.needsUpdate = true;
         } else if (finalColorHex) {
+          mat.userData.currentPbrId = null;
+          if (mat.normalMap) mat.normalMap.dispose();
+          if (mat.roughnessMap) mat.roughnessMap.dispose();
+          if (mat.metalnessMap) mat.metalnessMap.dispose();
+          if (mat.aoMap) mat.aoMap.dispose();
+          mat.normalMap = null;
+          mat.roughnessMap = null;
+          mat.metalnessMap = null;
+          mat.aoMap = null;
+
           // A custom color is applied, override properties to look opaque
           mat.transparent = false;
           mat.opacity = 1.0;
@@ -1059,10 +1062,8 @@ function AutoSizedModel({
           mat.metalness = 0.0;
           if ("transmission" in mat) mat.transmission = 0;
           mat.color.set(finalColorHex);
-          // Hide base map so 'your design here' doesn't show under the decal
-          if (!mat.userData.currentPbrId && mat.map !== null) {
-            mat.map = null;
-          }
+          if (mat.map) mat.map.dispose();
+          mat.map = null;
           mat.needsUpdate = true;
         } else {
           // Restore original model properties!
