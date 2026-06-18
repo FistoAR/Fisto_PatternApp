@@ -8,7 +8,12 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Canvas as R3FCanvas, useThree, useLoader, useFrame } from "@react-three/fiber";
+import {
+  Canvas as R3FCanvas,
+  useThree,
+  useLoader,
+  useFrame,
+} from "@react-three/fiber";
 import {
   OrbitControls,
   useGLTF,
@@ -55,6 +60,7 @@ import LeftSidebar from "./LeftSidebar";
 import ModelsPopup from "./ModelsPopup";
 import LayoutPopup from "./LayoutPopup";
 import ScenePopup from "./ScenePopup";
+import GalleryPopup from "./GalleryPopup";
 import { getTextureLibrary } from "../../utils/TextureLibrary";
 
 import cursorIcon from "../../assets/images/Icons/cursor.webp";
@@ -354,12 +360,40 @@ function AutoSizedModelWithDimensions({
       if (obj.isMesh && !obj.userData.isDecal) meshCount++;
     });
 
+    const hasOpaqueCustomization = (() => {
+      const hasSolidColor = Object.values(appliedColors || {}).some(c => c && c !== "transparent" && c !== "none");
+      const hasTexture = Object.keys(appliedTextures || {}).length > 0;
+      const hasMaterial = Object.keys(appliedMaterials || {}).length > 0;
+      return hasSolidColor || hasTexture || hasMaterial;
+    })();
+
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || !obj.material || obj.userData.isDecal) return;
 
       const name = obj.name || "";
       const isMeasurement = /^(plane|text)/i.test(name);
       if (isMeasurement && meshCount > 1) return;
+
+      const matNameLower = (Array.isArray(obj.material) ? obj.material[0]?.name || "" : obj.material.name || "").toLowerCase();
+      const meshNameLower = (obj.name || "").toLowerCase();
+      const isInnerOrLiquid =
+        matNameLower.includes("liquid") ||
+        matNameLower.includes("juice") ||
+        matNameLower.includes("water") ||
+        matNameLower.includes("fluid") ||
+        matNameLower.includes("inner") ||
+        matNameLower.includes("inside") ||
+        meshNameLower.includes("liquid") ||
+        meshNameLower.includes("juice") ||
+        meshNameLower.includes("water") ||
+        meshNameLower.includes("fluid") ||
+        meshNameLower.includes("inner") ||
+        meshNameLower.includes("inside");
+
+      if (isInnerOrLiquid) {
+        obj.visible = !hasOpaqueCustomization;
+        if (hasOpaqueCustomization) return;
+      }
 
       const mArray = Array.isArray(obj.material)
         ? obj.material
@@ -381,22 +415,51 @@ function AutoSizedModelWithDimensions({
             m.transmission !== undefined ? m.transmission : 0;
         }
 
+        const matNameLower = (m.name || "").toLowerCase();
+        const meshNameLower = (obj.name || "").toLowerCase();
+        const isNotCustomizable =
+          matNameLower.includes("cap") ||
+          matNameLower.includes("lid") ||
+          matNameLower.includes("liquid") ||
+          matNameLower.includes("juice") ||
+          matNameLower.includes("water") ||
+          matNameLower.includes("fluid") ||
+          matNameLower.includes("inner") ||
+          matNameLower.includes("inside") ||
+          meshNameLower.includes("cap") ||
+          meshNameLower.includes("lid") ||
+          meshNameLower.includes("liquid") ||
+          meshNameLower.includes("juice") ||
+          meshNameLower.includes("water") ||
+          meshNameLower.includes("fluid") ||
+          meshNameLower.includes("inner") ||
+          meshNameLower.includes("inside");
+
         const last = appliedLastApplied
-          ? appliedLastApplied[id] || appliedLastApplied["all"]
+          ? appliedLastApplied[id] || (isNotCustomizable ? null : appliedLastApplied["all"])
           : null;
 
-        const colorHex = (last === "material")
-          ? null
-          : (appliedColors ? appliedColors[id] || appliedColors["all"] : null);
+        const colorHex =
+          last === "material"
+            ? null
+            : appliedColors
+              ? appliedColors[id] || (isNotCustomizable ? null : appliedColors["all"])
+              : null;
 
-        const materialType = (last === "color")
-          ? null
-          : (appliedMaterials ? appliedMaterials[id] || appliedMaterials["all"] : null);
+        const materialType =
+          last === "color"
+            ? null
+            : appliedMaterials
+              ? appliedMaterials[id] || (isNotCustomizable ? null : appliedMaterials["all"])
+              : null;
 
         let textureUrl = null;
         if (appliedTextures) {
-          if (typeof appliedTextures === "string") textureUrl = appliedTextures;
-          else textureUrl = appliedTextures[id] || appliedTextures["all"];
+          if (typeof appliedTextures === "string") {
+            textureUrl = isNotCustomizable ? null : appliedTextures;
+          } else {
+            textureUrl = appliedTextures[id] || (isNotCustomizable ? null : appliedTextures["all"]);
+          }
         }
 
         // --- HANDLE DECAL MESH FOR CANVAS EDITS ---
@@ -405,11 +468,12 @@ function AutoSizedModelWithDimensions({
             transparent: true,
             depthWrite: false,
             polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -4,
+            polygonOffsetFactor: -10,
+            polygonOffsetUnits: -10,
           });
           const decal = new THREE.Mesh(obj.geometry, decalMat);
           decal.userData.isDecal = true;
+          decal.renderOrder = 10;
           obj.add(decal);
           obj.userData.decalMesh = decal;
         }
@@ -688,7 +752,11 @@ function _setMText(svg, id, x, y, text) {
   }
 }
 
-function MeasurementTracker({ activeSceneRef, measureOverlayRef, baseDimensions }) {
+function MeasurementTracker({
+  activeSceneRef,
+  measureOverlayRef,
+  baseDimensions,
+}) {
   const { camera, size, invalidate } = useThree();
 
   // Force one render on mount so measurements appear immediately
@@ -738,53 +806,80 @@ function MeasurementTracker({ activeSceneRef, measureOverlayRef, baseDimensions 
     const overlay = measureOverlayRef.current;
     if (!overlay) return;
 
-    const lenLabel  = baseDimensions?.length ? `${baseDimensions.length} mm` : "";
-    const wLabel    = baseDimensions?.width  ? `${baseDimensions.width} mm`  : "";
-    const hLabel    = baseDimensions?.height ? `${baseDimensions.height} mm` : "";
+    const lenLabel = baseDimensions?.length
+      ? `${baseDimensions.length} mm`
+      : "";
+    const wLabel = baseDimensions?.width ? `${baseDimensions.width} mm` : "";
+    const hLabel = baseDimensions?.height ? `${baseDimensions.height} mm` : "";
 
     // ── Top Length (horizontal line above top face) ──
     const tlOffset = 28;
     const tlY = Math.min(tfl.y, tfr.y, tbl.y) - tlOffset;
     _setMLine(overlay, "tl-el", tfl.x, tfl.y, tfl.x, tlY);
     _setMLine(overlay, "tl-er", tfr.x, tfr.y, tfr.x, tlY);
-    _setMLine(overlay, "tl",    tfl.x, tlY,   tfr.x, tlY);
-    _setMText(overlay, "tl",    (tfl.x + tfr.x) / 2, tlY - 6,
-      lenLabel ? `Top Length - ${lenLabel}` : "Top Length");
+    _setMLine(overlay, "tl", tfl.x, tlY, tfr.x, tlY);
+    _setMText(
+      overlay,
+      "tl",
+      (tfl.x + tfr.x) / 2,
+      tlY - 6,
+      lenLabel ? `Top Length - ${lenLabel}` : "Top Length",
+    );
 
     // ── Top Breadth (oblique line on left side of top face) ──
     _setMLine(overlay, "tb", tfl.x, tfl.y, tbl.x, tbl.y);
     const tbMx = (tfl.x + tbl.x) / 2;
     const tbMy = (tfl.y + tbl.y) / 2;
-    _setMText(overlay, "tb", tbMx - 6, tbMy - 8,
-      wLabel ? `Top Breadth - ${wLabel}` : "Top Breadth");
+    _setMText(
+      overlay,
+      "tb",
+      tbMx - 6,
+      tbMy - 8,
+      wLabel ? `Top Breadth - ${wLabel}` : "Top Breadth",
+    );
 
     // ── Height (vertical line on the left) ──
     const hOffset = -32;
     const hX = Math.min(bfl.x, tfl.x) + hOffset;
     _setMLine(overlay, "h-eb", bfl.x, bfl.y, hX + 12, bfl.y);
     _setMLine(overlay, "h-et", tfl.x, tfl.y, hX + 12, tfl.y);
-    _setMLine(overlay, "h",    hX, bfl.y, hX, tfl.y);
+    _setMLine(overlay, "h", hX, bfl.y, hX, tfl.y);
     // tick marks
     _setMLine(overlay, "h-tb", hX - 6, bfl.y, hX + 6, bfl.y);
     _setMLine(overlay, "h-tt", hX - 6, tfl.y, hX + 6, tfl.y);
-    _setMText(overlay, "h", hX - 6, (bfl.y + tfl.y) / 2,
-      hLabel ? `H - ${hLabel}` : "H");
+    _setMText(
+      overlay,
+      "h",
+      hX - 6,
+      (bfl.y + tfl.y) / 2,
+      hLabel ? `H - ${hLabel}` : "H",
+    );
 
     // ── Base Length (horizontal line below bottom face) ──
     const blOffset = 28;
     const blY = Math.max(bfl.y, bfr.y) + blOffset;
     _setMLine(overlay, "bl-el", bfl.x, bfl.y, bfl.x, blY);
     _setMLine(overlay, "bl-er", bfr.x, bfr.y, bfr.x, blY);
-    _setMLine(overlay, "bl",    bfl.x, blY,   bfr.x, blY);
-    _setMText(overlay, "bl",    (bfl.x + bfr.x) / 2, blY + 6,
-      lenLabel ? `Base Length - ${lenLabel}` : "Base Length");
+    _setMLine(overlay, "bl", bfl.x, blY, bfr.x, blY);
+    _setMText(
+      overlay,
+      "bl",
+      (bfl.x + bfr.x) / 2,
+      blY + 6,
+      lenLabel ? `Base Length - ${lenLabel}` : "Base Length",
+    );
 
     // ── Base Breadth (oblique line on right side of bottom face) ──
     _setMLine(overlay, "bb", bfr.x, bfr.y, bbr.x, bbr.y);
     const bbMx = (bfr.x + bbr.x) / 2;
     const bbMy = (bfr.y + bbr.y) / 2;
-    _setMText(overlay, "bb", bbMx + 8, bbMy + 14,
-      wLabel ? `Base Breadth - ${wLabel}` : "Base Breadth");
+    _setMText(
+      overlay,
+      "bb",
+      bbMx + 8,
+      bbMy + 14,
+      wLabel ? `Base Breadth - ${wLabel}` : "Base Breadth",
+    );
   });
 
   return null;
@@ -815,11 +910,47 @@ export default function EditorScreen1({
   setSceneBgColor: setBgColor,
   sceneBgImage: bgImage,
   setSceneBgImage: setBgImage,
+  hdriPreset,
+  setHdriPreset,
+  envIntensity,
+  setEnvIntensity,
+  ambLight,
+  setAmbLight,
+  dirLight,
+  setDirLight,
+  shadowOpacity,
+  setShadowOpacity,
+  customHdri,
+  setCustomHdri,
+  onLoadScene,
 }) {
+  const [showTools, setShowTools] = useState(false);
   const [showCustomSize, setShowCustomSize] = useState(false);
   const [showCameraViews, setShowCameraViews] = useState(false);
   const orbitControlsRef = useRef(null);
   const cameraRef = useRef(null);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   const [modelMaterials, setModelMaterials] = useState([]);
 
@@ -834,13 +965,46 @@ export default function EditorScreen1({
   const activeSceneRef = useRef(null);
   const measureOverlayRef = useRef(null);
 
-  // Scene & Environment States
-  const [hdriPreset, setHdriPreset] = useState("studio");
-  const [envIntensity, setEnvIntensity] = useState(0.4);
-  const [ambLight, setAmbLight] = useState(0.3);
-  const [dirLight, setDirLight] = useState(0.8);
-  const [shadowOpacity, setShadowOpacity] = useState(0.25);
-  const [customHdri, setCustomHdri] = useState(null);
+  // Save scene states
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveSceneName, setSaveSceneName] = useState("");
+
+  const handleSaveScene = () => {
+    const nameToSave = saveSceneName.trim() || `Scene ${new Date().toLocaleDateString()}`;
+    const newScene = {
+      id: "scene-" + Date.now(),
+      name: nameToSave,
+      createdAt: new Date().toISOString(),
+      modelUrl,
+      sceneBgColor: bgColor,
+      sceneBgImage: bgImage,
+      editorState: {
+        textures: appliedTextures,
+        colors: appliedColors,
+        materials: appliedMaterials,
+        customSize: appliedCustomSize,
+        lastApplied: appliedLastApplied,
+      },
+      hdriPreset,
+      envIntensity,
+      ambLight,
+      dirLight,
+      shadowOpacity,
+      customHdri,
+    };
+
+    try {
+      const stored = localStorage.getItem("fisto_saved_scenes");
+      const parsed = stored ? JSON.parse(stored) : [];
+      parsed.push(newScene);
+      localStorage.setItem("fisto_saved_scenes", JSON.stringify(parsed));
+      setSaveSceneName("");
+      setShowSaveModal(false);
+      setActiveTab("gallery");
+    } catch (err) {
+      console.error("Error saving scene:", err);
+    }
+  };
 
   const handleZoom = (step) => {
     let newPct = zoomPercent + step;
@@ -1258,37 +1422,127 @@ export default function EditorScreen1({
             style={{ zIndex: 3 }}
           >
             {/* ── Top Length ── */}
-            <line data-m="tl-el" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
-            <line data-m="tl-er" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
-            <line data-m="tl"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <line
+              data-m="tl-el"
+              stroke="#b84c00"
+              strokeWidth="1"
+              strokeDasharray="4,3"
+            />
+            <line
+              data-m="tl-er"
+              stroke="#b84c00"
+              strokeWidth="1"
+              strokeDasharray="4,3"
+            />
+            <line
+              data-m="tl"
+              stroke="#b84c00"
+              strokeWidth="1.5"
+              strokeDasharray="4,3"
+            />
             <rect data-m-bg="tl" rx="12" fill="#c2520a" />
-            <text data-m-t="tl" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" dominantBaseline="auto" />
+            <text
+              data-m-t="tl"
+              fill="white"
+              fontSize="11"
+              fontWeight="700"
+              textAnchor="middle"
+              dominantBaseline="auto"
+            />
 
             {/* ── Top Breadth ── */}
-            <line data-m="tb"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <line
+              data-m="tb"
+              stroke="#b84c00"
+              strokeWidth="1.5"
+              strokeDasharray="4,3"
+            />
             <rect data-m-bg="tb" rx="12" fill="#c2520a" />
-            <text data-m-t="tb" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" dominantBaseline="auto" />
+            <text
+              data-m-t="tb"
+              fill="white"
+              fontSize="11"
+              fontWeight="700"
+              textAnchor="middle"
+              dominantBaseline="auto"
+            />
 
             {/* ── Height ── */}
-            <line data-m="h-eb" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
-            <line data-m="h-et" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
-            <line data-m="h"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <line
+              data-m="h-eb"
+              stroke="#b84c00"
+              strokeWidth="1"
+              strokeDasharray="4,3"
+            />
+            <line
+              data-m="h-et"
+              stroke="#b84c00"
+              strokeWidth="1"
+              strokeDasharray="4,3"
+            />
+            <line
+              data-m="h"
+              stroke="#b84c00"
+              strokeWidth="1.5"
+              strokeDasharray="4,3"
+            />
             <line data-m="h-tb" stroke="#b84c00" strokeWidth="2" />
             <line data-m="h-tt" stroke="#b84c00" strokeWidth="2" />
-            <rect data-m-bg="h"  rx="12" fill="#c2520a" />
-            <text data-m-t="h"  fill="white" fontSize="11" fontWeight="700" textAnchor="end" dominantBaseline="middle" />
+            <rect data-m-bg="h" rx="12" fill="#c2520a" />
+            <text
+              data-m-t="h"
+              fill="white"
+              fontSize="11"
+              fontWeight="700"
+              textAnchor="end"
+              dominantBaseline="middle"
+            />
 
             {/* ── Base Length ── */}
-            <line data-m="bl-el" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
-            <line data-m="bl-er" stroke="#b84c00" strokeWidth="1" strokeDasharray="4,3" />
-            <line data-m="bl"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <line
+              data-m="bl-el"
+              stroke="#b84c00"
+              strokeWidth="1"
+              strokeDasharray="4,3"
+            />
+            <line
+              data-m="bl-er"
+              stroke="#b84c00"
+              strokeWidth="1"
+              strokeDasharray="4,3"
+            />
+            <line
+              data-m="bl"
+              stroke="#b84c00"
+              strokeWidth="1.5"
+              strokeDasharray="4,3"
+            />
             <rect data-m-bg="bl" rx="12" fill="#c2520a" />
-            <text data-m-t="bl" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" dominantBaseline="hanging" />
+            <text
+              data-m-t="bl"
+              fill="white"
+              fontSize="11"
+              fontWeight="700"
+              textAnchor="middle"
+              dominantBaseline="hanging"
+            />
 
             {/* ── Base Breadth ── */}
-            <line data-m="bb"    stroke="#b84c00" strokeWidth="1.5" strokeDasharray="4,3" />
+            <line
+              data-m="bb"
+              stroke="#b84c00"
+              strokeWidth="1.5"
+              strokeDasharray="4,3"
+            />
             <rect data-m-bg="bb" rx="12" fill="#c2520a" />
-            <text data-m-t="bb" fill="white" fontSize="11" fontWeight="700" textAnchor="start" dominantBaseline="hanging" />
+            <text
+              data-m-t="bb"
+              fill="white"
+              fontSize="11"
+              fontWeight="700"
+              textAnchor="start"
+              dominantBaseline="hanging"
+            />
           </svg>
         )}
 
@@ -1306,7 +1560,7 @@ export default function EditorScreen1({
 
         {/* Popups */}
         <div
-          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto h-fit max-h-full ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" ? "w-[350px]" : "w-0"}`}
+          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto h-full ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" || activeTab === "gallery" ? "w-[350px]" : "w-0"}`}
         >
           {activeTab === "models" && (
             <ModelsPopup
@@ -1349,6 +1603,14 @@ export default function EditorScreen1({
               setCustomHdri={setCustomHdri}
               bgImage={bgImage}
               setBgImage={setBgImage}
+            />
+          )}
+          {activeTab === "gallery" && (
+            <GalleryPopup
+              onLoadScene={(scene) => {
+                onLoadScene(scene);
+                setActiveTab(null);
+              }}
             />
           )}
         </div>
@@ -1780,8 +2042,30 @@ export default function EditorScreen1({
         )}
       </div>
 
-      {/* Export Action Button (Separate Container) */}
-      <div className="absolute right-7 top-6 z-10 pointer-events-none bg-white rounded-full p-2 shadow-lg flex flex-col items-center justify-center">
+      {/* Export & Save Action Buttons (Separate Container) */}
+      <div className="absolute right-7 top-6 z-10 pointer-events-none bg-white rounded-[20px] p-2 shadow-lg flex flex-col gap-2 items-center justify-center">
+        <Tooltip1 label="Save Scene" side="left">
+          <button
+            onClick={() => setShowSaveModal(true)}
+            className="pointer-events-auto w-8 h-8 rounded-full bg-transparent flex items-center justify-center border-none cursor-pointer hover:bg-gray-100 text-[#c05520] transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2.2}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
+              />
+            </svg>
+          </button>
+        </Tooltip1>
+        <div className="w-5 h-[1px] bg-gray-100" />
         <Tooltip1 label="Export" side="left">
           <button
             onClick={() => setShowExportModal(true)}
@@ -1806,7 +2090,7 @@ export default function EditorScreen1({
       </div>
 
       {/* Right Floating Pill */}
-      <div className="absolute right-6 top-[88px] z-10 bg-white rounded-full p-2 shadow-lg flex flex-col gap-1">
+      <div className="absolute right-6 top-[136px] z-10 bg-white rounded-full p-2 shadow-lg flex flex-col gap-1">
         <Tooltip1 label="Select" side="left">
           <button
             onClick={() => handleSetToolMode("cursor")}
@@ -1840,9 +2124,45 @@ export default function EditorScreen1({
           </button>
         </Tooltip1>
 
-        <div className="w-6 h-px bg-gray-200 mx-auto" />
+        {!showTools && (
+          <>
+            <div className="w-6 h-px bg-gray-200 mx-auto" />
+            <button
+              onClick={() => setShowTools(true)}
+              className="w-10 h-12 rounded-full flex flex-col items-center justify-center border-none bg-transparent hover:bg-orange-50 text-[#c05520] cursor-pointer transition-colors relative"
+              title="More Tools"
+            >
+              <style>{`
+                @keyframes bounce-down {
+                  0%, 100% { transform: translateY(0); }
+                  50% { transform: translateY(3px); }
+                }
+                .animate-bounce-down {
+                  animation: bounce-down 1.2s infinite ease-in-out;
+                }
+              `}</style>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2.5}
+                stroke="currentColor"
+                className="w-4 h-4 animate-bounce-down"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+              <span className="text-[9px] font-bold tracking-wider uppercase mt-0.5 select-none leading-none">More</span>
+            </button>
+          </>
+        )}
 
-        <Tooltip1 label="Reset Position" side="left">
+        {/* Collapsible Container for Remaining Tools */}
+        <div
+          className={`transition-all duration-300 overflow-hidden flex flex-col gap-1 items-center w-full ${
+            showTools ? "max-h-[1000px] opacity-100 mt-1" : "max-h-0 opacity-0 pointer-events-none"
+          }`}
+        >
+          <Tooltip1 label="Reset Position" side="left">
           <button
             onClick={() => {
               if (orbitControlsRef.current && cameraRef.current) {
@@ -2073,6 +2393,43 @@ export default function EditorScreen1({
 
         <div className="w-6 h-px bg-gray-200 mx-auto" />
 
+        <Tooltip1 label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"} side="left">
+          <button
+            onClick={toggleFullscreen}
+            className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+              isFullscreen
+                ? "bg-gray-900 text-white hover:bg-gray-700"
+                : "bg-transparent text-gray-500 hover:bg-gray-100"
+            }`}
+          >
+            {isFullscreen ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.8}
+                stroke="currentColor"
+                className="w-5 h-5"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.8}
+                stroke="currentColor"
+                className="w-5 h-5"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9M20.25 20.25v-4.5m0 4.5h-4.5m4.5 0l-6-6" />
+              </svg>
+            )}
+          </button>
+        </Tooltip1>
+
+        <div className="w-6 h-px bg-gray-200 mx-auto" />
+
         <Tooltip1 label="Help & Controls" side="left">
           <button
             onClick={() => setShowLegend(!showLegend)}
@@ -2098,6 +2455,28 @@ export default function EditorScreen1({
             </svg>
           </button>
         </Tooltip1>
+
+        <div className="w-6 h-px bg-gray-200 mx-auto" />
+
+        {/* Close Tools Button (Shown as Last Item) */}
+        <Tooltip1 label="Close Tools" side="left">
+          <button
+            onClick={() => setShowTools(false)}
+            className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-orange-50 text-[#c05520] cursor-pointer transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2.5}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+            </svg>
+          </button>
+        </Tooltip1>
+        </div>
       </div>
 
       {/* Help / Legend Panel */}
@@ -2401,6 +2780,69 @@ export default function EditorScreen1({
                 className="w-full py-2.5 bg-transparent text-gray-500 rounded-xl font-medium text-sm border-none cursor-pointer hover:text-gray-700 transition-colors mt-1"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Scene Dialog */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl w-[90%] max-w-[360px] flex flex-col gap-5 text-center transform transition-all border border-gray-100">
+            <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-[#c05520] mb-2 animate-pulse">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-6 h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
+                />
+              </svg>
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-900 m-0">
+              Save Scene
+            </h3>
+            <p className="text-[13px] text-gray-500 m-0 leading-relaxed">
+              Enter a name for your customized scene to save it in your local gallery.
+            </p>
+
+            <input
+              type="text"
+              value={saveSceneName}
+              onChange={(e) => setSaveSceneName(e.target.value)}
+              placeholder="e.g. My Custom Cup"
+              className="w-full py-3 px-4 border border-gray-200 rounded-xl outline-none text-center font-semibold text-sm text-gray-800 focus:border-[#c05520] transition-all bg-gray-50/50"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSaveScene();
+                }
+              }}
+            />
+
+            <div className="flex gap-2.5 mt-2">
+              <button
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setSaveSceneName("");
+                }}
+                className="flex-1 py-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-xl font-bold text-sm border border-gray-200/60 cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveScene}
+                className="flex-1 py-3 bg-[#c05520] hover:bg-[#a65330] text-white rounded-xl font-bold text-sm border-none cursor-pointer transition-colors shadow-sm"
+              >
+                Save
               </button>
             </div>
           </div>

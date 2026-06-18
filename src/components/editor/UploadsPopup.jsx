@@ -106,10 +106,14 @@ export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected
   };
 
   return (
-    <div className="w-full h-fit shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
-      <div className="p-6 pb-4">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Uploads</h2>
+    <div className="w-full h-full min-h-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
+      {/* Pinned Title Header */}
+      <div className="p-6 pb-2 shrink-0">
+        <h2 className="text-xl font-bold text-gray-900 m-0">Uploads</h2>
+      </div>
 
+      {/* Unified Scrollable Container */}
+      <div className="flex-1 overflow-y-auto px-6 pb-6 pt-2 flex flex-col gap-6">
         {/* Drop zone */}
         <div
           onDragOver={handleDragOver}
@@ -117,7 +121,7 @@ export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="relative rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none"
+          className="relative rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 select-none shrink-0"
           style={{
             border: `2px dashed ${isDragOver ? '#c0623a' : '#d1d5db'}`,
             background: isDragOver ? '#fff5f0' : '#f9fafb',
@@ -166,92 +170,98 @@ export default function UploadsPopup({ onUpload, uploadedImages, isImageSelected
           )}
         </div>
 
-        <p className="text-[10px] text-gray-400 text-center mt-2">Supports PNG, JPG, WEBP, SVG</p>
-      </div>
+        <p className="text-[10px] text-gray-400 text-center -mt-4 shrink-0">Supports PNG, JPG, WEBP, SVG</p>
 
-      <div className="px-6 pb-4 border-b border-gray-100 mb-4 shrink-0">
-        <h3 className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2.5">
-          Image Formatting
-        </h3>
-        <div className="bg-gray-50 p-1 rounded-xl flex gap-1 border border-gray-100/80">
-          <button
-            onClick={() => handleApplyFit('contain')}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 border-none cursor-pointer transition-all duration-200
-              ${isImageSelected && selectedLayer?.fitType === 'contain'
-                ? 'bg-white text-[#c0623a] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                : 'bg-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
-              }`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
-              <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
-            </svg>
-            Contain
-          </button>
-          <button
-            onClick={() => handleApplyFit('cover')}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 border-none cursor-pointer transition-all duration-200
-              ${isImageSelected && selectedLayer?.fitType === 'cover'
-                ? 'bg-white text-[#c0623a] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                : 'bg-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
-              }`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
-              <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
-            </svg>
-            Cover
-          </button>
-        </div>
-
-        <div className="mt-2 py-1 px-1 text-[11px] text-gray-600 font-medium leading-relaxed">
-          Click the image and a frame from the UV layout, then select a format (Contain or Cover) to apply.
-        </div>
-        
-        {warningMessage && (
-          <div className="mt-2 text-[11px] text-[#c0623a] bg-[#fff5f0] border border-[#ffebd8] rounded-lg p-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span className="font-semibold">{warningMessage}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="px-6 pb-6 overflow-y-auto flex-1">
-        <h3 className="text-[13px] font-bold text-gray-800 mb-3">Custom Material</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {uploadedImages.map((url, idx) => (
+        {/* Image Formatting section */}
+        <div className="shrink-0 border-b border-gray-100 pb-5">
+          <h3 className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2.5">
+            Image Formatting
+          </h3>
+          <div className="bg-gray-50 p-1 rounded-xl flex gap-1 border border-gray-100/80">
             <button
-              key={idx}
-              onClick={(e) => {
-                if (e.button === 0) onUpload(null, url);
-              }}
-              onContextMenu={(e) => handleContextMenu(e, url)}
-              className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all relative"
+              onClick={() => handleApplyFit('contain')}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 border-none cursor-pointer transition-all duration-200
+                ${isImageSelected && selectedLayer?.fitType === 'contain'
+                  ? 'bg-white text-[#c0623a] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'bg-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
+                }`}
             >
-              <img src={url} alt={`Upload ${idx}`} className="w-full h-full object-contain pointer-events-none" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+                <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
+              </svg>
+              Contain
             </button>
-          ))}
-          {uploadedImages.length === 0 && (
-            <p className="col-span-3 text-xs text-gray-400 text-center py-4">No uploaded materials yet.</p>
+            <button
+              onClick={() => handleApplyFit('cover')}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 border-none cursor-pointer transition-all duration-200
+                ${isImageSelected && selectedLayer?.fitType === 'cover'
+                  ? 'bg-white text-[#c0623a] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'bg-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50'
+                }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
+                <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
+              </svg>
+              Cover
+            </button>
+          </div>
+
+          <div className="mt-2 py-1 px-1 text-[11px] text-gray-600 font-medium leading-relaxed">
+            Click the image and a frame from the UV layout, then select a format (Contain or Cover) to apply.
+          </div>
+          
+          {warningMessage && (
+            <div className="mt-2 text-[11px] text-[#c0623a] bg-[#fff5f0] border border-[#ffebd8] rounded-lg p-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="font-semibold">{warningMessage}</span>
+            </div>
           )}
         </div>
 
-        <h3 className="text-[13px] font-bold text-gray-800 mb-3 mt-6">Preset Material</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {presetImages.map((url, idx) => (
-            <button
-              key={`preset-${idx}`}
-              onClick={(e) => {
-                if (e.button === 0) onUpload(null, url);
-              }}
-              onContextMenu={(e) => handleContextMenu(e, url)}
-              className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all relative"
-            >
-              <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-contain pointer-events-none" />
-            </button>
-          ))}
+        {/* Materials */}
+        <div className="flex flex-col gap-6 shrink-0">
+          <div>
+            <h3 className="text-[13px] font-bold text-gray-800 mb-3">Custom Material</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {uploadedImages.map((url, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    if (e.button === 0) onUpload(null, url);
+                  }}
+                  onContextMenu={(e) => handleContextMenu(e, url)}
+                  className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all relative"
+                >
+                  <img src={url} alt={`Upload ${idx}`} className="w-full h-full object-contain pointer-events-none" />
+                </button>
+              ))}
+              {uploadedImages.length === 0 && (
+                <p className="col-span-3 text-xs text-gray-400 text-center py-4">No uploaded materials yet.</p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-[13px] font-bold text-gray-800 mb-3">Preset Material</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {presetImages.map((url, idx) => (
+                <button
+                  key={`preset-${idx}`}
+                  onClick={(e) => {
+                    if (e.button === 0) onUpload(null, url);
+                  }}
+                  onContextMenu={(e) => handleContextMenu(e, url)}
+                  className="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-gray-50 flex items-center justify-center p-0 cursor-pointer hover:border-[#c0623a] hover:shadow-md transition-all relative"
+                >
+                  <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-contain pointer-events-none" />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

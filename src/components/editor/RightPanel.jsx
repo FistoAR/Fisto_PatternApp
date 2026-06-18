@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { Canvas as R3FCanvas, useThree, useLoader } from "@react-three/fiber";
-import { OrbitControls, useGLTF, useProgress } from "@react-three/drei";
+import { OrbitControls, useGLTF, useProgress, Html } from "@react-three/drei";
 import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
@@ -42,19 +42,50 @@ function LoaderOverlay() {
   const { active, progress } = useProgress();
   if (!active) return null;
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px] pointer-events-none">
-      <div className="relative w-10 h-10 mb-2">
-        <div className="absolute inset-0 rounded-full border-4 border-white/20" />
-        <div
-          className="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin"
-          style={{ animationDuration: "0.8s" }}
-        />
+    <Html
+      fullscreen
+      style={{ pointerEvents: "none" }}
+      zIndexRange={[100, 0]}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0,0,0,0.45)",
+          backdropFilter: "blur(2px)",
+          pointerEvents: "none",
+        }}
+      >
+        {/* Spinner ring */}
+        <div style={{ position: "relative", width: 44, height: 44, marginBottom: 10 }}>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "50%",
+              border: "4px solid rgba(255,255,255,0.2)",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "50%",
+              border: "4px solid transparent",
+              borderTopColor: "#ffffff",
+              animation: "spin 0.75s linear infinite",
+            }}
+          />
+        </div>
+        <p style={{ color: "#fff", fontWeight: 700, fontSize: 12, margin: 0 }}>Loading Model...</p>
+        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, margin: "4px 0 0" }}>{Math.round(progress)}%</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
-      <p className="text-white font-bold text-xs">Loading Model...</p>
-      <p className="text-white/70 text-[10px] mt-0.5">
-        {Math.round(progress)}%
-      </p>
-    </div>
+    </Html>
   );
 }
 
@@ -84,12 +115,14 @@ export default function RightPanel({
   selectedColor,
   setSelectedColor,
   onOpenTapeLayout,
+  showPreview,
+  setShowPreview,
 }) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [panelWidth, setPanelWidth] = useState(() =>
-    Math.max(280, window.innerWidth * 0.2),
+    Math.max(220, window.innerWidth * 0.18),
   );
 
   const customColorInputRef = useRef(null);
@@ -218,8 +251,11 @@ export default function RightPanel({
 
   return (
     <aside
-      style={{ width: panelWidth, minWidth: "20vw" }}
-      className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-fit overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px]"
+      style={{
+        width: showPreview ? panelWidth : 200,
+        minWidth: showPreview ? "160px" : "unset",
+      }}
+      className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-fit overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px] transition-all duration-300"
     >
       <div className="flex gap-2 px-3 pb-2 pt-1"></div>
 
@@ -247,154 +283,219 @@ export default function RightPanel({
         </div>
       </div>
 
-      {/* 3D Preview */}
-      <div className="px-3 pb-2 relative select-none">
-        <div
-          className="relative rounded-xl overflow-hidden aspect-square"
-          style={{ background: sceneBgColor }}
-        >
-          <LoaderOverlay />
-          <R3FCanvas
-            className="w-full h-full"
-            camera={{ position: [0, 0.2, 3.2], fov: 40 }}
-            dpr={[1, 2]}
-            gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
-            onCreated={({ gl }) => {
-              gl.outputColorSpace = THREE.SRGBColorSpace;
-              gl.toneMapping = THREE.NeutralToneMapping;
-              gl.toneMappingExposure = 1;
-              if (!sceneBgImage)
-                gl.setClearColor(new THREE.Color(sceneBgColor), 1);
-            }}
-          >
-            {!sceneBgImage && (
-              <color attach="background" args={[sceneBgColor]} />
-            )}
-            {sceneBgImage && (
-              <Suspense fallback={null}>
-                <BackgroundImage url={sceneBgImage} />
-              </Suspense>
-            )}
-            <ambientLight intensity={0.7} />
-            <SafeEnvironment preset="city" />
-            <directionalLight position={[4, 5, 4]} intensity={0.8} />
-            <directionalLight position={[-4, 3, -4]} intensity={0.3} />
-            <Suspense fallback={null}>
-              {modelUrl && (
-                <AutoSizedModel
-                  key={modelUrl}
-                  modelUrl={modelUrl}
-                  canvasRef={canvasRef}
-                  textureCanvasRef={textureCanvasRef}
-                  textureVersion={textureVersion}
-                  wireframe={wireframe}
-                  appliedMaterials={appliedMaterials}
-                  appliedColors={appliedColors}
-                  appliedLastApplied={appliedLastApplied}
-                  bgColor={bgColor}
-                  selectedColor={selectedColor}
-                  isActive={isActive}
-                />
-              )}
-            </Suspense>
-            <ScreenshotHelper ref={captureRef} />
-            <OrbitControls
-              ref={orbitControlsRef}
-              enablePan={false}
-              enableZoom={true}
-              minDistance={1.5}
-              maxDistance={10}
-              minPolarAngle={0}
-              maxPolarAngle={Math.PI}
-            />
-          </R3FCanvas>
-
-          {/* Refresh button */}
+      {/* 3D Preview Toggle Options */}
+      {!showPreview && (
+        <div className="px-3 pb-2 pt-2">
           <button
             type="button"
-            title="Reset model view"
-            onClick={resetPreviewCamera}
-            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/70 backdrop-blur-sm border-none cursor-pointer flex items-center justify-center text-gray-800 hover:bg-white transition-colors z-10"
-            style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+            onClick={() => setShowPreview(true)}
+            className="w-full py-3 rounded-xl border-2 border-[#c0623a] bg-white hover:bg-orange-50/50 font-bold text-[13px] text-[#c0623a] flex items-center justify-center gap-2 cursor-pointer transition-all duration-300 shadow-[0_2px_8px_rgba(192,98,58,0.08)] active:scale-[0.98]"
           >
+            <style>{`
+              @keyframes slow-spin-y {
+                0% { transform: rotateY(0deg) translateY(0px); }
+                50% { transform: rotateY(180deg) translateY(-2px); }
+                100% { transform: rotateY(360deg) translateY(0px); }
+              }
+              .animate-3d-box {
+                animation: slow-spin-y 4s linear infinite;
+                transform-style: preserve-3d;
+              }
+            `}</style>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={2}
               stroke="currentColor"
-              className="w-4 h-4"
+              className="w-4 h-4 text-[#c0623a] animate-3d-box"
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
               />
             </svg>
+            Show 3D Preview
           </button>
+        </div>
+      )}
 
-          {/* Resize Handle */}
+      {/* 3D Preview */}
+      {showPreview && (
+        <div className="px-3 pb-2 relative select-none">
           <div
-            className="absolute bottom-0 left-0 w-8 h-8 cursor-sw-resize flex items-end justify-start z-20"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              setIsResizing(true);
-              const startX = e.clientX;
-              const startWidth = panelWidth;
-              const maxAllowedWidth = window.innerWidth * 0.27;
-              const minAllowedWidth = window.innerWidth * 0.2;
-
-              const onMove = (moveEvent) => {
-                const dx = moveEvent.clientX - startX;
-                // Subtract dx because dragging left (negative dx) increases width
-                setPanelWidth(
-                  Math.max(
-                    minAllowedWidth,
-                    Math.min(maxAllowedWidth, startWidth - dx),
-                  ),
-                );
-              };
-
-              const onUp = () => {
-                setIsResizing(false);
-                document.removeEventListener("pointermove", onMove);
-                document.removeEventListener("pointerup", onUp);
-              };
-
-              document.addEventListener("pointermove", onMove);
-              document.addEventListener("pointerup", onUp);
-            }}
+            className="relative rounded-xl overflow-hidden aspect-square"
+            style={{ background: sceneBgColor }}
           >
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+            <R3FCanvas
+              className="w-full h-full"
+              camera={{ position: [0, 0.2, 3.2], fov: 40 }}
+              dpr={[1, 2]}
+              gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+              onCreated={({ gl }) => {
+                gl.outputColorSpace = THREE.SRGBColorSpace;
+                gl.toneMapping = THREE.NeutralToneMapping;
+                gl.toneMappingExposure = 1;
+                if (!sceneBgImage)
+                  gl.setClearColor(new THREE.Color(sceneBgColor), 1);
+              }}
             >
-              <path d="M0 0 L32 32 L0 32 Z" fill="#cbd5e1" />
-              <line
-                x1="6"
-                y1="22"
-                x2="22"
-                y2="6"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
+              {!sceneBgImage && (
+                <color attach="background" args={[sceneBgColor]} />
+              )}
+              {sceneBgImage && (
+                <Suspense fallback={null}>
+                  <BackgroundImage url={sceneBgImage} />
+                </Suspense>
+              )}
+              <ambientLight intensity={0.7} />
+              <SafeEnvironment preset="city" />
+              <directionalLight position={[4, 5, 4]} intensity={0.8} />
+              <directionalLight position={[-4, 3, -4]} intensity={0.3} />
+              <Suspense fallback={null}>
+                {modelUrl && (
+                  <AutoSizedModel
+                    key={modelUrl}
+                    modelUrl={modelUrl}
+                    canvasRef={canvasRef}
+                    textureCanvasRef={textureCanvasRef}
+                    textureVersion={textureVersion}
+                    wireframe={wireframe}
+                    appliedMaterials={appliedMaterials}
+                    appliedColors={appliedColors}
+                    appliedLastApplied={appliedLastApplied}
+                    bgColor={bgColor}
+                    selectedColor={selectedColor}
+                    isActive={isActive}
+                  />
+                )}
+              </Suspense>
+              {/* Loader overlay — must live inside R3FCanvas to access useProgress context */}
+              <LoaderOverlay />
+              <ScreenshotHelper ref={captureRef} />
+              <OrbitControls
+                ref={orbitControlsRef}
+                enablePan={false}
+                enableZoom={true}
+                minDistance={1.5}
+                maxDistance={10}
+                minPolarAngle={0}
+                maxPolarAngle={Math.PI}
               />
-              <line
-                x1="12"
-                y1="26"
-                x2="26"
-                y2="12"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
+            </R3FCanvas>
+
+            {/* Collapse button */}
+            <button
+              type="button"
+              title="Collapse 3D preview"
+              onClick={() => setShowPreview(false)}
+              className="absolute top-2 right-10 w-7 h-7 rounded-full bg-white/70 backdrop-blur-sm border-none cursor-pointer flex items-center justify-center text-gray-800 hover:bg-white transition-colors z-10"
+              style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2.5}
+                stroke="currentColor"
+                className="w-3.5 h-3.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 12h-15"
+                />
+              </svg>
+            </button>
+
+            {/* Refresh button */}
+            <button
+              type="button"
+              title="Reset model view"
+              onClick={resetPreviewCamera}
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/70 backdrop-blur-sm border-none cursor-pointer flex items-center justify-center text-gray-800 hover:bg-white transition-colors z-10"
+              style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+            </button>
+
+            {/* Resize Handle */}
+            <div
+              className="absolute bottom-0 left-0 w-8 h-8 cursor-sw-resize flex items-end justify-start z-20"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                setIsResizing(true);
+                const startX = e.clientX;
+                const startWidth = panelWidth;
+                const maxAllowedWidth = window.innerWidth * 0.27;
+                const minAllowedWidth = window.innerWidth * 0.2;
+
+                const onMove = (moveEvent) => {
+                  const dx = moveEvent.clientX - startX;
+                  // Subtract dx because dragging left (negative dx) increases width
+                  setPanelWidth(
+                    Math.max(
+                      minAllowedWidth,
+                      Math.min(maxAllowedWidth, startWidth - dx),
+                    ),
+                  );
+                };
+
+                const onUp = () => {
+                  setIsResizing(false);
+                  document.removeEventListener("pointermove", onMove);
+                  document.removeEventListener("pointerup", onUp);
+                };
+
+                document.addEventListener("pointermove", onMove);
+                document.addEventListener("pointerup", onUp);
+              }}
+            >
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M0 0 L32 32 L0 32 Z" fill="#cbd5e1" />
+                <line
+                  x1="6"
+                  y1="22"
+                  x2="22"
+                  y2="6"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1="12"
+                  y1="26"
+                  x2="26"
+                  y2="12"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Save Button */}
       <div className="px-3 pb-2">
@@ -642,78 +743,81 @@ export default function RightPanel({
       )}
 
       {/* Package Color */}
-      <div className="px-3 pb-3">
-        <h3 className="text-[12px] font-semibold text-gray-800 mb-2.5 mt-0">
-          Package Color
-        </h3>
-        <div className="flex items-center gap-[6px]">
-          {packageColors.map((c) => {
-            const isSelected = selectedColor === c.id;
-            const isWhite = c.color === "#ffffff";
-            const backgroundStyle =
-              c.id === "transparent"
-                ? "conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)"
-                : c.color;
-            const backgroundSize = c.id === "transparent" ? "8px 8px" : undefined;
+      {showPreview && (
+        <div className="px-3 pb-3">
+          <h3 className="text-[12px] font-semibold text-gray-800 mb-2.5 mt-0">
+            Package Color
+          </h3>
+          <div className="flex items-center gap-[6px]">
+            {packageColors.map((c) => {
+              const isSelected = selectedColor === c.id;
+              const isWhite = c.color === "#ffffff";
+              const backgroundStyle =
+                c.id === "transparent"
+                  ? "conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)"
+                  : c.color;
+              const backgroundSize =
+                c.id === "transparent" ? "8px 8px" : undefined;
 
-            return (
-              <button
-                key={c.id}
-                onClick={() => {
-                  if (c.id === "transparent") {
-                    setSelectedColor("transparent");
-                    setBgColor("transparent");
-                  } else {
-                    setSelectedColor(c.id);
-                    setBgColor(c.color);
-                  }
-                }}
-                className="w-[26px] h-[26px] rounded-full cursor-pointer transition-all duration-200 hover:scale-110 p-0"
-                style={{
-                  background: backgroundStyle,
-                  backgroundSize: backgroundSize,
-                  border: isSelected
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    if (c.id === "transparent") {
+                      setSelectedColor("transparent");
+                      setBgColor("transparent");
+                    } else {
+                      setSelectedColor(c.id);
+                      setBgColor(c.color);
+                    }
+                  }}
+                  className="w-[26px] h-[26px] rounded-full cursor-pointer transition-all duration-200 hover:scale-110 p-0"
+                  style={{
+                    background: backgroundStyle,
+                    backgroundSize: backgroundSize,
+                    border: isSelected
+                      ? "2px solid #c0623a"
+                      : isWhite
+                        ? "2px solid #e5e7eb"
+                        : "2px solid transparent",
+                    outline: isSelected ? "1px solid #c0623a" : "none",
+                    outlineOffset: "1px",
+                  }}
+                />
+              );
+            })}
+            {/* Add color button */}
+            <button
+              onClick={() => customColorInputRef.current?.click()}
+              className="w-[26px] h-[26px] rounded-full bg-transparent cursor-pointer flex items-center justify-center p-0 transition-all duration-200 hover:scale-110 relative"
+              style={{
+                border:
+                  selectedColor === "custom"
                     ? "2px solid #c0623a"
-                    : isWhite
-                      ? "2px solid #e5e7eb"
-                      : "2px solid transparent",
-                  outline: isSelected ? "1px solid #c0623a" : "none",
-                  outlineOffset: "1px",
-                }}
-              />
-            );
-          })}
-          {/* Add color button */}
-          <button
-            onClick={() => customColorInputRef.current?.click()}
-            className="w-[26px] h-[26px] rounded-full bg-transparent cursor-pointer flex items-center justify-center p-0 transition-all duration-200 hover:scale-110 relative"
-            style={{
-              border:
-                selectedColor === "custom"
-                  ? "2px solid #c0623a"
-                  : "1.5px solid #4a9e6e",
-              outline:
-                selectedColor === "custom" ? "1px solid #c0623a" : "none",
-              outlineOffset: "1px",
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              fill={selectedColor === "custom" ? "#c0623a" : "#4a9e6e"}
-              className="w-3 h-3"
+                    : "1.5px solid #4a9e6e",
+                outline:
+                  selectedColor === "custom" ? "1px solid #c0623a" : "none",
+                outlineOffset: "1px",
+              }}
             >
-              <path d="M8.75 3.75a.75.75 0 0 0-1.5 0v3.5h-3.5a.75.75 0 0 0 0 1.5h3.5v3.5a.75.75 0 0 0 1.5 0v-3.5h3.5a.75.75 0 0 0 0-1.5h-3.5v-3.5Z" />
-            </svg>
-            <input
-              type="color"
-              ref={customColorInputRef}
-              onChange={handleCustomColorChange}
-              className="absolute opacity-0 w-0 h-0 pointer-events-none"
-            />
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill={selectedColor === "custom" ? "#c0623a" : "#4a9e6e"}
+                className="w-3 h-3"
+              >
+                <path d="M8.75 3.75a.75.75 0 0 0-1.5 0v3.5h-3.5a.75.75 0 0 0 0 1.5h3.5v3.5a.75.75 0 0 0 1.5 0v-3.5h3.5a.75.75 0 0 0 0-1.5h-3.5v-3.5Z" />
+              </svg>
+              <input
+                type="color"
+                ref={customColorInputRef}
+                onChange={handleCustomColorChange}
+                className="absolute opacity-0 w-0 h-0 pointer-events-none"
+              />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }
@@ -915,6 +1019,14 @@ function AutoSizedModel({
       if (o.isMesh && !o.userData.isDecal) meshCount++;
     });
 
+    const hasOpaqueCustomization = (() => {
+      const hasSolidColor = (selectedColor && selectedColor !== "none" && bgColor !== "transparent" && bgColor !== "none") ||
+                            Object.values(appliedColors || {}).some(c => c && c !== "transparent" && c !== "none");
+      const hasTexture = (canvasRef?.current?.hasArtwork?.()) || !!canvasTextureRef.current;
+      const hasMaterial = Object.keys(appliedMaterials || {}).length > 0;
+      return hasSolidColor || hasTexture || hasMaterial;
+    })();
+
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || obj.userData.isDecal) return;
 
@@ -922,45 +1034,105 @@ function AutoSizedModel({
       const isMeasurement = /^(plane|text)/i.test(name);
       if (isMeasurement && meshCount > 1) return;
 
+      const matNameLower = (Array.isArray(obj.material) ? obj.material[0]?.name || "" : obj.material.name || "").toLowerCase();
+      const meshNameLower = (obj.name || "").toLowerCase();
+      const isInnerOrLiquid =
+        matNameLower.includes("liquid") ||
+        matNameLower.includes("juice") ||
+        matNameLower.includes("water") ||
+        matNameLower.includes("fluid") ||
+        matNameLower.includes("inner") ||
+        matNameLower.includes("inside") ||
+        meshNameLower.includes("liquid") ||
+        meshNameLower.includes("juice") ||
+        meshNameLower.includes("water") ||
+        meshNameLower.includes("fluid") ||
+        meshNameLower.includes("inner") ||
+        meshNameLower.includes("inside");
+
+      if (isInnerOrLiquid) {
+        obj.visible = !hasOpaqueCustomization;
+        if (hasOpaqueCustomization) return;
+      }
+
       const materials = Array.isArray(obj.material)
         ? obj.material
         : [obj.material];
       for (const mat of materials) {
         if (!mat) continue;
 
-        // --- OVERLAY CANVAS TEXTURE VIA DECAL MESH ---
-        if (!obj.userData.decalMesh) {
-          const decalMat = new THREE.MeshStandardMaterial({
-            transparent: true,
-            depthWrite: false,
-            polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -4,
-          });
-          const decal = new THREE.Mesh(obj.geometry, decalMat);
-          decal.userData.isDecal = true;
-          obj.add(decal);
-          obj.userData.decalMesh = decal;
-        }
+        const matNameLower = (mat.name || "").toLowerCase();
+        const meshNameLower = (obj.name || "").toLowerCase();
+        const isNotCustomizable =
+          matNameLower.includes("cap") ||
+          matNameLower.includes("lid") ||
+          matNameLower.includes("liquid") ||
+          matNameLower.includes("juice") ||
+          matNameLower.includes("water") ||
+          matNameLower.includes("fluid") ||
+          matNameLower.includes("inner") ||
+          matNameLower.includes("inside") ||
+          meshNameLower.includes("cap") ||
+          meshNameLower.includes("lid") ||
+          meshNameLower.includes("liquid") ||
+          meshNameLower.includes("juice") ||
+          meshNameLower.includes("water") ||
+          meshNameLower.includes("fluid") ||
+          meshNameLower.includes("inner") ||
+          meshNameLower.includes("inside");
 
-        const decalMat = obj.userData.decalMesh.material;
-        decalMat.map = canvasTextureRef.current;
-        decalMat.color.set(0xffffff);
-        decalMat.needsUpdate = true;
+        // --- OVERLAY CANVAS TEXTURE VIA DECAL MESH ---
+        if (!isNotCustomizable) {
+          if (!obj.userData.decalMesh) {
+            const decalMat = new THREE.MeshStandardMaterial({
+              transparent: true,
+              depthWrite: false,
+              polygonOffset: true,
+              polygonOffsetFactor: -10,
+              polygonOffsetUnits: -10,
+            });
+            const decal = new THREE.Mesh(obj.geometry, decalMat);
+            decal.userData.isDecal = true;
+            decal.renderOrder = 10;
+            obj.add(decal);
+            obj.userData.decalMesh = decal;
+          }
+
+          const decalMat = obj.userData.decalMesh.material;
+          decalMat.map = canvasTextureRef.current;
+          decalMat.color.set(0xffffff);
+          decalMat.needsUpdate = true;
+          obj.userData.decalMesh.visible = true;
+        } else {
+          if (obj.userData.decalMesh) {
+            obj.userData.decalMesh.visible = false;
+          }
+        }
 
         const hasArtwork = canvasRef?.current?.hasArtwork?.();
         // --- CALCULATE PRIORITY OF ACTIONS ---
-        const last = (selectedColor && selectedColor !== "none")
-          ? "color"
-          : (appliedLastApplied ? appliedLastApplied[mat.name] || appliedLastApplied["all"] : null);
+        const last =
+          selectedColor && selectedColor !== "none"
+            ? (isNotCustomizable ? null : "color")
+            : appliedLastApplied
+              ? appliedLastApplied[mat.name] || (isNotCustomizable ? null : appliedLastApplied["all"])
+              : null;
 
-        const colorHex = (last === "material")
-          ? null
-          : ((selectedColor && selectedColor !== "none") ? bgColor : (appliedColors ? appliedColors[mat.name] || appliedColors["all"] : null));
+        const colorHex =
+          last === "material"
+            ? null
+            : selectedColor && selectedColor !== "none"
+              ? (isNotCustomizable ? null : bgColor)
+              : appliedColors
+                ? appliedColors[mat.name] || (isNotCustomizable ? null : appliedColors["all"])
+                : null;
 
-        const materialType = (last === "color")
-          ? null
-          : (appliedMaterials ? appliedMaterials[mat.name] || appliedMaterials["all"] : null);
+        const materialType =
+          last === "color"
+            ? null
+            : appliedMaterials
+              ? appliedMaterials[mat.name] || (isNotCustomizable ? null : appliedMaterials["all"])
+              : null;
 
         // --- APPLY PBR MATERIALS TO BASE MESH ---
         if (typeof materialType === "object" && materialType !== null) {

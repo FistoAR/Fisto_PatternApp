@@ -1445,6 +1445,7 @@ const Canvas = forwardRef(
 
     const imagesRef = useRef([]);
     const selectedImageRef = useRef(null);
+    const forceRedrawRef = useRef(null);
     const [selectedImage, setSelectedImage] = useState(null);
 
     // Inline text editing overlay
@@ -1474,8 +1475,167 @@ const Canvas = forwardRef(
     useEffect(() => {
       toolModeRef.current = toolMode;
     }, [toolMode]);
+
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const handleWheel = (e) => {
+        if (toolModeRef.current !== "hand") {
+          const sel = selectedImageRef.current;
+          if (sel) {
+            e.preventDefault();
+            const scaleStep = 0.05;
+            let scaleFactor = 1;
+            if (e.deltaY < 0) {
+              scaleFactor = 1 + scaleStep;
+            } else if (e.deltaY > 0) {
+              scaleFactor = 1 - scaleStep;
+            }
+
+            if (scaleFactor !== 1) {
+              const oldWidth = sel.width;
+              const oldHeight = sel.height;
+
+              if (sel.text !== undefined) {
+                // It's a text layer
+                sel.fontSize = Math.max(10, sel.fontSize * scaleFactor);
+                if (typeof sel.updateDimensions === 'function') {
+                  sel.updateDimensions();
+                }
+              } else {
+                // It's an image layer
+                sel.width = oldWidth * scaleFactor;
+                sel.height = oldHeight * scaleFactor;
+              }
+
+              // Center the scaling around the object's own center
+              sel.x -= (sel.width - oldWidth) / 2;
+              sel.y -= (sel.height - oldHeight) / 2;
+
+              pushHistory(imagesRef.current, faceColorsRef.current);
+              if (forceRedrawRef.current) forceRedrawRef.current();
+            }
+          }
+          return;
+        }
+
+        e.preventDefault();
+        // deltaY > 0 is scroll down (zoom out), deltaY < 0 is scroll up (zoom in)
+        const zoomStep = 0.05;
+        if (e.deltaY > 0) {
+          setZoom((z) => Math.max(0.5, z - zoomStep));
+        } else if (e.deltaY < 0) {
+          setZoom((z) => Math.min(1.5, z + zoomStep));
+        }
+      };
+
+      container.addEventListener("wheel", handleWheel, { passive: false });
+      return () => {
+        container.removeEventListener("wheel", handleWheel);
+      };
+    }, []);
+
     const [eraserTolerance, setEraserTolerance] = useState(30);
     const [eraserTargetColor, setEraserTargetColor] = useState(null);
+    const [eraserPopupPos, setEraserPopupPos] = useState({ x: 0, y: 0 });
+    const eraserPopupDragStartRef = useRef(null);
+    const eraserPopupRef = useRef(null);
+
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+      const handleFullscreenChange = () => {
+        setIsFullscreen(!!document.fullscreenElement);
+      };
+      document.addEventListener("fullscreenchange", handleFullscreenChange);
+      return () => {
+        document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      };
+    }, []);
+
+    const toggleFullscreen = () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    };
+
+    useEffect(() => {
+      if (toolMode !== "eraser" && toolMode !== "eraser-pick") {
+        setEraserPopupPos({ x: 0, y: 0 });
+      }
+    }, [toolMode]);
+
+    const handlePopupPointerDown = (e) => {
+      // Don't drag if interacting with buttons, inputs, slider, or other pickers
+      if (
+        e.target.closest("button") ||
+        e.target.closest("input") ||
+        e.target.closest("a") ||
+        e.target.closest("svg") ||
+        e.target.classList.contains("cursor-pointer")
+      ) {
+        return;
+      }
+      e.stopPropagation();
+
+      const rect = eraserPopupRef.current ? eraserPopupRef.current.getBoundingClientRect() : null;
+
+      eraserPopupDragStartRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startPos: { ...eraserPopupPos },
+        rect: rect
+      };
+
+      const handlePointerMove = (moveEvent) => {
+        if (!eraserPopupDragStartRef.current) return;
+        const dragInfo = eraserPopupDragStartRef.current;
+        let dx = moveEvent.clientX - dragInfo.startX;
+        let dy = moveEvent.clientY - dragInfo.startY;
+
+        if (dragInfo.rect) {
+          const width = dragInfo.rect.width;
+          const height = dragInfo.rect.height;
+          const newLeft = dragInfo.rect.left + dx;
+          const newTop = dragInfo.rect.top + dy;
+
+          // Clamp horizontally to stay inside window bounds
+          if (newLeft < 0) {
+            dx = -dragInfo.rect.left;
+          } else if (newLeft + width > window.innerWidth) {
+            dx = window.innerWidth - dragInfo.rect.left - width;
+          }
+
+          // Clamp vertically to stay inside window bounds
+          if (newTop < 0) {
+            dy = -dragInfo.rect.top;
+          } else if (newTop + height > window.innerHeight) {
+            dy = window.innerHeight - dragInfo.rect.top - height;
+          }
+        }
+
+        setEraserPopupPos({
+          x: dragInfo.startPos.x + dx,
+          y: dragInfo.startPos.y + dy,
+        });
+      };
+
+      const handlePointerUp = () => {
+        eraserPopupDragStartRef.current = null;
+        document.removeEventListener("pointermove", handlePointerMove);
+        document.removeEventListener("pointerup", handlePointerUp);
+      };
+
+      document.addEventListener("pointermove", handlePointerMove);
+      document.addEventListener("pointerup", handlePointerUp);
+    };
 
     // History State
     const [history, setHistory] = useState([]);
@@ -1755,6 +1915,7 @@ const Canvas = forwardRef(
                 underline: item.underline,
                 bend: item.bend || 0,
                 letterSpacing: item.letterSpacing || 0,
+                selectedFaceIds: item.selectedFaceIds ? [...item.selectedFaceIds] : [],
               };
             }
             return {
@@ -1769,6 +1930,9 @@ const Canvas = forwardRef(
               flipX: item.flipX,
               flipY: item.flipY,
               locked: item.locked,
+              selectedFaceIds: item.selectedFaceIds ? [...item.selectedFaceIds] : [],
+              fitType: item.fitType,
+              erasedColors: item.erasedColors ? JSON.parse(JSON.stringify(item.erasedColors)) : [],
             };
           }),
           faceColors: { ...actionFaceColors },
@@ -1815,11 +1979,20 @@ const Canvas = forwardRef(
             dt.flipX = itemData.flipX || false;
             dt.flipY = itemData.flipY || false;
             dt.locked = itemData.locked || false;
+            dt.selectedFaceIds = itemData.selectedFaceIds ? [...itemData.selectedFaceIds] : [];
             return dt;
           }
           const imgEl = new Image();
-          imgEl.src = itemData.src;
           const di = new DraggableImage(imgEl, textureSizeRef.current);
+          imgEl.onload = () => {
+             if (di.erasedColors && di.erasedColors.length > 0) {
+               di.applyEraser();
+             }
+             needsDisplayRedrawRef.current = true;
+             bakeTexture();
+             redrawDisplay();
+          };
+          imgEl.src = itemData.src;
           di.x = itemData.x;
           di.y = itemData.y;
           di.width = itemData.width;
@@ -1829,6 +2002,9 @@ const Canvas = forwardRef(
           di.flipX = itemData.flipX || false;
           di.flipY = itemData.flipY || false;
           di.locked = itemData.locked || false;
+          di.selectedFaceIds = itemData.selectedFaceIds ? [...itemData.selectedFaceIds] : [];
+          di.fitType = itemData.fitType;
+          di.erasedColors = itemData.erasedColors ? JSON.parse(JSON.stringify(itemData.erasedColors)) : [];
           return di;
         });
 
@@ -1882,6 +2058,10 @@ const Canvas = forwardRef(
       redrawDisplay();
       bakeTexture();
     }, [redrawDisplay, bakeTexture]);
+
+    useEffect(() => {
+      forceRedrawRef.current = redrawAll;
+    }, [redrawAll]);
 
     const copiedLayerRef = useRef(null);
 
@@ -2286,6 +2466,7 @@ const Canvas = forwardRef(
         interaction.isDragging = true;
         interaction.mode = HANDLE.NONE; // Specialized hand mode
         interaction.isPanning = true;
+        interaction.canvasRect = rect;
         interaction.startX = e.clientX;
         interaction.startY = e.clientY;
         interaction.startPanX = pan.x;
@@ -2597,26 +2778,50 @@ const Canvas = forwardRef(
       if (!interaction.isDragging) return;
 
       if (interaction.isPanning) {
-        const dx = e.clientX - interaction.startX;
-        const dy = e.clientY - interaction.startY;
-        let newX = interaction.startPanX + dx;
-        let newY = interaction.startPanY + dy;
+        let dx = e.clientX - interaction.startX;
+        let dy = e.clientY - interaction.startY;
 
-        if (containerRef.current && displayCanvasRef.current) {
-          const cW = containerRef.current.clientWidth;
-          const cH = containerRef.current.clientHeight;
-          const canvasW = displayCanvasRef.current.clientWidth * zoom;
-          const canvasH = displayCanvasRef.current.clientHeight * zoom;
+        if (interaction.canvasRect && typeof window !== "undefined") {
+          const width = interaction.canvasRect.width;
+          const height = interaction.canvasRect.height;
+          const newLeft = interaction.canvasRect.left + dx;
+          const newTop = interaction.canvasRect.top + dy;
 
-          // Ensure at least 100px of the canvas is always visible on screen
-          const maxPanX = Math.max(0, (cW + canvasW) / 2 - 100);
-          const maxPanY = Math.max(0, (cH + canvasH) / 2 - 100);
+          // Horizontal clamp to window boundaries
+          if (width <= window.innerWidth) {
+            if (newLeft < 0) {
+              dx = -interaction.canvasRect.left;
+            } else if (newLeft + width > window.innerWidth) {
+              dx = window.innerWidth - interaction.canvasRect.left - width;
+            }
+          } else {
+            if (newLeft > 0) {
+              dx = -interaction.canvasRect.left;
+            } else if (newLeft + width < window.innerWidth) {
+              dx = window.innerWidth - interaction.canvasRect.left - width;
+            }
+          }
 
-          newX = Math.max(-maxPanX, Math.min(maxPanX, newX));
-          newY = Math.max(-maxPanY, Math.min(maxPanY, newY));
+          // Vertical clamp to window boundaries
+          if (height <= window.innerHeight) {
+            if (newTop < 0) {
+              dy = -interaction.canvasRect.top;
+            } else if (newTop + height > window.innerHeight) {
+              dy = window.innerHeight - interaction.canvasRect.top - height;
+            }
+          } else {
+            if (newTop > 0) {
+              dy = -interaction.canvasRect.top;
+            } else if (newTop + height < window.innerHeight) {
+              dy = window.innerHeight - interaction.canvasRect.top - height;
+            }
+          }
         }
 
-        setPan({ x: newX, y: newY });
+        setPan({
+          x: interaction.startPanX + dx,
+          y: interaction.startPanY + dy,
+        });
         return;
       }
 
@@ -3750,7 +3955,16 @@ const Canvas = forwardRef(
                   </button>
                 </Tooltip>
                 {(toolMode === "eraser" || toolMode === "eraser-pick") && (
-                  <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 p-4 w-64 animate-in fade-in zoom-in-95 duration-200">
+                  <div
+                    ref={eraserPopupRef}
+                    onPointerDown={handlePopupPointerDown}
+                    style={{
+                      transform: `translate(calc(-50% + ${eraserPopupPos.x}px), ${eraserPopupPos.y}px)`,
+                      cursor: "move",
+                      userSelect: "none",
+                    }}
+                    className="absolute bottom-full mb-4 left-1/2 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 p-4 w-64 animate-in fade-in zoom-in-95 duration-200"
+                  >
                     <div className="flex justify-between items-center mb-3">
                       <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                         Color Eraser
@@ -3951,6 +4165,43 @@ const Canvas = forwardRef(
                   className="w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors bg-transparent text-gray-700 hover:bg-gray-50 font-bold text-xl leading-none"
                 >
                   +
+                </button>
+              </Tooltip>
+
+              <div className="w-px h-6 bg-gray-200 mx-1" />
+
+              <Tooltip label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
+                <button
+                  onClick={toggleFullscreen}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+                    isFullscreen
+                      ? "bg-black text-white hover:bg-gray-800"
+                      : "bg-transparent text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {isFullscreen ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.8}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.8}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9M20.25 20.25v-4.5m0 4.5h-4.5m4.5 0l-6-6" />
+                    </svg>
+                  )}
                 </button>
               </Tooltip>
 

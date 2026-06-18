@@ -17,6 +17,14 @@ export default function EditorPage() {
   const [sceneBgColor, setSceneBgColor] = useState("#e6e2db");
   const [sceneBgImage, setSceneBgImage] = useState(null);
 
+  // Lifted environment and lighting states
+  const [hdriPreset, setHdriPreset] = useState("studio");
+  const [envIntensity, setEnvIntensity] = useState(0.4);
+  const [ambLight, setAmbLight] = useState(0.3);
+  const [dirLight, setDirLight] = useState(0.8);
+  const [shadowOpacity, setShadowOpacity] = useState(0.25);
+  const [customHdri, setCustomHdri] = useState(null);
+
   // Key to force Screen 2 canvas re-mount on reset
   const [canvasResetKey, setCanvasResetKey] = useState(0);
 
@@ -84,6 +92,24 @@ export default function EditorPage() {
     setEditorState(defaultState);
     history.current = [defaultState];
     historyIndex.current = 0;
+    setCanvasResetKey((k) => k + 1);
+  };
+
+  const onLoadScene = (scene) => {
+    if (scene.modelUrl) setModelUrl(scene.modelUrl);
+    if (scene.sceneBgColor !== undefined) setSceneBgColor(scene.sceneBgColor);
+    if (scene.sceneBgImage !== undefined) setSceneBgImage(scene.sceneBgImage);
+    if (scene.editorState) {
+      setEditorState(scene.editorState);
+      history.current = [scene.editorState];
+      historyIndex.current = 0;
+    }
+    if (scene.hdriPreset !== undefined) setHdriPreset(scene.hdriPreset);
+    if (scene.envIntensity !== undefined) setEnvIntensity(scene.envIntensity);
+    if (scene.ambLight !== undefined) setAmbLight(scene.ambLight);
+    if (scene.dirLight !== undefined) setDirLight(scene.dirLight);
+    if (scene.shadowOpacity !== undefined) setShadowOpacity(scene.shadowOpacity);
+    if (scene.customHdri !== undefined) setCustomHdri(scene.customHdri);
     setCanvasResetKey((k) => k + 1);
   };
 
@@ -236,6 +262,19 @@ export default function EditorPage() {
           setSceneBgColor={setSceneBgColor}
           sceneBgImage={sceneBgImage}
           setSceneBgImage={setSceneBgImage}
+          hdriPreset={hdriPreset}
+          setHdriPreset={setHdriPreset}
+          envIntensity={envIntensity}
+          setEnvIntensity={setEnvIntensity}
+          ambLight={ambLight}
+          setAmbLight={setAmbLight}
+          dirLight={dirLight}
+          setDirLight={setDirLight}
+          shadowOpacity={shadowOpacity}
+          setShadowOpacity={setShadowOpacity}
+          customHdri={customHdri}
+          setCustomHdri={setCustomHdri}
+          onLoadScene={onLoadScene}
           onProceed={handleProceedToTextureEditor}
           onApplyColor={handleApplyColor}
           onApplyMaterial={handleApplyMaterial}

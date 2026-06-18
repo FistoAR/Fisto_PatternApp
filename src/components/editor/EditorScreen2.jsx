@@ -212,6 +212,8 @@ export default function EditorScreen2({
 }) {
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [showTapeLayout, setShowTapeLayout] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
   const textureCanvasRef = useRef(null);
   const [textureVersion, setTextureVersion] = useState(0);
   const canvasRef = useRef(null);
@@ -223,15 +225,55 @@ export default function EditorScreen2({
   const [selectedColor, setSelectedColor] = useState("none");
   const [isFrameSelected, setIsFrameSelected] = useState(false);
   const [currentSelectedFaces, setCurrentSelectedFaces] = useState(new Set());
-  const [pendingTapeLayoutDataUrl, setPendingTapeLayoutDataUrl] = useState(null);
+  const [pendingTapeLayoutDataUrl, setPendingTapeLayoutDataUrl] =
+    useState(null);
 
   // Tape layout floating container dragging
-  const [tapeLayoutPos, setTapeLayoutPos] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 - 128 : 0, y: 100 });
+  const [tapeLayoutPos, setTapeLayoutPos] = useState({
+    x: typeof window !== "undefined" ? window.innerWidth / 2 - 128 : 0,
+    y: 100,
+  });
   const [isDraggingTape, setIsDraggingTape] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, startPosX: 0, startPosY: 0 });
 
+  // Right Panel vertical dragging
+  const [rightPanelY, setRightPanelY] = useState(24);
+  const [isDraggingRightPanel, setIsDraggingRightPanel] = useState(false);
+  const rightPanelDragStart = useRef({ mouseY: 0, startY: 0 });
+  const rightPanelRef = useRef(null);
+
+  const handleRightPanelPointerDown = (e) => {
+    if (e.button !== 0) return;
+    setIsDraggingRightPanel(true);
+    rightPanelDragStart.current = {
+      mouseY: e.clientY,
+      startY: rightPanelY,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleRightPanelPointerMove = (e) => {
+    if (!isDraggingRightPanel) return;
+    const dy = e.clientY - rightPanelDragStart.current.mouseY;
+    let newY = rightPanelDragStart.current.startY + dy;
+
+    if (typeof window !== "undefined") {
+      const panelHeight = rightPanelRef.current ? rightPanelRef.current.offsetHeight : 500;
+      const maxY = window.innerHeight - panelHeight - 24;
+      newY = Math.max(24, Math.min(newY, maxY));
+    }
+    setRightPanelY(newY);
+  };
+
+  const handleRightPanelPointerUp = (e) => {
+    if (isDraggingRightPanel) {
+      setIsDraggingRightPanel(false);
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
+
   useEffect(() => {
-    if (pendingTapeLayoutDataUrl && typeof window !== 'undefined') {
+    if (pendingTapeLayoutDataUrl && typeof window !== "undefined") {
       setTapeLayoutPos({ x: window.innerWidth / 2 - 128, y: 100 });
     }
   }, [pendingTapeLayoutDataUrl]);
@@ -252,12 +294,12 @@ export default function EditorScreen2({
     const handleMove = (e) => {
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
-      
+
       let newX = dragStartRef.current.startPosX + dx;
       let newY = dragStartRef.current.startPosY + dy;
 
       // Add boundary constraints
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         const maxX = window.innerWidth - 256; // 256px is roughly w-64
         const maxY = window.innerHeight - 100;
         newX = Math.max(0, Math.min(newX, maxX));
@@ -339,7 +381,12 @@ export default function EditorScreen2({
   const [exportPdfChecked, setExportPdfChecked] = useState(false);
 
   const handleExport = async () => {
-    if (!exportGlbChecked && !exportPngChecked && !exportSvgChecked && !exportPdfChecked) {
+    if (
+      !exportGlbChecked &&
+      !exportPngChecked &&
+      !exportSvgChecked &&
+      !exportPdfChecked
+    ) {
       alert("Please select at least one option to export.");
       return;
     }
@@ -349,41 +396,40 @@ export default function EditorScreen2({
       if (exportGlbChecked) {
         if (!modelUrl || !textureCanvasRef?.current) return;
         const loader = new GLTFLoader();
-        loader.load(
-          modelUrl,
-          (gltf) => {
-            const scene = gltf.scene;
-            const texture = new THREE.CanvasTexture(textureCanvasRef.current);
-            texture.colorSpace = THREE.SRGBColorSpace;
-            texture.flipY = true;
-            texture.needsUpdate = true;
-            scene.traverse((obj) => {
-              if (!obj.isMesh) return;
-              const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-              mats.forEach((mat) => {
-                if (mat && "map" in mat) {
-                  mat.map = texture;
-                  mat.needsUpdate = true;
-                }
-              });
+        loader.load(modelUrl, (gltf) => {
+          const scene = gltf.scene;
+          const texture = new THREE.CanvasTexture(textureCanvasRef.current);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.flipY = true;
+          texture.needsUpdate = true;
+          scene.traverse((obj) => {
+            if (!obj.isMesh) return;
+            const mats = Array.isArray(obj.material)
+              ? obj.material
+              : [obj.material];
+            mats.forEach((mat) => {
+              if (mat && "map" in mat) {
+                mat.map = texture;
+                mat.needsUpdate = true;
+              }
             });
-            const exporter = new GLTFExporter();
-            exporter.parse(
-              scene,
-              (glb) => {
-                const blob = new Blob([glb], { type: "model/gltf-binary" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "model-export.glb";
-                a.click();
-                URL.revokeObjectURL(url);
-              },
-              (err) => console.error("GLTFExporter error:", err),
-              { binary: true }
-            );
-          }
-        );
+          });
+          const exporter = new GLTFExporter();
+          exporter.parse(
+            scene,
+            (glb) => {
+              const blob = new Blob([glb], { type: "model/gltf-binary" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "model-export.glb";
+              a.click();
+              URL.revokeObjectURL(url);
+            },
+            (err) => console.error("GLTFExporter error:", err),
+            { binary: true },
+          );
+        });
       }
 
       if (exportPngChecked) {
@@ -470,9 +516,15 @@ export default function EditorScreen2({
     <div className="flex flex-col h-full w-full overflow-hidden bg-white">
       <div className="flex flex-1 overflow-hidden bg-[#f5efe6]">
         {/* ── Left Side Panel ────────────────────────────────────────── */}
-        <div className="flex flex-col z-20 h-full py-6 pl-6 pr-0 gap-4 w-[350px] shrink-0">
+        <div
+          className={`absolute top-0 left-0 z-20 h-full gap-4 transition-all duration-300 flex flex-col shrink-0 pointer-events-none ${
+            showLeftPanel
+              ? "w-[350px] py-6 pl-6 pr-0 opacity-100"
+              : "w-0 py-0 pl-0 pr-0 opacity-0 overflow-hidden"
+          }`}
+        >
           {/* Header Actions */}
-          <div className="flex justify-between items-center w-full shrink-0">
+          <div className="flex justify-start items-center gap-3 w-full shrink-0 pointer-events-auto">
             {/* Back button */}
             <button
               onClick={onBack}
@@ -496,7 +548,7 @@ export default function EditorScreen2({
           </div>
 
           {/* Tab switcher */}
-          <div className="flex bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-1.5 gap-1 shrink-0">
+          <div className="flex bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-1.5 gap-1 shrink-0 items-center pointer-events-auto">
             <button
               onClick={() => setLeftTab("uploads")}
               className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-none cursor-pointer
@@ -511,10 +563,34 @@ export default function EditorScreen2({
             >
               Text
             </button>
+
+            {/* Collapse button */}
+            <button
+              onClick={() => setShowLeftPanel(false)}
+              className="py-1 px-1.5 rounded-xl bg-gray-100 hover:bg-gray-200/80 transition-all border-none cursor-pointer flex items-center justify-center shrink-0 text-gray-500 hover:text-gray-800 hover:scale-105 active:scale-95"
+              title="Collapse Panel"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.8}
+                stroke="currentColor"
+                className="w-7 h-7"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M14 9l-3 3 3 3"
+                />
+              </svg>
+            </button>
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden flex flex-col pointer-events-auto">
             {leftTab === "uploads" && (
               <UploadsPopup
                 onUpload={(file, url, fitType) => {
@@ -539,9 +615,9 @@ export default function EditorScreen2({
             )}
 
             {leftTab === "text" && (
-              <div className="flex flex-col gap-4">
+              <div className="w-full h-full min-h-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-y-auto flex flex-col p-6 gap-6">
                 {/* Add Text button */}
-                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5">
+                <div className="w-full pb-4 border-b border-gray-100 shrink-0">
                   {/* <h2 className="text-xl font-bold text-gray-900 mb-4">Text</h2> */}
                   <button
                     onClick={() => {
@@ -572,7 +648,7 @@ export default function EditorScreen2({
 
                 {/* Formatting panel — only shows when text layer selected */}
                 {isTextLayer ? (
-                  <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4">
+                  <div className="flex flex-col gap-4">
                     {/* <h3 className="text-[13px] font-bold text-gray-800">Format Text</h3> */}
 
                     {/* Font Family */}
@@ -662,48 +738,153 @@ export default function EditorScreen2({
                       <div className="flex flex-col gap-2">
                         <div className="flex gap-2">
                           <button
-                            onClick={() => canvasRef.current?.alignSelectedLayer("left", null)}
+                            onClick={() =>
+                              canvasRef.current?.alignSelectedLayer(
+                                "left",
+                                null,
+                              )
+                            }
                             className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
                             title="Align Left"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12"
+                              />
+                            </svg>
                           </button>
                           <button
-                            onClick={() => canvasRef.current?.alignSelectedLayer("center", null)}
+                            onClick={() =>
+                              canvasRef.current?.alignSelectedLayer(
+                                "center",
+                                null,
+                              )
+                            }
                             className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
                             title="Align Center Horizontal"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                              />
+                            </svg>
                           </button>
                           <button
-                            onClick={() => canvasRef.current?.alignSelectedLayer("right", null)}
+                            onClick={() =>
+                              canvasRef.current?.alignSelectedLayer(
+                                "right",
+                                null,
+                              )
+                            }
                             className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
                             title="Align Right"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25" /></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25"
+                              />
+                            </svg>
                           </button>
                         </div>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => canvasRef.current?.alignSelectedLayer(null, "top")}
+                            onClick={() =>
+                              canvasRef.current?.alignSelectedLayer(null, "top")
+                            }
                             className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
                             title="Align Top"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"
+                              />
+                            </svg>
                           </button>
                           <button
-                            onClick={() => canvasRef.current?.alignSelectedLayer(null, "center")}
+                            onClick={() =>
+                              canvasRef.current?.alignSelectedLayer(
+                                null,
+                                "center",
+                              )
+                            }
                             className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
                             title="Align Center Vertical"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
+                              />
+                            </svg>
                           </button>
                           <button
-                            onClick={() => canvasRef.current?.alignSelectedLayer(null, "bottom")}
+                            onClick={() =>
+                              canvasRef.current?.alignSelectedLayer(
+                                null,
+                                "bottom",
+                              )
+                            }
                             className="flex-1 flex items-center justify-center py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 border-none cursor-pointer transition-all"
                             title="Align Bottom"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"
+                              />
+                            </svg>
                           </button>
                         </div>
                       </div>
@@ -802,7 +983,7 @@ export default function EditorScreen2({
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5">
+                  <div className="w-full">
                     <div className="flex flex-col items-center justify-center py-6 gap-2 text-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -830,9 +1011,64 @@ export default function EditorScreen2({
         </div>
 
         {/* ── Center Canvas ─────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col h-full min-w-0 relative">
+        <div
+          className="flex-1 flex flex-col h-full min-w-0 relative transition-all duration-300"
+          style={{
+            paddingRight: 0
+          }}
+        >
+          {/* Floating Left Panel Trigger when collapsed */}
+          {!showLeftPanel && (
+            <div className="absolute top-6 left-6 z-30 flex flex-col gap-3">
+              {/* Back button */}
+              <button
+                onClick={onBack}
+                className="w-14 h-12 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex items-center justify-center border-none cursor-pointer hover:bg-gray-50 text-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                title="Go Back"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+                  />
+                </svg>
+              </button>
+              {/* Open button */}
+              <button
+                onClick={() => setShowLeftPanel(true)}
+                className="w-14 h-12 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex items-center justify-center border-none cursor-pointer hover:bg-gray-50 text-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                title="Open Design Panel"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.8}
+                  stroke="currentColor"
+                  className="w-7.5 h-7.5"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="3" />
+                  <line x1="9" y1="3" x2="9" y2="21" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9l3 3-3 3"
+                  />
+                </svg>
+              </button>
+            </div>
+          )}
+
           {showTapeLayout && (
-            <TapeLayoutScreen 
+            <TapeLayoutScreen
               onCancel={() => setShowTapeLayout(false)}
               onSave={(dataUrl) => {
                 setShowTapeLayout(false);
@@ -845,44 +1081,66 @@ export default function EditorScreen2({
 
           {/* Floating Tape Layout Apply Container */}
           {pendingTapeLayoutDataUrl && (
-            <div 
+            <div
               style={{ top: tapeLayoutPos.y, left: tapeLayoutPos.x }}
               className="fixed z-50 bg-white p-4 rounded-2xl shadow-xl border border-gray-200 flex flex-col items-center gap-4 w-64"
             >
-              <div 
+              <div
                 className="w-full flex justify-between items-center cursor-move touch-none"
                 onPointerDown={handleTapePointerDown}
               >
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider select-none pointer-events-none">Tape Layout</span>
-                <button 
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider select-none pointer-events-none">
+                  Tape Layout
+                </span>
+                <button
                   onClick={() => setPendingTapeLayoutDataUrl(null)}
                   className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 border-none cursor-pointer z-10"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
               <div className="w-full h-20 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden p-2">
-                <img src={pendingTapeLayoutDataUrl} alt="Tape Preview" className="max-w-full max-h-full object-contain drop-shadow-sm" />
+                <img
+                  src={pendingTapeLayoutDataUrl}
+                  alt="Tape Preview"
+                  className="max-w-full max-h-full object-contain drop-shadow-sm"
+                />
               </div>
               <button
                 disabled={currentSelectedFaces.size === 0}
                 onClick={() => {
                   if (canvasRef.current && canvasRef.current.uploadImage) {
-                    canvasRef.current.uploadImage(pendingTapeLayoutDataUrl, "cover");
+                    canvasRef.current.uploadImage(
+                      pendingTapeLayoutDataUrl,
+                      "cover",
+                    );
                     setPendingTapeLayoutDataUrl(null);
                   } else {
                     setPendingTapeLayoutDataUrl(null);
                   }
                 }}
                 className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all border-none ${
-                  currentSelectedFaces.size > 0 
-                    ? "bg-[#c0623a] text-white hover:bg-[#a54f2c] cursor-pointer shadow-md hover:shadow-lg active:scale-95" 
+                  currentSelectedFaces.size > 0
+                    ? "bg-[#c0623a] text-white hover:bg-[#a54f2c] cursor-pointer shadow-md hover:shadow-lg active:scale-95"
                     : "bg-gray-100 text-gray-400 cursor-not-allowed"
                 }`}
               >
-                {currentSelectedFaces.size > 0 ? "Apply to Frame" : "Select Frame First"}
+                {currentSelectedFaces.size > 0
+                  ? "Apply to Frame"
+                  : "Select Frame First"}
               </button>
             </div>
           )}
@@ -911,16 +1169,28 @@ export default function EditorScreen2({
         {/* ── Right Panel ───────────────────────────────────────────────── */}
         <div
           className={`
-          shrink-0 py-6 pr-6 h-fit
-          lg:relative lg:block
-          ${
-            showMobilePanel
-              ? "absolute inset-y-0 right-0 z-40 block"
-              : "hidden lg:block"
-          }
+          absolute right-0 z-40
+          pb-6 pr-6 h-fit pointer-events-none
+          ${showMobilePanel ? "block" : "hidden lg:block"}
         `}
+          style={{
+            top: `${rightPanelY}px`,
+            transition: isDraggingRightPanel
+              ? "none"
+              : "top 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease",
+          }}
         >
-          <div className="h-fit rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 bg-white flex flex-col">
+          <div ref={rightPanelRef} className="h-fit rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 bg-white flex flex-col pointer-events-auto">
+            {/* Drag Handle for Vertical Repositioning */}
+            <div
+              className="w-full h-5 flex items-center justify-center cursor-ns-resize hover:bg-gray-50 active:cursor-grabbing border-b border-gray-100 select-none bg-white transition-colors"
+              onPointerDown={handleRightPanelPointerDown}
+              onPointerMove={handleRightPanelPointerMove}
+              onPointerUp={handleRightPanelPointerUp}
+              title="Drag Vertically"
+            >
+              <div className="w-10 h-1 bg-gray-300 rounded-full" />
+            </div>
             <RightPanel
               canvasRef={canvasRef}
               textureCanvasRef={textureCanvasRef}
@@ -945,6 +1215,8 @@ export default function EditorScreen2({
               onExportClick={() => setShowExportModal(true)}
               onSave={handleSave}
               isActive={isActive}
+              showPreview={showPreview}
+              setShowPreview={setShowPreview}
             />
           </div>
         </div>
@@ -962,148 +1234,150 @@ export default function EditorScreen2({
       {showExportModal && (
         <>
           {/* Invisible overlay for click-outside to close */}
-          <div 
-            className="fixed inset-0 z-[999]" 
+          <div
+            className="fixed inset-0 z-[999]"
             onClick={() => setShowExportModal(false)}
           />
-          <div className="absolute right-[380px] top-6 z-[1000] pointer-events-auto">
+          <div
+            className="absolute top-6 z-[1000] pointer-events-auto transition-all duration-300"
+            style={{ right: showPreview ? "380px" : "240px" }}
+          >
             <div className="bg-white rounded-[15px] p-6 w-[340px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-5 relative border border-gray-100">
-            <button
-              onClick={() => setShowExportModal(false)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border-none text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2.5}
-                stroke="currentColor"
-                className="w-4 h-4"
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center border-none text-gray-400 hover:text-gray-600 cursor-pointer transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18 18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18 18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
 
-            <div className="flex flex-col gap-1 pr-6">
-              <h3 className="text-lg font-bold text-gray-900 m-0">
-                Export Design
-              </h3>
-              <p className="text-xs text-gray-500 m-0">
-                Choose your preferred format(s)
-              </p>
+              <div className="flex flex-col gap-1 pr-6">
+                <h3 className="text-lg font-bold text-gray-900 m-0">
+                  Export Design
+                </h3>
+                <p className="text-xs text-gray-500 m-0">
+                  Choose your preferred format(s)
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportGlbChecked}
+                    onChange={(e) => setExportGlbChecked(e.target.checked)}
+                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-800">
+                      Export as GLB
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Download the 3D model with your design applied
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportPngChecked}
+                    onChange={(e) => setExportPngChecked(e.target.checked)}
+                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-800">
+                      Export as PNG (Texture)
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      High-res image of the flat canvas texture
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportSvgChecked}
+                    onChange={(e) => setExportSvgChecked(e.target.checked)}
+                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-800">
+                      Export as SVG
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Vector graphics with layers & UV wireframe
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportPdfChecked}
+                    onChange={(e) => setExportPdfChecked(e.target.checked)}
+                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-800">
+                      Export as PDF
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Document containing vector layers & UV wireframe
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="w-full py-3.5 rounded-2xl bg-[#c05520] hover:bg-[#a04619] disabled:bg-gray-300 text-white font-bold text-base transition-colors border-none cursor-pointer shadow-md flex items-center justify-center gap-2"
+              >
+                {isExporting ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <span>Download Now</span>
+                )}
+              </button>
             </div>
-
-            <div className="flex flex-col gap-3">
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={exportGlbChecked}
-                  onChange={(e) => setExportGlbChecked(e.target.checked)}
-                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">
-                    Export as GLB
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    Download the 3D model with your design applied
-                  </span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={exportPngChecked}
-                  onChange={(e) => setExportPngChecked(e.target.checked)}
-                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">
-                    Export as PNG (Texture)
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    High-res image of the flat canvas texture
-                  </span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={exportSvgChecked}
-                  onChange={(e) => setExportSvgChecked(e.target.checked)}
-                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">
-                    Export as SVG
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    Vector graphics with layers & UV wireframe
-                  </span>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100/70 transition-colors cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={exportPdfChecked}
-                  onChange={(e) => setExportPdfChecked(e.target.checked)}
-                  className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">
-                    Export as PDF
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    Document containing vector layers & UV wireframe
-                  </span>
-                </div>
-              </label>
-            </div>
-
-            <button
-              onClick={handleExport}
-              disabled={isExporting}
-              className="w-full py-3.5 rounded-2xl bg-[#c05520] hover:bg-[#a04619] disabled:bg-gray-300 text-white font-bold text-base transition-colors border-none cursor-pointer shadow-md flex items-center justify-center gap-2"
-            >
-              {isExporting ? (
-                <>
-                  <svg
-                    className="animate-spin h-5 w-5 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  <span>Exporting...</span>
-                </>
-              ) : (
-                <span>Download Now</span>
-              )}
-            </button>
           </div>
-        </div>
         </>
       )}
-
     </div>
   );
 }
