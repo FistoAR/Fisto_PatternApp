@@ -32,7 +32,7 @@ import cb9 from "../../assets/images/Editor 2/carryBag/9.jpg";
 const carryBagGraphics = [cb1, cb2, cb3, cb4, cb5, cb6, cb7, cb8, cb9];
 
 // ── Floral Graphics (glob import) ─────────────────────────────────────────────
-const floralImagesGlob = import.meta.glob("../../assets/images/Editor 2/Floral/*.{png,jpg,jpeg,PNG,JPG,JPEG,webp,WEBP}", { eager: true, import: "default" });
+const floralImagesGlob = import.meta.glob("../../assets/images/Editor 2/Floral/*.{webp,WEBP}", { eager: true, import: "default" });
 const floralGraphics = Object.values(floralImagesGlob);
 
 // ── Damask Graphics (glob import) ─────────────────────────────────────────────

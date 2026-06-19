@@ -1813,6 +1813,8 @@ const Canvas = forwardRef(
     // History State
     const [history, setHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
+    const historyRef = useRef([]);
+    const historyIndexRef = useRef(-1);
 
     // UV Interaction States
     const [uvComponents, setUvComponents] = useState([]);
@@ -2101,6 +2103,7 @@ const Canvas = forwardRef(
     );
 
     // --- History Logic ---
+    // --- History Logic ---
     const pushHistory = useCallback(
       (actionImages, actionFaceColors) => {
         const stateSnapshot = {
@@ -2149,14 +2152,17 @@ const Canvas = forwardRef(
           faceColors: { ...actionFaceColors },
         };
 
-        setHistory((prev) => {
-          const newHistory = prev.slice(0, historyIndex + 1);
-          newHistory.push(stateSnapshot);
-          return newHistory;
-        });
-        setHistoryIndex((prev) => prev + 1);
+        const newIndex = historyIndexRef.current + 1;
+        const newHistory = historyRef.current.slice(0, newIndex);
+        newHistory.push(stateSnapshot);
+
+        historyRef.current = newHistory;
+        historyIndexRef.current = newIndex;
+
+        setHistory(newHistory);
+        setHistoryIndex(newIndex);
       },
-      [historyIndex],
+      [],
     );
 
     const restoreHistoryState = useCallback(
@@ -2230,20 +2236,22 @@ const Canvas = forwardRef(
     );
 
     const undo = useCallback(() => {
-      if (historyIndex > 0) {
-        const newIndex = historyIndex - 1;
-        restoreHistoryState(history[newIndex]);
+      if (historyIndexRef.current > 0) {
+        const newIndex = historyIndexRef.current - 1;
+        restoreHistoryState(historyRef.current[newIndex]);
+        historyIndexRef.current = newIndex;
         setHistoryIndex(newIndex);
       }
-    }, [history, historyIndex, restoreHistoryState]);
+    }, [restoreHistoryState]);
 
     const redo = useCallback(() => {
-      if (historyIndex < history.length - 1) {
-        const newIndex = historyIndex + 1;
-        restoreHistoryState(history[newIndex]);
+      if (historyIndexRef.current < historyRef.current.length - 1) {
+        const newIndex = historyIndexRef.current + 1;
+        restoreHistoryState(historyRef.current[newIndex]);
+        historyIndexRef.current = newIndex;
         setHistoryIndex(newIndex);
       }
-    }, [history, historyIndex, restoreHistoryState]);
+    }, [restoreHistoryState]);
 
     const saveState = useCallback(() => {
       pushHistory(imagesRef.current, faceColorsRef.current);
@@ -2251,10 +2259,10 @@ const Canvas = forwardRef(
 
     // Initial history state
     useEffect(() => {
-      if (history.length === 0 && imagesRef.current) {
+      if (historyRef.current.length === 0 && imagesRef.current) {
         pushHistory(imagesRef.current, faceColorsRef.current);
       }
-    }, []); // Run once
+    }, [pushHistory]);
 
     // Debounced bake — called after interaction settles
     const scheduleBake = useCallback(() => {
@@ -3212,8 +3220,8 @@ const Canvas = forwardRef(
 
       img.width = (newRight - newLeft) * scale;
       img.height = (newBottom - newTop) * scale;
-      img.x = newGlobalCx * scale - img.width / 2;
-      img.y = newGlobalCy * scale - img.height / 2;
+      img.x = (newGlobalCx - offsetXRef.current) * scale - img.width / 2;
+      img.y = (newGlobalCy - offsetYRef.current) * scale - img.height / 2;
     };
 
     const handlePointerUp = (e) => {
@@ -3632,106 +3640,134 @@ const Canvas = forwardRef(
           : URL.createObjectURL(fileOrUrl);
       const img = new Image();
       img.onload = () => {
-        const newImg = new DraggableImage(img, textureSizeRef.current);
+        const handleImageReady = (loadedImg) => {
+          const newImg = new DraggableImage(loadedImg, textureSizeRef.current);
 
-        let minU = Infinity,
-          maxU = -Infinity,
-          minV = Infinity,
-          maxV = -Infinity;
-        let hasSelected = false;
+          let minU = Infinity,
+            maxU = -Infinity,
+            minV = Infinity,
+            maxV = -Infinity;
+          let hasSelected = false;
 
-        uvComponentsRef.current.forEach((comp) => {
-          if (selectedFacesRef.current.has(comp.id)) {
-            minU = Math.min(minU, comp.minU);
-            maxU = Math.max(maxU, comp.maxU);
-            minV = Math.min(minV, comp.minV);
-            maxV = Math.max(maxV, comp.maxV);
-            hasSelected = true;
-          }
-        });
-
-        if (hasSelected) {
-          const isTapeModel = !!(modelUrl && modelUrl.includes("Tape"));
-          let widthInTex = (maxU - minU) * textureSizeRef.current.width;
-          let heightInTex = (maxV - minV) * textureSizeRef.current.height;
-          let centerXInTex =
-            ((minU + maxU) / 2) * textureSizeRef.current.width;
-          let centerYInTex =
-            ((minV + maxV) / 2) * textureSizeRef.current.height;
-
-          if (isTapeModel) {
-            widthInTex = (maxV - minV) * textureSizeRef.current.width;
-            heightInTex = (maxU - minU) * textureSizeRef.current.height;
-            centerXInTex = (1 - ((minV + maxV) / 2)) * textureSizeRef.current.width;
-            centerYInTex = ((minU + maxU) / 2) * textureSizeRef.current.height;
-          }
-
-          let imgWidth, imgHeight;
-          if (fitType === "cover") {
-            imgWidth = widthInTex;
-            imgHeight = heightInTex;
-          } else if (fitType === "fit-short-edge") {
-            const imgW = img.naturalWidth || img.width || 300;
-            const imgH = img.naturalHeight || img.height || 300;
-            const imgAspect = imgW / imgH;
-            if (widthInTex < heightInTex) {
-              imgWidth = widthInTex;
-              imgHeight = widthInTex / imgAspect;
-            } else {
-              imgHeight = heightInTex;
-              imgWidth = heightInTex * imgAspect;
+          uvComponentsRef.current.forEach((comp) => {
+            if (selectedFacesRef.current.has(comp.id)) {
+              minU = Math.min(minU, comp.minU);
+              maxU = Math.max(maxU, comp.maxU);
+              minV = Math.min(minV, comp.minV);
+              maxV = Math.max(maxV, comp.maxV);
+              hasSelected = true;
             }
-          } else if (fitType === "contain") {
-            const boxAspect = widthInTex / heightInTex;
-            const imgW = img.naturalWidth || img.width || 300;
-            const imgH = img.naturalHeight || img.height || 300;
-            const imgAspect = imgW / imgH;
-            if (imgAspect > boxAspect) {
-              imgWidth = widthInTex;
-              imgHeight = widthInTex / imgAspect;
-            } else {
-              imgHeight = heightInTex;
-              imgWidth = heightInTex * imgAspect;
+          });
+
+          if (hasSelected) {
+            const isTapeModel = !!(modelUrl && modelUrl.includes("Tape"));
+            let widthInTex = (maxU - minU) * textureSizeRef.current.width;
+            let heightInTex = (maxV - minV) * textureSizeRef.current.height;
+            let centerXInTex =
+              ((minU + maxU) / 2) * textureSizeRef.current.width;
+            let centerYInTex =
+              ((minV + maxV) / 2) * textureSizeRef.current.height;
+
+            if (isTapeModel) {
+              widthInTex = (maxV - minV) * textureSizeRef.current.width;
+              heightInTex = (maxU - minU) * textureSizeRef.current.height;
+              centerXInTex = (1 - ((minV + maxV) / 2)) * textureSizeRef.current.width;
+              centerYInTex = ((minU + maxU) / 2) * textureSizeRef.current.height;
             }
+
+            let imgWidth, imgHeight;
+            if (fitType === "cover") {
+              imgWidth = widthInTex;
+              imgHeight = heightInTex;
+            } else if (fitType === "fit-short-edge") {
+              const imgW = loadedImg.naturalWidth || loadedImg.width || 300;
+              const imgH = loadedImg.naturalHeight || loadedImg.height || 300;
+              const imgAspect = imgW / imgH;
+              if (widthInTex < heightInTex) {
+                imgWidth = widthInTex;
+                imgHeight = widthInTex / imgAspect;
+              } else {
+                imgHeight = heightInTex;
+                imgWidth = heightInTex * imgAspect;
+              }
+            } else if (fitType === "contain") {
+              const boxAspect = widthInTex / heightInTex;
+              const imgW = loadedImg.naturalWidth || loadedImg.width || 300;
+              const imgH = loadedImg.naturalHeight || loadedImg.height || 300;
+              const imgAspect = imgW / imgH;
+              if (imgAspect > boxAspect) {
+                imgWidth = widthInTex;
+                imgHeight = widthInTex / imgAspect;
+              } else {
+                imgHeight = heightInTex;
+                imgWidth = heightInTex * imgAspect;
+              }
+            } else {
+              // Initial click: No fitType (it's null/undefined)
+              // Center the image inside the frame, but limit its size to a sensible portion of the frame (e.g. 35% of the frame)
+              const boxAspect = widthInTex / heightInTex;
+              const imgW = loadedImg.naturalWidth || loadedImg.width || 300;
+              const imgH = loadedImg.naturalHeight || loadedImg.height || 300;
+              const imgAspect = imgW / imgH;
+
+              // Target size is 35% of the frame's containment size
+              const targetMaxW = widthInTex * 0.35;
+              const targetMaxH = heightInTex * 0.35;
+
+              if (imgAspect > boxAspect) {
+                imgWidth = targetMaxW;
+                imgHeight = targetMaxW / imgAspect;
+              } else {
+                imgHeight = targetMaxH;
+                imgWidth = targetMaxH * imgAspect;
+              }
+            }
+
+            newImg.width = imgWidth;
+            newImg.height = imgHeight;
+            newImg.x = centerXInTex - imgWidth / 2;
+            newImg.y = centerYInTex - imgHeight / 2;
+          }
+
+          if (hasSelected) {
+            newImg.selectedFaceIds = Array.from(selectedFacesRef.current);
+            newImg.fitType = fitType;
+          }
+          imagesRef.current.push(newImg);
+          selectedImageRef.current = newImg;
+          setSelectedImage(newImg);
+          onSelectedLayerChangeRef.current?.(newImg);
+          needsDisplayRedrawRef.current = true;
+          bakeTexture();
+          saveState();
+          redrawDisplay();
+        };
+
+        if (img.width > 1536 || img.height > 1536) {
+          const canvas = document.createElement("canvas");
+          let w = img.width;
+          let h = img.height;
+          const maxDim = 1536;
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
           } else {
-            // Initial click: No fitType (it's null/undefined)
-            // Center the image inside the frame, but limit its size to a sensible portion of the frame (e.g. 35% of the frame)
-            const boxAspect = widthInTex / heightInTex;
-            const imgW = img.naturalWidth || img.width || 300;
-            const imgH = img.naturalHeight || img.height || 300;
-            const imgAspect = imgW / imgH;
-
-            // Target size is 35% of the frame's containment size
-            const targetMaxW = widthInTex * 0.35;
-            const targetMaxH = heightInTex * 0.35;
-
-            if (imgAspect > boxAspect) {
-              imgWidth = targetMaxW;
-              imgHeight = targetMaxW / imgAspect;
-            } else {
-              imgHeight = targetMaxH;
-              imgWidth = targetMaxH * imgAspect;
-            }
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
           }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
 
-          newImg.width = imgWidth;
-          newImg.height = imgHeight;
-          newImg.x = centerXInTex - imgWidth / 2;
-          newImg.y = centerYInTex - imgHeight / 2;
+          const downscaledImg = new Image();
+          downscaledImg.onload = () => {
+            handleImageReady(downscaledImg);
+          };
+          downscaledImg.src = canvas.toDataURL("image/jpeg", 0.85);
+        } else {
+          handleImageReady(img);
         }
-
-        if (hasSelected) {
-          newImg.selectedFaceIds = Array.from(selectedFacesRef.current);
-          newImg.fitType = fitType;
-        }
-        imagesRef.current.push(newImg);
-        selectedImageRef.current = newImg;
-        setSelectedImage(newImg);
-        onSelectedLayerChangeRef.current?.(newImg);
-        needsDisplayRedrawRef.current = true;
-        bakeTexture();
-        saveState();
-        redrawDisplay();
       };
       img.src = url;
     }
