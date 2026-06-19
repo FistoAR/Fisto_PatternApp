@@ -324,14 +324,29 @@ export default function EditorScreen2({
   const [leftTab, setLeftTab] = useState("uploads"); // 'uploads' | 'text'
 
   // ── Uploaded images ──────────────────────────────────────────────────────
-  const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploadedImages, setUploadedImages] = useState(() => {
+    try {
+      const saved = localStorage.getItem("fisto_uploaded_images");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("fisto_uploaded_images", JSON.stringify(uploadedImages));
+    } catch (e) {
+      console.error("Failed to save uploaded images to local storage:", e);
+    }
+  }, [uploadedImages]);
 
   // Reset local state when canvasResetKey changes (user clicked "Clear Design")
   const prevResetKeyRef = useRef(canvasResetKey);
   useEffect(() => {
     if (canvasResetKey !== prevResetKeyRef.current) {
       prevResetKeyRef.current = canvasResetKey;
-      setUploadedImages([]);
       setSelectedLayer(null);
       setIsFrameSelected(false);
       setCurrentSelectedFaces(new Set());
@@ -593,9 +608,9 @@ export default function EditorScreen2({
           <div className="flex-1 overflow-hidden flex flex-col pointer-events-auto">
             {leftTab === "uploads" && (
               <UploadsPopup
-                onUpload={(file, url, fitType, uploadType) => {
-                  if (url && !uploadedImages.some(i => (typeof i === 'string' ? i : i.url) === url)) {
-                    setUploadedImages((prev) => [{ url, type: uploadType || 'image' }, ...prev]);
+                onUpload={(file, url, fitType, uploadType, isDefault) => {
+                  if (url && !isDefault && !uploadedImages.some(i => (typeof i === 'string' ? i : i.url) === url)) {
+                    setUploadedImages((prev) => [{ url, type: uploadType || 'design' }, ...prev]);
                   }
                   const target = file || url;
                   if (target) {
@@ -610,6 +625,23 @@ export default function EditorScreen2({
                 isFrameSelected={isFrameSelected}
                 onApplyFit={(fitType) => {
                   canvasRef.current?.applyFitToSelectedImage(fitType);
+                }}
+                onUpdateTextureGaps={(rowGap, colGap) => {
+                  canvasRef.current?.updateSelectedTextureGaps(rowGap, colGap);
+                }}
+                onDeleteUploadedImage={(url) => {
+                  setUploadedImages(prev => prev.filter(item => (typeof item === 'string' ? item : item.url) !== url));
+                }}
+                onTogglePinUploadedImage={(url) => {
+                  setUploadedImages(prev => prev.map(item => {
+                    if (typeof item === 'string') {
+                      return item === url ? { url: item, type: 'design', pinned: true } : item;
+                    }
+                    if (item.url === url) {
+                      return { ...item, pinned: !item.pinned };
+                    }
+                    return item;
+                  }));
                 }}
               />
             )}

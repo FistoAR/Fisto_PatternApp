@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 
 // ── T-Shirt Graphics (14 images) ─────────────────────────────────────────────
 import tsg1  from "../../assets/images/Editor 2/t-shirtGraphics/1.webp";
-import tsg2  from "../../assets/images/Editor 2/t-shirtGraphics/2.webp";
+// import tsg2  from "../../assets/images/Editor 2/t-shirtGraphics/2.webp";
 import tsg3  from "../../assets/images/Editor 2/t-shirtGraphics/3.webp";
 import tsg4  from "../../assets/images/Editor 2/t-shirtGraphics/4.webp";
 import tsg5  from "../../assets/images/Editor 2/t-shirtGraphics/5.webp";
@@ -13,10 +13,10 @@ import tsg9  from "../../assets/images/Editor 2/t-shirtGraphics/9.webp";
 import tsg10 from "../../assets/images/Editor 2/t-shirtGraphics/10.webp";
 import tsg11 from "../../assets/images/Editor 2/t-shirtGraphics/11.webp";
 import tsg12 from "../../assets/images/Editor 2/t-shirtGraphics/12.webp";
-import tsg13 from "../../assets/images/Editor 2/t-shirtGraphics/13.webp";
+// import tsg13 from "../../assets/images/Editor 2/t-shirtGraphics/13.webp";
 import tsg14 from "../../assets/images/Editor 2/t-shirtGraphics/14.webp";
 
-const tShirtGraphics = [tsg1,tsg2,tsg3,tsg4,tsg5,tsg6,tsg7,tsg8,tsg9,tsg10,tsg11,tsg12,tsg13,tsg14];
+const tShirtGraphics = [tsg1,tsg3,tsg4,tsg5,tsg6,tsg7,tsg8,tsg9,tsg10,tsg11,tsg12,tsg14];
 
 // ── Carry Bag Graphics (9 images) ─────────────────────────────────────────────
 import cb1 from "../../assets/images/Editor 2/carryBag/1.jpg";
@@ -30,6 +30,14 @@ import cb8 from "../../assets/images/Editor 2/carryBag/8.jpg";
 import cb9 from "../../assets/images/Editor 2/carryBag/9.jpg";
 
 const carryBagGraphics = [cb1, cb2, cb3, cb4, cb5, cb6, cb7, cb8, cb9];
+
+// ── Floral Graphics (glob import) ─────────────────────────────────────────────
+const floralImagesGlob = import.meta.glob("../../assets/images/Editor 2/Floral/*.{png,jpg,jpeg,PNG,JPG,JPEG,webp,WEBP}", { eager: true, import: "default" });
+const floralGraphics = Object.values(floralImagesGlob);
+
+// ── Damask Graphics (glob import) ─────────────────────────────────────────────
+const damaskImagesGlob = import.meta.glob("../../assets/images/Editor 2/Da Mask/*.{png,jpg,jpeg,PNG,JPG,JPEG,webp,WEBP}", { eager: true, import: "default" });
+const damaskGraphics = Object.values(damaskImagesGlob);
 
 // ── Upload type options ───────────────────────────────────────────────────────
 const UPLOAD_TYPES = [
@@ -63,10 +71,10 @@ const UPLOAD_TYPES = [
 ];
 
 // ── User asset categories ─────────────────────────────────────────────────────
-const USER_CATEGORIES = ['All', 'Logo', 'Pattern', 'design'];
+const USER_CATEGORIES = ['All', 'Design', 'Logo', 'Pattern'];
 
 // ── Default asset sub-tabs ────────────────────────────────────────────────────
-const DEFAULT_TABS = ['T-Shirt Graphics', 'Patterns', 'Material', 'Carry Bag'];
+const DEFAULT_TABS = ['T-Shirt', 'Patterns', 'Carry Bag', 'Floral', 'Damask'];
 
 // ── Small pill tab ────────────────────────────────────────────────────────────
 function PillTab({ label, active, onClick, count }) {
@@ -109,7 +117,7 @@ function PillTab({ label, active, onClick, count }) {
 }
 
 // ── Image tile ────────────────────────────────────────────────────────────────
-function ImageTile({ url, alt, onClick, onContextMenu }) {
+function ImageTile({ url, alt, onClick, onContextMenu, pinned }) {
   return (
     <button
       onClick={onClick}
@@ -134,7 +142,24 @@ function ImageTile({ url, alt, onClick, onContextMenu }) {
         e.currentTarget.style.boxShadow = 'none';
       }}
     >
-      <img src={url} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }} />
+      <img 
+        src={url} 
+        alt={alt} 
+        loading="lazy"
+        decoding="async"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }} 
+      />
+      {pinned && (
+        <div style={{
+          position: 'absolute', top: 4, right: 4, background: '#c0623a', color: '#fff',
+          borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.15)', zIndex: 10
+        }}>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" style={{ width: 10, height: 10 }}>
+            <path d="M16 12V4h1v-2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+          </svg>
+        </div>
+      )}
     </button>
   );
 }
@@ -152,48 +177,112 @@ function EmptyState({ label }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSelected, onApplyFit, selectedLayer }) {
+export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSelected, onApplyFit, selectedLayer, onUpdateTextureGaps, onDeleteUploadedImage, onTogglePinUploadedImage }) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
   const [mainTab, setMainTab] = useState('your'); // 'your' | 'default'
   const [userCategory, setUserCategory] = useState('All');
-  const [defaultTab, setDefaultTab] = useState('T-Shirt Graphics');
+  const [defaultTab, setDefaultTab] = useState('T-Shirt');
+  const [visibleCount, setVisibleCount] = useState(9);
+
+  useEffect(() => {
+    setVisibleCount(9);
+    const timer = setTimeout(() => {
+      setVisibleCount(999);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [defaultTab]);
   const [contextMenu, setContextMenu] = useState(null);
   const [warningMessage, setWarningMessage] = useState('');
+  const [rowGap, setRowGap] = useState(0);
+  const [colGap, setColGap] = useState(0);
   const [isYourDropdownOpen, setIsYourDropdownOpen] = useState(false);
   const [isDefaultDropdownOpen, setIsDefaultDropdownOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const containerRef = useRef(null);
   const warningTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    
+    const checkOverflow = () => {
+      // 310px threshold fits 4 category pills + gaps without overflow
+      if (el.clientWidth < 310) {
+        setShowDropdown(true);
+      } else {
+        setShowDropdown(false);
+      }
+    };
+
+    checkOverflow();
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (selectedLayer && selectedLayer.fitType === 'texture') {
+      setRowGap(selectedLayer.rowGap || 0);
+      setColGap(selectedLayer.colGap || 0);
+    }
+  }, [selectedLayer]);
 
   // ── Categorised user uploads (stored per type) ─────────────────────────────
   // uploadedImages is [{url, type}] or just strings for backward-compat
   const normalizeUploads = (imgs) =>
-    imgs.map(item =>
-      typeof item === 'string' ? { url: item, type: 'image' } : item
-    );
+    imgs.map(item => {
+      const obj = typeof item === 'string' ? { url: item, type: 'design' } : item;
+      return {
+        ...obj,
+        type: (obj.type === 'image' || obj.type === 'designes' || obj.type === 'designs') ? 'design' : obj.type,
+        pinned: !!obj.pinned
+      };
+    });
   const allUploads = normalizeUploads(uploadedImages);
+
+  // Sort uploads so that pinned items are displayed first
+  const sortedAllUploads = [...allUploads].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return 0;
+  });
 
   const categoryCounts = USER_CATEGORIES.reduce((acc, cat) => {
     acc[cat] = cat === 'All'
-      ? allUploads.length
-      : allUploads.filter(i => i.type === cat.toLowerCase()).length;
+      ? sortedAllUploads.length
+      : sortedAllUploads.filter(i => i.type === cat.toLowerCase()).length;
     return acc;
   }, {});
 
-  const filteredUploads = userCategory === 'All'
-    ? allUploads
-    : allUploads.filter(i => i.type === userCategory.toLowerCase());
+  const visibleCategories = showDropdown
+    ? USER_CATEGORIES.filter((c, i) => i < 2 || c === userCategory)
+    : USER_CATEGORIES;
 
-  const logoUploads = allUploads.filter(i => i.type === 'logo');
-  const patternUploads = allUploads.filter(i => i.type === 'pattern');
-  const imageUploads = allUploads.filter(i => i.type === 'image');
+  const dropdownCategories = USER_CATEGORIES.filter(c => !visibleCategories.includes(c));
+
+  const filteredUploads = userCategory === 'All'
+    ? sortedAllUploads
+    : sortedAllUploads.filter(i => i.type === userCategory.toLowerCase());
+
+  const logoUploads = sortedAllUploads.filter(i => i.type === 'logo');
+  const patternUploads = sortedAllUploads.filter(i => i.type === 'pattern');
+  const designUploads = sortedAllUploads.filter(i => i.type === 'design');
+
+  const visibleDefaultTabs = defaultTab === 'T-Shirt'
+    ? ['T-Shirt', 'Patterns']
+    : ['T-Shirt', defaultTab];
+  const dropdownDefaultTabs = DEFAULT_TABS.filter(c => !visibleDefaultTabs.includes(c));
 
   // ── Default assets by sub-tab ──────────────────────────────────────────────
   const defaultAssets = {
-    'T-Shirt Graphics': tShirtGraphics,
+    'T-Shirt': tShirtGraphics,
     'Patterns': [],      // add pattern imports here when available
     'Material': [],      // add material imports here when available
     'Carry Bag': carryBagGraphics,
+    'Floral': floralGraphics,
+    'Damask': damaskGraphics,
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -237,7 +326,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
     <div style={{ width: '100%', height: '100%', minHeight: 0, background: '#fff', borderRadius: 15, boxShadow: '0 8px 30px rgba(0,0,0,0.08)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Scrollable Body ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 20px', display: 'flex', flexDirection: 'column', gap: 2, scrollbarWidth: 'thin' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 20px 20px', display: 'flex', flexDirection: 'column', gap: 2, scrollbarWidth: 'thin' }}>
 
         {/* ── 1. Upload Type Selector ── */}
         <div style={{ flexShrink: 0 }} className='mb-5'>
@@ -401,6 +490,8 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
               );
             })}
           </div>
+          
+
           {warningMessage && (
             <div style={{ marginTop: 8, fontSize: 11, color: accentBg, background: accentLight, border: `1px solid #ffebd8`, borderRadius: 8, padding: '7px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 15, height: 15, flexShrink: 0 }}>
@@ -436,9 +527,12 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
           {mainTab === 'your' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Category chips with count */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between', position: 'relative', flexShrink: 0 }}>
-                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'thin' }}>
-                  {USER_CATEGORIES.filter((c, i) => i < 2 || c === userCategory).map(cat => (
+              <div 
+                ref={containerRef}
+                style={{ display: 'flex', gap: '5px', alignItems: 'center', justifyContent: 'space-between', position: 'relative', flexShrink: 0, width: '100%' }}
+              >
+                <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'nowrap' }}>
+                  {visibleCategories.map(cat => (
                     <PillTab
                       key={cat}
                       label={cat}
@@ -449,65 +543,67 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                   ))}
                 </div>
 
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <button
-                    onClick={() => setIsYourDropdownOpen(!isYourDropdownOpen)}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: '20px',
-                      fontSize: '11px',
-                      background: isYourDropdownOpen ? '#f3f4f6' : 'transparent',
-                      color: '#6b7280',
-                      border: '1.5px solid #e5e7eb',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: 12, height: 12 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
-                  </button>
-                  {isYourDropdownOpen && (
-                    <>
-                      <div
-                        style={{ position: 'fixed', inset: 0, zIndex: 40 }}
-                        onClick={() => setIsYourDropdownOpen(false)}
-                      />
-                      <div style={{
-                        position: 'absolute', right: 0, top: '100%', marginTop: '6px',
-                        width: '140px', background: '#fff', border: '1px solid #e5e7eb',
-                        borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                        zIndex: 50, maxHeight: '200px', overflowY: 'auto', padding: '6px 0',
-                        display: 'flex', flexDirection: 'column',
-                      }}>
-                        {USER_CATEGORIES.map(cat => (
-                          <button
-                            key={cat}
-                            onClick={() => {
-                              setUserCategory(cat);
-                              setIsYourDropdownOpen(false);
-                            }}
-                            style={{
-                              width: '100%', padding: '8px 16px', border: 'none', background: 'transparent',
-                              textAlign: 'left', fontSize: '11px', fontWeight: 600,
-                              color: userCategory === cat ? '#c0623a' : '#374151',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {cat} ({categoryCounts[cat]})
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
+                {showDropdown && dropdownCategories.length > 0 && (
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <button
+                      onClick={() => setIsYourDropdownOpen(!isYourDropdownOpen)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '20px',
+                        fontSize: '11px',
+                        background: isYourDropdownOpen ? '#f3f4f6' : 'transparent',
+                        color: '#6b7280',
+                        border: '1.5px solid #e5e7eb',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: 12, height: 12 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    {isYourDropdownOpen && (
+                      <>
+                        <div
+                          style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                          onClick={() => setIsYourDropdownOpen(false)}
+                        />
+                        <div style={{
+                          position: 'absolute', right: 0, top: '100%', marginTop: '6px',
+                          width: '140px', background: '#fff', border: '1px solid #e5e7eb',
+                          borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                          zIndex: 50, maxHeight: '200px', overflowY: 'auto', padding: '6px 0',
+                          display: 'flex', flexDirection: 'column',
+                        }}>
+                          {dropdownCategories.map(cat => (
+                            <button
+                              key={cat}
+                              onClick={() => {
+                                setUserCategory(cat);
+                                setIsYourDropdownOpen(false);
+                              }}
+                              style={{
+                                width: '100%', padding: '8px 16px', border: 'none', background: 'transparent',
+                                textAlign: 'left', fontSize: '11px', fontWeight: 600,
+                                color: userCategory === cat ? '#c0623a' : '#374151',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {cat} ({categoryCounts[cat]})
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               {/* Grid / Grouped Content */}
               {userCategory === 'All' ? (
-                allUploads.length === 0 ? (
+                sortedAllUploads.length === 0 ? (
                   <EmptyState label="No assets uploaded yet." />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -520,8 +616,9 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                               key={idx}
                               url={item.url}
                               alt={`Logo ${idx}`}
+                              pinned={item.pinned}
                               onClick={() => onUpload(null, item.url)}
-                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, item }); }}
                             />
                           ))}
                         </div>
@@ -536,24 +633,26 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                               key={idx}
                               url={item.url}
                               alt={`Pattern ${idx}`}
+                              pinned={item.pinned}
                               onClick={() => onUpload(null, item.url)}
-                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, item }); }}
                             />
                           ))}
                         </div>
                       </div>
                     )}
-                    {imageUploads.length > 0 && (
+                    {designUploads.length > 0 && (
                       <div>
                         <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Design</h4>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                          {imageUploads.map((item, idx) => (
+                          {designUploads.map((item, idx) => (
                             <ImageTile
                               key={idx}
                               url={item.url}
                               alt={`Image ${idx}`}
+                              pinned={item.pinned}
                               onClick={() => onUpload(null, item.url)}
-                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, item }); }}
                             />
                           ))}
                         </div>
@@ -571,8 +670,9 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                         key={idx}
                         url={item.url}
                         alt={`Upload ${idx}`}
+                        pinned={item.pinned}
                         onClick={() => onUpload(null, item.url)}
-                        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, item }); }}
                       />
                     ))
                   )}
@@ -585,9 +685,11 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
           {mainTab === 'default' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Sub-tab chips */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between', position: 'relative', flexShrink: 0 }}>
-                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'thin' }}>
-                  {DEFAULT_TABS.filter((c, i) => i < 2 || c === defaultTab).map(tab => (
+              <div 
+                style={{ display: 'flex', gap: '5px', alignItems: 'center', justifyContent: 'space-between', position: 'relative', flexShrink: 0, width: '100%' }}
+              >
+                <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'nowrap' }}>
+                  {visibleDefaultTabs.map(tab => (
                     <PillTab
                       key={tab}
                       label={tab}
@@ -598,74 +700,75 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                   ))}
                 </div>
 
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <button
-                    onClick={() => setIsDefaultDropdownOpen(!isDefaultDropdownOpen)}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: '20px',
-                      fontSize: '11px',
-                      background: isDefaultDropdownOpen ? '#f3f4f6' : 'transparent',
-                      color: '#6b7280',
-                      border: '1.5px solid #e5e7eb',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: 12, height: 12 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
-                  </button>
-                  {isDefaultDropdownOpen && (
-                    <>
-                      <div
-                        style={{ position: 'fixed', inset: 0, zIndex: 40 }}
-                        onClick={() => setIsDefaultDropdownOpen(false)}
-                      />
-                      <div style={{
-                        position: 'absolute', right: 0, top: '100%', marginTop: '6px',
-                        width: '140px', background: '#fff', border: '1px solid #e5e7eb',
-                        borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                        zIndex: 50, maxHeight: '200px', overflowY: 'auto', padding: '6px 0',
-                        display: 'flex', flexDirection: 'column',
-                      }}>
-                        {DEFAULT_TABS.map(tab => (
-                          <button
-                            key={tab}
-                            onClick={() => {
-                              setDefaultTab(tab);
-                              setIsDefaultDropdownOpen(false);
-                            }}
-                            style={{
-                              width: '100%', padding: '8px 16px', border: 'none', background: 'transparent',
-                              textAlign: 'left', fontSize: '11px', fontWeight: 600,
-                              color: defaultTab === tab ? '#c0623a' : '#374151',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {tab} ({defaultAssets[tab].length})
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
+                {dropdownDefaultTabs.length > 0 && (
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <button
+                      onClick={() => setIsDefaultDropdownOpen(!isDefaultDropdownOpen)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '20px',
+                        fontSize: '11px',
+                        background: isDefaultDropdownOpen ? '#f3f4f6' : 'transparent',
+                        color: '#6b7280',
+                        border: '1.5px solid #e5e7eb',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: 12, height: 12 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    {isDefaultDropdownOpen && (
+                      <>
+                        <div
+                          style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                          onClick={() => setIsDefaultDropdownOpen(false)}
+                        />
+                        <div style={{
+                          position: 'absolute', right: 0, top: '100%', marginTop: '6px',
+                          width: '140px', background: '#fff', border: '1px solid #e5e7eb',
+                          borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                          zIndex: 50, maxHeight: '200px', overflowY: 'auto', padding: '6px 0',
+                          display: 'flex', flexDirection: 'column',
+                        }}>
+                          {dropdownDefaultTabs.map(tab => (
+                            <button
+                              key={tab}
+                              onClick={() => {
+                                setDefaultTab(tab);
+                                setIsDefaultDropdownOpen(false);
+                              }}
+                              style={{
+                                width: '100%', padding: '8px 16px', border: 'none', background: 'transparent',
+                                textAlign: 'left', fontSize: '11px', fontWeight: 600,
+                                color: defaultTab === tab ? '#c0623a' : '#374151',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {tab} ({defaultAssets[tab].length})
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               {/* Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {defaultAssets[defaultTab].length === 0 ? (
                   <EmptyState label={`No ${defaultTab} assets yet.`} />
                 ) : (
-                  defaultAssets[defaultTab].map((url, idx) => (
+                  defaultAssets[defaultTab].slice(0, visibleCount).map((url, idx) => (
                     <ImageTile
                       key={idx}
                       url={url}
                       alt={`${defaultTab} ${idx + 1}`}
-                      onClick={() => onUpload(null, url)}
-                      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url }); }}
+                      onClick={() => onUpload(null, url, undefined, undefined, true)}
                     />
                   ))
                 )}
@@ -685,27 +788,41 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
           }}
           onClick={e => e.stopPropagation()}
         >
-          <div style={{ padding: '4px 12px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Resize &amp; Fit</div>
-          {['contain', 'cover'].map(fit => (
-            <button key={fit} onClick={() => { onUpload(null, contextMenu.url, fit); setContextMenu(null); }}
-              style={{ width: '100%', padding: '8px 12px', fontSize: 12, fontWeight: 500, color: '#374151', display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = accentLight; e.currentTarget.style.color = accentBg; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#374151'; }}
-            >
-              {fit === 'contain' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13, flexShrink: 0 }}>
-                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
-                  <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13, flexShrink: 0 }}>
-                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
-                  <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
-                </svg>
-              )}
-              {fit.charAt(0).toUpperCase() + fit.slice(1)}
-            </button>
-          ))}
+          <div style={{ padding: '4px 12px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Options</div>
+          
+          <button 
+            onClick={() => { 
+              if (onTogglePinUploadedImage) {
+                onTogglePinUploadedImage(contextMenu.item.url);
+              }
+              setContextMenu(null); 
+            }}
+            style={{ width: '100%', padding: '8px 12px', fontSize: 12, fontWeight: 500, color: '#374151', display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = accentLight; e.currentTarget.style.color = accentBg; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" style={{ width: 13, height: 13, flexShrink: 0 }}>
+              <path d="M16 12V4h1v-2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+            </svg>
+            {contextMenu.item?.pinned ? 'Unpin' : 'Pin to Top'}
+          </button>
+
+          <button 
+            onClick={() => { 
+              if (onDeleteUploadedImage) {
+                onDeleteUploadedImage(contextMenu.item.url);
+              }
+              setContextMenu(null); 
+            }}
+            style={{ width: '100%', padding: '8px 12px', fontSize: 12, fontWeight: 500, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 7, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+            Delete
+          </button>
         </div>
       )}
     </div>

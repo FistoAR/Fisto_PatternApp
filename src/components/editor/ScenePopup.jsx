@@ -92,14 +92,17 @@ export default function ScenePopup({
               />
             </div>
             <div className="flex-1 grid grid-cols-5 gap-2">
-              {['#e6e2db', '#ffffff', '#1a1a1a', '#2c3e50', '#c05520'].map(color => (
-                <button
-                  key={color}
-                  onClick={() => setBgColor(color)}
-                  className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${bgColor === color ? 'border-gray-900 shadow-md' : 'border-gray-200'}`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
+              {['#e6e2db', '#ffffff', '#1a1a1a', '#2c3e50', '#c05520'].map(color => {
+                const isSelected = bgColor === color;
+                return (
+                  <button
+                    key={color}
+                    onClick={() => setBgColor(color)}
+                    className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${isSelected ? 'border-gray-900 shadow-md' : 'border-gray-200'}`}
+                    style={{ backgroundColor: color }}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>

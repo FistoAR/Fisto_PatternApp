@@ -1252,11 +1252,12 @@ export default function EditorScreen1({
           dpr={[1, 2]}
           gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
           shadows={shadowEnabled ? { type: THREE.PCFShadowMap } : false}
+          onPointerMissed={() => setSelectedMaterial(null)}
           onCreated={({ gl, camera }) => {
             gl.outputColorSpace = THREE.SRGBColorSpace;
             gl.toneMapping = THREE.ACESFilmicToneMapping;
             gl.toneMappingExposure = 0.9;
-            gl.setClearColor(new THREE.Color(bgColor), 1);
+            gl.setClearColor(new THREE.Color(bgColor === 'transparent' ? '#ffffff' : bgColor), bgColor === 'transparent' ? 0 : 1);
             if (shadowEnabled) {
               gl.shadowMap.enabled = true;
               gl.shadowMap.type = THREE.PCFShadowMap;
@@ -1264,7 +1265,7 @@ export default function EditorScreen1({
             cameraRef.current = camera;
           }}
         >
-          {!bgImage && <color attach="background" args={[bgColor]} />}
+          {!bgImage && bgColor !== 'transparent' && <color attach="background" args={[bgColor]} />}
           {bgImage && (
             <Suspense fallback={null}>
               <BackgroundImage url={bgImage} />
@@ -1706,18 +1707,25 @@ export default function EditorScreen1({
                     className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0 z-10"
                   />
                 </div>
-                <div className="flex-1 grid grid-cols-5 gap-2">
-                  {["#e6e2db", "#ffffff", "#1a1a1a", "#2c3e50", "#c05520"].map(
-                    (color) => (
-                      <button
-                        key={color}
-                        onClick={() =>
-                          onApplyColor && onApplyColor(selectedMaterial, color)
-                        }
-                        className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${appliedColors?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] === color ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ),
+                <div className="flex-1 grid grid-cols-6 gap-2">
+                  {["transparent", "#e6e2db", "#ffffff", "#1a1a1a", "#2c3e50", "#c05520"].map(
+                    (color) => {
+                      const isSelected = appliedColors?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] === color;
+                      const backgroundStyle = color === 'transparent'
+                        ? 'conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)'
+                        : color;
+                      const backgroundSize = color === 'transparent' ? '8px 8px' : undefined;
+                      return (
+                        <button
+                          key={color}
+                          onClick={() =>
+                            onApplyColor && onApplyColor(selectedMaterial, color)
+                          }
+                          className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
+                          style={{ background: backgroundStyle, backgroundSize: backgroundSize }}
+                        />
+                      );
+                    }
                   )}
                 </div>
               </div>
@@ -2900,12 +2908,12 @@ const ScreenshotHelper = forwardRef(({ filename, bgColor }, ref) => {
       gl.setPixelRatio(3); // High-res export multiplier
 
       const doExport = async (format, transparent) => {
-        if (transparent) {
+        if (transparent || bgColor === 'transparent') {
           gl.setClearColor(0x000000, 0); // Transparent background
           scene.background = null;
         } else {
-          gl.setClearColor(new THREE.Color(bgColor), 1); // Solid background
-          scene.background = new THREE.Color(bgColor);
+          gl.setClearColor(new THREE.Color(bgColor === 'transparent' ? '#ffffff' : bgColor), 1); // Solid background
+          scene.background = new THREE.Color(bgColor === 'transparent' ? '#ffffff' : bgColor);
         }
 
         gl.render(scene, camera);

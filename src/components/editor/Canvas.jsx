@@ -57,6 +57,8 @@ class DraggableImage {
     this.locked = false;
     this.selectedFaceIds = [];
     this.fitType = null;
+    this.rowGap = 0;
+    this.colGap = 0;
     this.filteredCanvas = null;
     this.filteredCtx = null;
   }
@@ -75,6 +77,8 @@ class DraggableImage {
     copy.locked = this.locked;
     copy.selectedFaceIds = [...(this.selectedFaceIds || [])];
     copy.fitType = this.fitType;
+    copy.rowGap = this.rowGap;
+    copy.colGap = this.colGap;
     copy.erasedColors = JSON.parse(JSON.stringify(this.erasedColors || []));
     if (this.filteredCanvas) {
       copy.filteredCanvas = document.createElement("canvas");
@@ -208,10 +212,30 @@ class DraggableImage {
 
     const source = this.filteredCanvas || this.img;
     if (this.fitType === "texture") {
-      const pattern = ctx.createPattern(source, 'repeat');
+      const colGap = this.colGap || 0;
+      const rowGap = this.rowGap || 0;
+      let patternSource = source;
+
+      if (colGap > 0 || rowGap > 0) {
+        const gapCanvas = document.createElement('canvas');
+        const imgW = source.naturalWidth || source.width || 100;
+        const imgH = source.naturalHeight || source.height || 100;
+        gapCanvas.width = imgW + colGap;
+        gapCanvas.height = imgH + rowGap;
+        const gapCtx = gapCanvas.getContext('2d');
+        if (gapCtx) {
+          gapCtx.clearRect(0, 0, gapCanvas.width, gapCanvas.height);
+          gapCtx.drawImage(source, 0, 0, imgW, imgH);
+          patternSource = gapCanvas;
+        }
+      }
+
+      const pattern = ctx.createPattern(patternSource, 'repeat');
       if (pattern) {
-        const scaleX = scaledW / (source.naturalWidth || source.width || 100);
-        const scaleY = scaledH / (source.naturalHeight || source.height || 100);
+        const imgW = source.naturalWidth || source.width || 100;
+        const imgH = source.naturalHeight || source.height || 100;
+        const scaleX = scaledW / imgW;
+        const scaleY = scaledH / imgH;
         if (typeof DOMMatrix !== 'undefined') {
           const matrix = new DOMMatrix().scale(scaleX, scaleY);
           pattern.setTransform(matrix);
@@ -2645,8 +2669,6 @@ const Canvas = forwardRef(
     // --- Pointer handlers ---
 
     const handlePointerDown = (e) => {
-      if (e.button === 2) return;
-
       if (contextMenu.open) {
         setContextMenu({ open: false, x: 0, y: 0, mode: "image" });
         contextMenuTargetRef.current = null;
@@ -2661,6 +2683,32 @@ const Canvas = forwardRef(
       const scale = canvasScaleRef.current;
 
       const interaction = interactionRef.current;
+
+      if (e.button === 2) {
+        let clickedImage = null;
+        for (let i = imagesRef.current.length - 1; i >= 0; i--) {
+          const img = imagesRef.current[i];
+          if (img.contains(mx, my, scale, offsetXRef.current, offsetYRef.current, uvComponentsRef.current, !!(modelUrl && modelUrl.includes("Tape")), uvContentWRef.current || displayCanvas.width, uvContentHRef.current || displayCanvas.height) && !img.locked) {
+            clickedImage = img;
+            break;
+          }
+        }
+        if (clickedImage && clickedImage.fitType === "texture") {
+          interaction.potentialRightClickDuplicate = true;
+          interaction.potentialRightClickImage = clickedImage;
+          interaction.startX = e.clientX;
+          interaction.startY = e.clientY;
+          interaction.startMx = mx;
+          interaction.startMy = my;
+          
+          displayCanvas.setPointerCapture(e.pointerId);
+          interaction.isDragging = true;
+          interaction.mode = HANDLE.NONE;
+          return;
+        } else {
+          return;
+        }
+      }
 
       if (toolMode === "hand" || e.button === 1) {
         interaction.isDragging = true;
@@ -2862,7 +2910,7 @@ const Canvas = forwardRef(
         if (clickedFace) {
           const facesToToggle = getFacesToSelect(clickedFace);
 
-          if (toolMode === "multiselect") {
+          if (toolMode === "multiselect" || e.shiftKey) {
             const nextFaces = new Set(selectedFacesRef.current);
             if (nextFaces.has(clickedFace)) {
               facesToToggle.forEach((fid) => nextFaces.delete(fid));
@@ -2926,6 +2974,41 @@ const Canvas = forwardRef(
     const handlePointerMove = (e) => {
       const interaction = interactionRef.current;
       if (!interaction.isDragging) return;
+
+      if (interaction.potentialRightClickDuplicate) {
+        const dist = Math.hypot(e.clientX - interaction.startX, e.clientY - interaction.startY);
+        if (dist > 4) {
+          const clickedImage = interaction.potentialRightClickImage;
+          const copy = clickedImage.clone(0);
+          copy.x = clickedImage.x;
+          copy.y = clickedImage.y;
+          imagesRef.current.push(copy);
+          
+          selectedImageRef.current = copy;
+          setSelectedImage(copy);
+          onSelectedLayerChangeRef.current?.(copy);
+          
+          interaction.mode = HANDLE.MOVE;
+          interaction.startImgX = copy.x;
+          interaction.startImgY = copy.y;
+          
+          const displayCanvas = displayCanvasRef.current;
+          if (displayCanvas) {
+            const rect = displayCanvas.getBoundingClientRect();
+            interaction.startMx = (e.clientX - rect.left) / zoom;
+            interaction.startMy = (e.clientY - rect.top) / zoom;
+          }
+          
+          interaction.rightClickDuplicated = true;
+          interaction.potentialRightClickDuplicate = false;
+          interaction.potentialRightClickImage = null;
+          
+          setCursor("move");
+          startRenderLoop();
+        } else {
+          return;
+        }
+      }
 
       if (interaction.isPanning) {
         let dx = e.clientX - interaction.startX;
@@ -3142,6 +3225,13 @@ const Canvas = forwardRef(
 
       displayCanvas.releasePointerCapture(e.pointerId);
 
+      if (interaction.potentialRightClickDuplicate) {
+        interaction.potentialRightClickDuplicate = false;
+        interaction.potentialRightClickImage = null;
+        interaction.isDragging = false;
+        return;
+      }
+
       if (interaction.isSelecting) {
         interaction.isSelecting = false;
         
@@ -3193,7 +3283,7 @@ const Canvas = forwardRef(
             if (clickedFace) {
               const facesToToggle = getFacesToSelect(clickedFace);
 
-              if (toolMode === "multiselect") {
+              if (toolMode === "multiselect" || e.shiftKey) {
                 const nextFaces = new Set(selectedFacesRef.current);
                 if (nextFaces.has(clickedFace)) {
                   facesToToggle.forEach((fid) => nextFaces.delete(fid));
@@ -3396,6 +3486,10 @@ const Canvas = forwardRef(
 
     const handleContextMenu = (e) => {
       e.preventDefault();
+      if (interactionRef.current.rightClickDuplicated) {
+        interactionRef.current.rightClickDuplicated = false;
+        return;
+      }
       const displayCanvas = displayCanvasRef.current;
       if (!displayCanvas) return;
 
@@ -3824,6 +3918,16 @@ const Canvas = forwardRef(
         needsDisplayRedrawRef.current = true;
         bakeTexture();
         redrawDisplay();
+      },
+      updateSelectedTextureGaps: (rowGap, colGap) => {
+        const sel = selectedImageRef.current;
+        if (!sel || sel.fitType !== "texture") return;
+        sel.rowGap = rowGap;
+        sel.colGap = colGap;
+        needsDisplayRedrawRef.current = true;
+        bakeTexture();
+        redrawDisplay();
+        onSelectedLayerChangeRef.current?.({ ...sel });
       },
       getSelectedLayer: () => selectedImageRef.current,
       getCleanTexture: () => {
