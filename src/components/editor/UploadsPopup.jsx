@@ -52,8 +52,8 @@ const UPLOAD_TYPES = [
     ),
   },
   {
-    id: 'image',
-    label: 'Image',
+    id: 'design',
+    label: 'Design',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -63,7 +63,7 @@ const UPLOAD_TYPES = [
 ];
 
 // ── User asset categories ─────────────────────────────────────────────────────
-const USER_CATEGORIES = ['All', 'Logo', 'Pattern', 'Image'];
+const USER_CATEGORIES = ['All', 'Logo', 'Pattern', 'design'];
 
 // ── Default asset sub-tabs ────────────────────────────────────────────────────
 const DEFAULT_TABS = ['T-Shirt Graphics', 'Patterns', 'Material', 'Carry Bag'];
@@ -155,7 +155,7 @@ function EmptyState({ label }) {
 export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSelected, onApplyFit, selectedLayer }) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [selectedType, setSelectedType] = useState('logo');
+  const [selectedType, setSelectedType] = useState(null);
   const [mainTab, setMainTab] = useState('your'); // 'your' | 'default'
   const [userCategory, setUserCategory] = useState('All');
   const [defaultTab, setDefaultTab] = useState('T-Shirt Graphics');
@@ -163,7 +163,6 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
   const [warningMessage, setWarningMessage] = useState('');
   const [isYourDropdownOpen, setIsYourDropdownOpen] = useState(false);
   const [isDefaultDropdownOpen, setIsDefaultDropdownOpen] = useState(false);
-  const [isUploadCollapsed, setIsUploadCollapsed] = useState(false);
   const warningTimeoutRef = useRef(null);
 
   // ── Categorised user uploads (stored per type) ─────────────────────────────
@@ -238,42 +237,65 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
     <div style={{ width: '100%', height: '100%', minHeight: 0, background: '#fff', borderRadius: 15, boxShadow: '0 8px 30px rgba(0,0,0,0.08)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Scrollable Body ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16, scrollbarWidth: 'thin' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 20px', display: 'flex', flexDirection: 'column', gap: 2, scrollbarWidth: 'thin' }}>
 
-        {!isUploadCollapsed && (
+        {/* ── 1. Upload Type Selector ── */}
+        <div style={{ flexShrink: 0 }} className='mb-5'>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Upload as</p>
+          <div style={{ display: 'grid', gridTemplateColumns: selectedType ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: 8 }}>
+            {UPLOAD_TYPES.map(t => {
+              const active = selectedType === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedType(t.id)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                    padding: '10px 4px',
+                    borderRadius: 10,
+                    border: active ? `2px solid ${accentBg}` : `1.5px solid ${borderClr}`,
+                    background: active ? accentLight : '#f9fafb',
+                    color: active ? accentBg : '#6b7280',
+                    cursor: 'pointer',
+                    fontWeight: active ? 700 : 500,
+                    fontSize: 10,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {t.icon}
+                  {t.label}
+                </button>
+              );
+            })}
+            {/* Cancel Button: appears only when a category is selected */}
+            {selectedType && (
+              <button
+                onClick={() => setSelectedType(null)}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  padding: '10px 4px',
+                  borderRadius: 10,
+                  border: `1.5px solid #fca5a5`,
+                  background: '#fef2f2',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 10,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" style={{ width: 20, height: 20 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── 2. Drop Zone (shown only when a category is selected) ── */}
+        {selectedType && (
           <>
-            {/* ── 1. Upload Type Selector ── */}
-            <div style={{ flexShrink: 0 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Upload as</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                {UPLOAD_TYPES.map(t => {
-                  const active = selectedType === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setSelectedType(t.id)}
-                      style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                        padding: '10px 4px',
-                        borderRadius: 10,
-                        border: active ? `2px solid ${accentBg}` : `1.5px solid ${borderClr}`,
-                        background: active ? accentLight : '#f9fafb',
-                        color: active ? accentBg : '#6b7280',
-                        cursor: 'pointer',
-                        fontWeight: active ? 700 : 500,
-                        fontSize: 10,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      {t.icon}
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* ── 2. Drop Zone ── */}
             <div
               onDragOver={handleDragOver} onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave} onDrop={handleDrop}
@@ -308,7 +330,25 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                     onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                     style={{ padding: '6px 18px', background: accentBg, color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 14, height: 14 }}>
+                    <style>{`
+                      @keyframes uploadIntimation {
+                        0% { transform: translateY(2px); }
+                        50% { transform: translateY(-2px); }
+                        100% { transform: translateY(2px); }
+                      }
+                    `}</style>
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      strokeWidth={2.2} 
+                      stroke="currentColor" 
+                      style={{ 
+                        width: 14, 
+                        height: 14,
+                        animation: 'uploadIntimation 1.5s ease-in-out infinite'
+                      }}
+                    >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                     </svg>
                     Upload {UPLOAD_TYPES.find(t => t.id === selectedType)?.label}
@@ -317,77 +357,14 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
               )}
               <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
             </div>
-            <p style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', marginTop: -8, flexShrink: 0 }}>Supports PNG, JPG, WEBP, SVG</p>
+            <p className='mb-4' style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', marginTop: 3, flexShrink: 0 }}>Supports PNG, JPG, WEBP, SVG</p>
           </>
         )}
 
         {/* ── Image Formatting ── */}
-        <div style={{ flexShrink: 0, borderBottom: `1px solid ${borderClr}`, paddingBottom: 14 }}>
+        <div style={{ flexShrink: 0, borderBottom: `1px solid ${borderClr}`, paddingBottom: 13 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Image Formatting</p>
-            <button 
-              onClick={() => setIsUploadCollapsed(!isUploadCollapsed)}
-              style={{
-                background: '#fff',
-                border: `1.5px solid ${accentBg}`,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 11,
-                fontWeight: 700,
-                color: accentBg,
-                padding: '4px 10px',
-                borderRadius: 8,
-                transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = accentLight;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#fff';
-              }}
-            >
-              <style>{`
-                @keyframes uploadIntimation {
-                  0% { transform: translateY(2px); }
-                  50% { transform: translateY(-2px); }
-                  100% { transform: translateY(2px); }
-                }
-              `}</style>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                strokeWidth={2.2} 
-                stroke="currentColor" 
-                style={{ 
-                  width: 13, 
-                  height: 13, 
-                  animation: 'uploadIntimation 1.5s ease-in-out infinite' 
-                }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-              </svg>
-              <span>{isUploadCollapsed ? 'Show Upload' : 'Hide Upload'}</span>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                strokeWidth={2.5} 
-                stroke="currentColor" 
-                style={{ 
-                  width: 12, 
-                  height: 12, 
-                  transform: isUploadCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', 
-                  transition: 'transform 0.2s' 
-                }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-              </svg>
-            </button>
           </div>
           <div style={{ background: '#f3f4f6', padding: 4, borderRadius: 10, display: 'flex', gap: 4 }}>
             {['contain', 'cover', 'texture'].map(fit => {
@@ -419,7 +396,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75a2.25 2.25 0 0 1 2.25-2.25H6a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V8.25a2.25 2.25 0 0 1-2.25 2.25H18A2.25 2.25 0 0 1 13.5 8.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H18A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
                     </svg>
                   )}
-                  {fit === 'texture' ? 'As Texture' : fit.charAt(0).toUpperCase() + fit.slice(1)}
+                  {fit === 'texture' ? 'Tile Pattern' : fit.charAt(0).toUpperCase() + fit.slice(1)}
                 </button>
               );
             })}
@@ -568,7 +545,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                     )}
                     {imageUploads.length > 0 && (
                       <div>
-                        <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Images</h4>
+                        <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Design</h4>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                           {imageUploads.map((item, idx) => (
                             <ImageTile
