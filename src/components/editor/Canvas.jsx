@@ -226,7 +226,42 @@ class DraggableImage {
     ctx.restore();
   }
 
-  drawControls(ctx, scale, offsetX = 0, offsetY = 0) {
+  drawControls(ctx, scale, offsetX = 0, offsetY = 0, uvComponents = [], isTape = false, contentW = 0, contentH = 0) {
+    if (
+      this.fitType === "texture" &&
+      this.selectedFaceIds &&
+      this.selectedFaceIds.length > 0 &&
+      uvComponents &&
+      uvComponents.length > 0 &&
+      contentW > 0 &&
+      contentH > 0
+    ) {
+      ctx.save();
+      ctx.strokeStyle = "#7c5cfc";
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      let hasPath = false;
+      this.selectedFaceIds.forEach((fId) => {
+        const comp = uvComponents.find((c) => c.id === fId);
+        if (comp && comp.path && comp.path.length > 0) {
+          const p0 = uvToPx(comp.path[0].u, comp.path[0].v, contentW, contentH, isTape, offsetX, offsetY);
+          ctx.moveTo(p0.x, p0.y);
+          for (let i = 1; i < comp.path.length; i++) {
+            const p = uvToPx(comp.path[i].u, comp.path[i].v, contentW, contentH, isTape, offsetX, offsetY);
+            ctx.lineTo(p.x, p.y);
+          }
+          hasPath = true;
+        }
+      });
+      if (hasPath) {
+        ctx.closePath();
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
+
     const scaledW = this.width / scale;
     const scaledH = this.height / scale;
     const cx = (this.x + this.width / 2) / scale + offsetX;
@@ -1941,7 +1976,11 @@ const Canvas = forwardRef(
           ctx,
           scale,
           offsetXRef.current,
-          offsetYRef.current
+          offsetYRef.current,
+          uvComponentsRef.current,
+          isTapeModel,
+          uvContentWRef.current || w,
+          uvContentHRef.current || h
         );
       }
 
@@ -2264,7 +2303,7 @@ const Canvas = forwardRef(
         if (isModKey && e.key.toLowerCase() === "v") {
           if (copiedLayerRef.current) {
             e.preventDefault();
-            const pasted = copiedLayerRef.current.clone(30);
+            const pasted = copiedLayerRef.current.clone(copiedLayerRef.current.fitType === "texture" ? 0 : 30);
             imagesRef.current.push(pasted);
             setSelectedImage(pasted);
             selectedImageRef.current = pasted;
@@ -2280,7 +2319,7 @@ const Canvas = forwardRef(
         if (isModKey && e.key.toLowerCase() === "d") {
           if (sel) {
             e.preventDefault();
-            const copy = sel.clone(30);
+            const copy = sel.clone(sel.fitType === "texture" ? 0 : 30);
             imagesRef.current.push(copy);
             setSelectedImage(copy);
             selectedImageRef.current = copy;
@@ -2339,8 +2378,10 @@ const Canvas = forwardRef(
           if (e.key === "ArrowLeft") sel.x -= nudgeGlobal;
           if (e.key === "ArrowRight") sel.x += nudgeGlobal;
 
-          sel.fitType = null;
-          sel.selectedFaceIds = [];
+          if (sel.fitType !== "texture") {
+            sel.fitType = null;
+            sel.selectedFaceIds = [];
+          }
 
           needsDisplayRedrawRef.current = true;
           bakeTexture();
@@ -2968,7 +3009,7 @@ const Canvas = forwardRef(
       const dy = my - interaction.startMy;
 
       if (mode === HANDLE.MOVE) {
-        if (dx !== 0 || dy !== 0) {
+        if ((dx !== 0 || dy !== 0) && img.fitType !== "texture") {
           img.fitType = null;
           img.selectedFaceIds = [];
         }
@@ -2989,15 +3030,17 @@ const Canvas = forwardRef(
         const currentAngle = Math.atan2(my - cy, mx - cx);
         const newRot =
           interaction.startRotation + (currentAngle - interaction.startAngle);
-        if (newRot !== img.rotation) {
+        if (newRot !== img.rotation && img.fitType !== "texture") {
           img.fitType = null;
           img.selectedFaceIds = [];
         }
         img.rotation = newRot;
       } else {
         // Resize handles
-        img.fitType = null;
-        img.selectedFaceIds = [];
+        if (img.fitType !== "texture") {
+          img.fitType = null;
+          img.selectedFaceIds = [];
+        }
         applyResize(img, mode, mx, my, scale, interaction);
       }
 
@@ -3293,8 +3336,51 @@ const Canvas = forwardRef(
       } else {
         // End of an image interaction, save state
         if (interaction.mode !== HANDLE.NONE) {
-          saveState();
           const img = selectedImageRef.current;
+          if (img && img.fitType === "texture" && interaction.mode === HANDLE.MOVE) {
+            const rect = displayCanvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left) / zoom;
+            const my = (e.clientY - rect.top) / zoom;
+            const isTapeHit = !!(modelUrl && modelUrl.includes("Tape"));
+            const { u, v } = pxToUv(
+              mx,
+              my,
+              uvContentWRef.current || displayCanvas.width,
+              uvContentHRef.current || displayCanvas.height,
+              isTapeHit,
+              offsetXRef.current,
+              offsetYRef.current
+            );
+            let targetFace = null;
+            for (const comp of uvComponentsRef.current) {
+              if (pointInPolygon({ u, v }, comp.path)) {
+                targetFace = comp.id;
+                break;
+              }
+            }
+            if (targetFace !== null) {
+              const getFacesToSelect = (clickedFaceId) => {
+                if (
+                  modelUrl &&
+                  modelUrl.includes("Tape") &&
+                  uvTapeMergedRef.current
+                ) {
+                  const groups = Object.values(uvTapeMergedRef.current.mergedGroups);
+                  for (const group of groups) {
+                    if (group.comps.some((c) => c.id === clickedFaceId)) {
+                      return group.comps.map((c) => c.id);
+                    }
+                  }
+                }
+                return [clickedFaceId];
+              };
+              const faces = getFacesToSelect(targetFace);
+              img.selectedFaceIds = faces;
+              setSelectedFaces(new Set(faces));
+              setSelectedFace(targetFace);
+            }
+          }
+          saveState();
           if (img) {
             onSelectedLayerChangeRef.current?.({ ...img });
           }
@@ -3351,9 +3437,14 @@ const Canvas = forwardRef(
     const onDuplicate = () => {
       const sel = selectedImageRef.current;
       if (!sel) return;
-      const copy = sel.clone();
-      copy.x = sel.x;
-      copy.y = sel.y + 120;
+      const copy = sel.clone(sel.fitType === "texture" ? 0 : 32);
+      if (sel.fitType !== "texture") {
+        copy.x = sel.x;
+        copy.y = sel.y + 120;
+      } else {
+        copy.x = sel.x;
+        copy.y = sel.y;
+      }
       imagesRef.current.push(copy);
       setSelectedImage(copy);
       selectedImageRef.current = copy;

@@ -333,7 +333,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 5,
                 fontSize: 11,
                 fontWeight: 700,
                 color: accentBg,
@@ -350,7 +350,28 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                 e.currentTarget.style.background = '#fff';
               }}
             >
-              {isUploadCollapsed ? 'Show Upload' : 'Hide Upload'}
+              <style>{`
+                @keyframes uploadIntimation {
+                  0% { transform: translateY(2px); }
+                  50% { transform: translateY(-2px); }
+                  100% { transform: translateY(2px); }
+                }
+              `}</style>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                strokeWidth={2.2} 
+                stroke="currentColor" 
+                style={{ 
+                  width: 13, 
+                  height: 13, 
+                  animation: 'uploadIntimation 1.5s ease-in-out infinite' 
+                }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+              </svg>
+              <span>{isUploadCollapsed ? 'Show Upload' : 'Hide Upload'}</span>
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
                 fill="none" 
@@ -379,6 +400,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                   fontSize: 11, fontWeight: active ? 700 : 500,
                   boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
                   transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, textTransform: 'capitalize',
+                  whiteSpace: 'nowrap',
                 }}>
                   {fit === 'contain' && (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13 }}>
