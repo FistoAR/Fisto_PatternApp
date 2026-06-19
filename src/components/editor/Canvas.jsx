@@ -151,9 +151,9 @@ class DraggableImage {
   }
 
   // Convert a point from canvas-space to the image's local rotated coordinate system
-  _toLocal(mx, my, scale) {
-    const cx = (this.x + this.width / 2) / scale;
-    const cy = (this.y + this.height / 2) / scale;
+  _toLocal(mx, my, scale, offsetX = 0, offsetY = 0) {
+    const cx = (this.x + this.width / 2) / scale + offsetX;
+    const cy = (this.y + this.height / 2) / scale + offsetY;
     const dx = mx - cx;
     const dy = my - cy;
     const cos = Math.cos(-this.rotation);
@@ -164,7 +164,7 @@ class DraggableImage {
     };
   }
 
-  draw(ctx, scale, uvComponents = [], isTape = false) {
+  draw(ctx, scale, uvComponents = [], isTape = false, offsetX = 0, offsetY = 0, contentW = ctx.canvas.width, contentH = ctx.canvas.height) {
     ctx.save();
 
     // Clip to the selected faces if any to show image contained inside selected frame/face
@@ -174,18 +174,16 @@ class DraggableImage {
       uvComponents &&
       uvComponents.length > 0
     ) {
-      const cw = ctx.canvas.width;
-      const ch = ctx.canvas.height;
       const isTapeCanvas = isTape;
       ctx.beginPath();
       let hasPath = false;
       this.selectedFaceIds.forEach((fId) => {
         const comp = uvComponents.find((c) => c.id === fId);
         if (comp && comp.path && comp.path.length > 0) {
-          const p0 = uvToPx(comp.path[0].u, comp.path[0].v, cw, ch, isTapeCanvas);
+          const p0 = uvToPx(comp.path[0].u, comp.path[0].v, contentW, contentH, isTapeCanvas, offsetX, offsetY);
           ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < comp.path.length; i++) {
-            const p = uvToPx(comp.path[i].u, comp.path[i].v, cw, ch, isTapeCanvas);
+            const p = uvToPx(comp.path[i].u, comp.path[i].v, contentW, contentH, isTapeCanvas, offsetX, offsetY);
             ctx.lineTo(p.x, p.y);
           }
           hasPath = true;
@@ -204,21 +202,35 @@ class DraggableImage {
     const scaledW = this.width / scale;
     const scaledH = this.height / scale;
 
-    ctx.translate(scaledX + scaledW / 2, scaledY + scaledH / 2);
+    ctx.translate(scaledX + scaledW / 2 + offsetX, scaledY + scaledH / 2 + offsetY);
     ctx.rotate(this.rotation);
     ctx.scale(this.flipX ? -1 : 1, this.flipY ? -1 : 1);
 
     const source = this.filteredCanvas || this.img;
-    ctx.drawImage(source, -scaledW / 2, -scaledH / 2, scaledW, scaledH);
+    if (this.fitType === "texture") {
+      const pattern = ctx.createPattern(source, 'repeat');
+      if (pattern) {
+        const scaleX = scaledW / (source.naturalWidth || source.width || 100);
+        const scaleY = scaledH / (source.naturalHeight || source.height || 100);
+        if (typeof DOMMatrix !== 'undefined') {
+          const matrix = new DOMMatrix().scale(scaleX, scaleY);
+          pattern.setTransform(matrix);
+        }
+        ctx.fillStyle = pattern;
+        ctx.fillRect(-contentW * 2, -contentH * 2, contentW * 4, contentH * 4);
+      }
+    } else {
+      ctx.drawImage(source, -scaledW / 2, -scaledH / 2, scaledW, scaledH);
+    }
     ctx.globalAlpha = 1;
     ctx.restore();
   }
 
-  drawControls(ctx, scale) {
+  drawControls(ctx, scale, offsetX = 0, offsetY = 0) {
     const scaledW = this.width / scale;
     const scaledH = this.height / scale;
-    const cx = (this.x + this.width / 2) / scale;
-    const cy = (this.y + this.height / 2) / scale;
+    const cx = (this.x + this.width / 2) / scale + offsetX;
+    const cy = (this.y + this.height / 2) / scale + offsetY;
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -314,17 +326,35 @@ class DraggableImage {
     ctx.restore();
   }
 
-  contains(mx, my, scale) {
-    const { lx, ly } = this._toLocal(mx, my, scale);
+  contains(mx, my, scale, offsetX = 0, offsetY = 0, uvComponents = [], isTape = false, contentW = 0, contentH = 0) {
+    if (
+      this.fitType === "texture" &&
+      this.selectedFaceIds &&
+      this.selectedFaceIds.length > 0 &&
+      uvComponents &&
+      uvComponents.length > 0 &&
+      contentW > 0 &&
+      contentH > 0
+    ) {
+      const { u, v } = pxToUv(mx, my, contentW, contentH, isTape, offsetX, offsetY);
+      for (const comp of uvComponents) {
+        if (this.selectedFaceIds.includes(comp.id)) {
+          if (pointInPolygon({ u, v }, comp.path)) {
+            return true;
+          }
+        }
+      }
+    }
+    const { lx, ly } = this._toLocal(mx, my, scale, offsetX, offsetY);
     const hw = this.width / scale / 2;
     const hh = this.height / scale / 2;
     return lx >= -hw && lx <= hw && ly >= -hh && ly <= hh;
   }
 
   // Returns the HANDLE type at the given canvas point
-  hitTest(mx, my, scale) {
+  hitTest(mx, my, scale, offsetX = 0, offsetY = 0) {
     if (this.locked) return HANDLE.NONE;
-    const { lx, ly } = this._toLocal(mx, my, scale);
+    const { lx, ly } = this._toLocal(mx, my, scale, offsetX, offsetY);
     const hw = this.width / scale / 2;
     const hh = this.height / scale / 2;
     const hitR = 10; // hit radius for handles
@@ -438,9 +468,9 @@ class DraggableText {
     return { x: this.x + this.width / 2, y: this.y + this.height / 2 };
   }
 
-  _toLocal(mx, my, scale) {
-    const cx = (this.x + this.width / 2) / scale;
-    const cy = (this.y + this.height / 2) / scale;
+  _toLocal(mx, my, scale, offsetX = 0, offsetY = 0) {
+    const cx = (this.x + this.width / 2) / scale + offsetX;
+    const cy = (this.y + this.height / 2) / scale + offsetY;
     const dx = mx - cx;
     const dy = my - cy;
     const cos = Math.cos(-this.rotation);
@@ -451,7 +481,7 @@ class DraggableText {
     };
   }
 
-  draw(ctx, scale, uvComponents = [], isTape = false) {
+  draw(ctx, scale, uvComponents = [], isTape = false, offsetX = 0, offsetY = 0, contentW = ctx.canvas.width, contentH = ctx.canvas.height) {
     ctx.save();
 
     // Clip to the selected faces if any
@@ -461,19 +491,17 @@ class DraggableText {
       uvComponents &&
       uvComponents.length > 0
     ) {
-      const cw = ctx.canvas.width;
-      const ch = ctx.canvas.height;
       // Tape model canvas is landscape (width > height after dimension swap)
-      const isTapeCanvas = isTape || (cw > ch * 1.2);
+      const isTapeCanvas = isTape || (contentW > contentH * 1.2);
       ctx.beginPath();
       let hasPath = false;
       this.selectedFaceIds.forEach((fId) => {
         const comp = uvComponents.find((c) => c.id === fId);
         if (comp && comp.path && comp.path.length > 0) {
-          const p0 = uvToPx(comp.path[0].u, comp.path[0].v, cw, ch, isTapeCanvas);
+          const p0 = uvToPx(comp.path[0].u, comp.path[0].v, contentW, contentH, isTapeCanvas, offsetX, offsetY);
           ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < comp.path.length; i++) {
-            const p = uvToPx(comp.path[i].u, comp.path[i].v, cw, ch, isTapeCanvas);
+            const p = uvToPx(comp.path[i].u, comp.path[i].v, contentW, contentH, isTapeCanvas, offsetX, offsetY);
             ctx.lineTo(p.x, p.y);
           }
           hasPath = true;
@@ -492,7 +520,7 @@ class DraggableText {
     const scaledW = this.width / scale;
     const scaledH = this.height / scale;
 
-    ctx.translate(scaledX + scaledW / 2, scaledY + scaledH / 2);
+    ctx.translate(scaledX + scaledW / 2 + offsetX, scaledY + scaledH / 2 + offsetY);
     ctx.rotate(this.rotation);
     ctx.scale(this.flipX ? -1 : 1, this.flipY ? -1 : 1);
 
@@ -593,11 +621,11 @@ class DraggableText {
     ctx.restore();
   }
 
-  drawControls(ctx, scale) {
+  drawControls(ctx, scale, offsetX = 0, offsetY = 0) {
     const scaledW = this.width / scale;
     const scaledH = this.height / scale;
-    const cx = (this.x + this.width / 2) / scale;
-    const cy = (this.y + this.height / 2) / scale;
+    const cx = (this.x + this.width / 2) / scale + offsetX;
+    const cy = (this.y + this.height / 2) / scale + offsetY;
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -693,16 +721,16 @@ class DraggableText {
     ctx.restore();
   }
 
-  contains(mx, my, scale) {
-    const { lx, ly } = this._toLocal(mx, my, scale);
+  contains(mx, my, scale, offsetX = 0, offsetY = 0) {
+    const { lx, ly } = this._toLocal(mx, my, scale, offsetX, offsetY);
     const hw = this.width / scale / 2;
     const hh = this.height / scale / 2;
     return lx >= -hw && lx <= hw && ly >= -hh && ly <= hh;
   }
 
-  hitTest(mx, my, scale) {
+  hitTest(mx, my, scale, offsetX = 0, offsetY = 0) {
     if (this.locked) return HANDLE.NONE;
-    const { lx, ly } = this._toLocal(mx, my, scale);
+    const { lx, ly } = this._toLocal(mx, my, scale, offsetX, offsetY);
     const hw = this.width / scale / 2;
     const hh = this.height / scale / 2;
     const hitR = 10;
@@ -733,20 +761,22 @@ class DraggableText {
 
 // Helper: converts UV coordinates to canvas pixel coordinates.
 // For tape models, rotates 90° CCW so the UV layout appears horizontal.
-function uvToPx(u, v, w, h, isTape) {
+function uvToPx(u, v, w, h, isTape, offsetX = 0, offsetY = 0) {
   if (isTape) {
-    return { x: (1 - v) * w, y: u * h };
+    return { x: (1 - v) * w + offsetX, y: u * h + offsetY };
   }
-  return { x: u * w, y: v * h };
+  return { x: u * w + offsetX, y: v * h + offsetY };
 }
 
 // Helper: inverse of uvToPx — converts canvas pixel back to UV for hit-testing.
-function pxToUv(px, py, w, h, isTape) {
+function pxToUv(px, py, w, h, isTape, offsetX = 0, offsetY = 0) {
+  const localX = px - offsetX;
+  const localY = py - offsetY;
   if (isTape) {
     // Inverse of: x=(1-v)*w, y=u*h  →  v=1-px/w, u=py/h
-    return { u: py / h, v: 1 - px / w };
+    return { u: localY / h, v: 1 - localX / w };
   }
-  return { u: px / w, v: py / h };
+  return { u: localX / w, v: localY / h };
 }
 
 function drawUVs(
@@ -760,6 +790,8 @@ function drawUVs(
   drawFull,
   modelUrl,
   uvTapeMerged,
+  offsetX = 0,
+  offsetY = 0,
 ) {
   const geometry = mesh.geometry;
   if (!geometry.attributes.uv) {
@@ -784,10 +816,10 @@ function drawUVs(
     ctx.beginPath();
     comp.loops.forEach((loop) => {
       if (loop.length === 0) return;
-      const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel);
+      const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel, offsetX, offsetY);
       ctx.moveTo(p0.x, p0.y);
       for (let i = 1; i < loop.length; i++) {
-        const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel);
+        const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel, offsetX, offsetY);
         ctx.lineTo(p.x, p.y);
       }
       ctx.closePath();
@@ -817,8 +849,8 @@ function drawUVs(
       const v1 = uvAttr.getY(idx1);
       const u2 = uvAttr.getX(idx2);
       const v2 = uvAttr.getY(idx2);
-      const p1 = uvToPx(u1, v1, w, h, isTapeModel);
-      const p2 = uvToPx(u2, v2, w, h, isTapeModel);
+      const p1 = uvToPx(u1, v1, w, h, isTapeModel, offsetX, offsetY);
+      const p2 = uvToPx(u2, v2, w, h, isTapeModel, offsetX, offsetY);
       ctx.moveTo(p1.x, p1.y);
       ctx.lineTo(p2.x, p2.y);
     };
@@ -846,10 +878,10 @@ function drawUVs(
 
       Object.values(mergedGroups).forEach((group) => {
         // For tape: draw rotated bounding rect using uvToPx
-        const tl = uvToPx(group.minU, group.minV, w, h, true);
-        const tr = uvToPx(group.maxU, group.minV, w, h, true);
-        const br = uvToPx(group.maxU, group.maxV, w, h, true);
-        const bl = uvToPx(group.minU, group.maxV, w, h, true);
+        const tl = uvToPx(group.minU, group.minV, w, h, true, offsetX, offsetY);
+        const tr = uvToPx(group.maxU, group.minV, w, h, true, offsetX, offsetY);
+        const br = uvToPx(group.maxU, group.maxV, w, h, true, offsetX, offsetY);
+        const bl = uvToPx(group.minU, group.maxV, w, h, true, offsetX, offsetY);
         ctx.beginPath();
         ctx.moveTo(tl.x, tl.y);
         ctx.lineTo(tr.x, tr.y);
@@ -863,10 +895,10 @@ function drawUVs(
         ctx.beginPath();
         comp.loops.forEach((loop) => {
           if (loop.length === 0) return;
-          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel);
+          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel, offsetX, offsetY);
           ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < loop.length; i++) {
-            const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel);
+            const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel, offsetX, offsetY);
             ctx.lineTo(p.x, p.y);
           }
           ctx.closePath();
@@ -880,10 +912,10 @@ function drawUVs(
         ctx.beginPath();
         comp.loops.forEach((loop) => {
           if (loop.length === 0) return;
-          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel);
+          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, isTapeModel, offsetX, offsetY);
           ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < loop.length; i++) {
-            const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel);
+            const p = uvToPx(loop[i].u, loop[i].v, w, h, isTapeModel, offsetX, offsetY);
             ctx.lineTo(p.x, p.y);
           }
           ctx.closePath();
@@ -919,10 +951,10 @@ function drawUVs(
       });
 
       Object.values(selectedMergedGroups).forEach((group) => {
-        const tl = uvToPx(group.minU, group.minV, w, h, true);
-        const tr = uvToPx(group.maxU, group.minV, w, h, true);
-        const br = uvToPx(group.maxU, group.maxV, w, h, true);
-        const bl = uvToPx(group.minU, group.maxV, w, h, true);
+        const tl = uvToPx(group.minU, group.minV, w, h, true, offsetX, offsetY);
+        const tr = uvToPx(group.maxU, group.minV, w, h, true, offsetX, offsetY);
+        const br = uvToPx(group.maxU, group.maxV, w, h, true, offsetX, offsetY);
+        const bl = uvToPx(group.minU, group.maxV, w, h, true, offsetX, offsetY);
         ctx.beginPath();
         ctx.moveTo(tl.x, tl.y);
         ctx.lineTo(tr.x, tr.y);
@@ -938,10 +970,10 @@ function drawUVs(
         ctx.beginPath();
         comp.loops.forEach((loop) => {
           if (loop.length === 0) return;
-          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, true);
+          const p0 = uvToPx(loop[0].u, loop[0].v, w, h, true, offsetX, offsetY);
           ctx.moveTo(p0.x, p0.y);
           for (let i = 1; i < loop.length; i++) {
-            const p = uvToPx(loop[i].u, loop[i].v, w, h, true);
+            const p = uvToPx(loop[i].u, loop[i].v, w, h, true, offsetX, offsetY);
             ctx.lineTo(p.x, p.y);
           }
           ctx.closePath();
@@ -957,10 +989,10 @@ function drawUVs(
           ctx.beginPath();
           comp.loops.forEach((loop) => {
             if (loop.length === 0) return;
-            const p0 = uvToPx(loop[0].u, loop[0].v, w, h, false);
+            const p0 = uvToPx(loop[0].u, loop[0].v, w, h, false, offsetX, offsetY);
             ctx.moveTo(p0.x, p0.y);
             for (let i = 1; i < loop.length; i++) {
-              const p = uvToPx(loop[i].u, loop[i].v, w, h, false);
+              const p = uvToPx(loop[i].u, loop[i].v, w, h, false, offsetX, offsetY);
               ctx.lineTo(p.x, p.y);
             }
             ctx.closePath();
@@ -993,6 +1025,88 @@ function pointInPolygon(point, vs) {
   }
   return inside;
 }
+
+function polygonIntersectsBox(path, xMin, yMin, xMax, yMax, w, h, isTape, offsetX = 0, offsetY = 0) {
+  if (!path || path.length === 0) return false;
+  
+  // Convert all path vertices to canvas pixels
+  const pxPoints = path.map(pt => uvToPx(pt.u, pt.v, w, h, isTape, offsetX, offsetY));
+  
+  // 1. Check if any vertex of the polygon is inside the box
+  for (const pt of pxPoints) {
+    if (pt.x >= xMin && pt.x <= xMax && pt.y >= yMin && pt.y <= yMax) {
+      return true;
+    }
+  }
+
+  // 2. Check if any of the box corners are inside the polygon
+  const boxCorners = [
+    { x: xMin, y: yMin },
+    { x: xMax, y: yMin },
+    { x: xMax, y: yMax },
+    { x: xMin, y: yMax }
+  ];
+  for (const corner of boxCorners) {
+    const uvCorner = pxToUv(corner.x, corner.y, w, h, isTape, offsetX, offsetY);
+    if (pointInPolygon(uvCorner, path)) {
+      return true;
+    }
+  }
+
+  // 3. Check if any line segment of the polygon intersects any line segment of the box
+  const boxSegments = [
+    { p1: { x: xMin, y: yMin }, p2: { x: xMax, y: yMin } },
+    { p1: { x: xMax, y: yMin }, p2: { x: xMax, y: yMax } },
+    { p1: { x: xMax, y: yMax }, p2: { x: xMin, y: yMax } },
+    { p1: { x: xMin, y: yMax }, p2: { x: xMin, y: yMin } }
+  ];
+
+  const lineIntersects = (a1, a2, b1, b2) => {
+    const det = (a2.x - a1.x) * (b2.y - b1.y) - (b2.x - b1.x) * (a2.y - a1.y);
+    if (det === 0) return false; // Parallel
+    const lambda = ((b2.y - b1.y) * (b2.x - a1.x) + (b1.x - b2.x) * (b2.y - a1.y)) / det;
+    const gamma = ((a1.y - a2.y) * (b2.x - a1.x) + (a2.x - a1.x) * (b2.y - a1.y)) / det;
+    return (0 <= lambda && lambda <= 1) && (0 <= gamma && gamma <= 1);
+  };
+
+  for (let i = 0; i < pxPoints.length; i++) {
+    const p1 = pxPoints[i];
+    const p2 = pxPoints[(i + 1) % pxPoints.length];
+    for (const seg of boxSegments) {
+      if (lineIntersects(p1, p2, seg.p1, seg.p2)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function getElementCorners(img, scale, w, h) {
+  const cx = (img.x + img.width / 2) / scale;
+  const cy = (img.y + img.height / 2) / scale;
+  const hw = img.width / scale / 2;
+  const hh = img.height / scale / 2;
+  const cos = Math.cos(img.rotation);
+  const sin = Math.sin(img.rotation);
+  
+  const localCorners = [
+    { u: -hw, v: -hh },
+    { u: hw, v: -hh },
+    { u: hw, v: hh },
+    { u: -hw, v: hh }
+  ];
+  
+  return localCorners.map(pt => {
+    const rx = cx + (pt.u * cos - pt.v * sin);
+    const ry = cy + (pt.u * sin + pt.v * cos);
+    return {
+      u: rx / w,
+      v: ry / h
+    };
+  });
+}
+
 
 function orderEdgesToPaths(edges) {
   if (edges.length === 0) return [];
@@ -1675,6 +1789,11 @@ const Canvas = forwardRef(
 
     const currentMeshRef = useRef(null);
     const canvasScaleRef = useRef(1);
+    const selectionMarqueeRef = useRef(null);
+    const offsetXRef = useRef(0);
+    const offsetYRef = useRef(0);
+    const uvContentWRef = useRef(0);
+    const uvContentHRef = useRef(0);
     const textureSizeRef = useRef(DEFAULT_TEXTURE_SIZE);
     const onTextureUpdatedRef = useRef(onTextureUpdated);
     const rafIdRef = useRef(null);
@@ -1787,18 +1906,29 @@ const Canvas = forwardRef(
           faceColors,
           selectedFaces,
           ctx,
-          w,
-          h,
+          uvContentWRef.current || w,
+          uvContentHRef.current || h,
           fullUv,
           modelUrl,
           uvTapeMergedRef.current,
+          offsetXRef.current,
+          offsetYRef.current,
         );
       }
 
       const scale = canvasScaleRef.current;
       const isTapeModel = !!(modelUrl && modelUrl.includes("Tape"));
       imagesRef.current.forEach((img) => {
-        img.draw(ctx, scale, uvComponentsRef.current, isTapeModel);
+        img.draw(
+          ctx,
+          scale,
+          uvComponentsRef.current,
+          isTapeModel,
+          offsetXRef.current,
+          offsetYRef.current,
+          uvContentWRef.current || w,
+          uvContentHRef.current || h
+        );
       });
 
       // Draw controls for selected image LAST (on top)
@@ -1807,7 +1937,25 @@ const Canvas = forwardRef(
         toolModeRef.current !== "eraser" &&
         toolModeRef.current !== "eraser-pick"
       ) {
-        selectedImageRef.current.drawControls(ctx, scale);
+        selectedImageRef.current.drawControls(
+          ctx,
+          scale,
+          offsetXRef.current,
+          offsetYRef.current
+        );
+      }
+
+      // Draw marquee selection box on top of everything
+      if (selectionMarqueeRef.current) {
+        const { startX, startY, currentX, currentY } = selectionMarqueeRef.current;
+        ctx.save();
+        ctx.strokeStyle = "#7c5cfc";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+        ctx.fillStyle = "rgba(124, 92, 252, 0.1)";
+        ctx.fillRect(startX, startY, currentX - startX, currentY - startY);
+        ctx.restore();
       }
     }, [showUv, fullUv, faceColors, selectedFaces, modelUrl]);
 
@@ -2211,27 +2359,38 @@ const Canvas = forwardRef(
       if (!containerRef.current || !displayCanvasRef.current) return;
 
       const container = containerRef.current;
-      const padding = 40;
+      const containerW = container.clientWidth;
+      const containerH = container.clientHeight;
       const textureSize = textureSizeRef.current;
       const aspect = textureSize.width / textureSize.height;
-      const maxWidth = Math.max(1, container.clientWidth - padding);
+
+      // Calculate the size of the UV content design area (original logic)
+      const padding = 40;
+      const maxWidth = Math.max(1, containerW - padding);
       const heightScale = aspect > 1.5 ? WIDE_TEXTURE_DISPLAY_SCALE : 0.85;
       const maxHeight = Math.max(
         1,
-        (container.clientHeight - padding) * heightScale,
+        (containerH - padding) * heightScale,
       );
-      let width = maxWidth;
-      let height = width / aspect;
+      let contentW = maxWidth;
+      let contentH = contentW / aspect;
 
-      if (height > maxHeight) {
-        height = maxHeight;
-        width = height * aspect;
+      if (contentH > maxHeight) {
+        contentH = maxHeight;
+        contentW = contentH * aspect;
       }
 
-      displayCanvasRef.current.width = Math.round(width);
-      displayCanvasRef.current.height = Math.round(height);
-      canvasScaleRef.current =
-        textureSize.width / displayCanvasRef.current.width;
+      // Expand display canvas to 100% container dimensions
+      displayCanvasRef.current.width = containerW;
+      displayCanvasRef.current.height = containerH;
+
+      // Compute centering offsets (taking pb-24 bottom toolbar padding into account)
+      offsetXRef.current = Math.max(0, (containerW - contentW) / 2);
+      offsetYRef.current = Math.max(0, (containerH - 80 - contentH) / 2);
+      uvContentWRef.current = Math.round(contentW);
+      uvContentHRef.current = Math.round(contentH);
+
+      canvasScaleRef.current = textureSize.width / uvContentWRef.current;
 
       redrawDisplay();
     }, [redrawDisplay]);
@@ -2482,7 +2641,7 @@ const Canvas = forwardRef(
         let clickedImage = null;
         for (let i = imagesRef.current.length - 1; i >= 0; i--) {
           const img = imagesRef.current[i];
-          if (img.contains(mx, my, scale) && !img.locked) {
+          if (img.contains(mx, my, scale, offsetXRef.current, offsetYRef.current, uvComponentsRef.current, !!(modelUrl && modelUrl.includes("Tape")), uvContentWRef.current || displayCanvas.width, uvContentHRef.current || displayCanvas.height) && !img.locked) {
             clickedImage = img;
             break;
           }
@@ -2498,7 +2657,7 @@ const Canvas = forwardRef(
             clickedImage instanceof DraggableImage
           ) {
             const sel = clickedImage;
-            const { lx, ly } = sel._toLocal(mx, my, scale);
+            const { lx, ly } = sel._toLocal(mx, my, scale, offsetXRef.current, offsetYRef.current);
             const hw = sel.width / scale / 2;
             const hh = sel.height / scale / 2;
 
@@ -2535,7 +2694,15 @@ const Canvas = forwardRef(
         } else {
           // Check if we clicked a face to select
           const isTapeHit = !!(modelUrl && modelUrl.includes("Tape"));
-          const { u, v } = pxToUv(mx, my, displayCanvas.width, displayCanvas.height, isTapeHit);
+          const { u, v } = pxToUv(
+            mx,
+            my,
+            uvContentWRef.current || displayCanvas.width,
+            uvContentHRef.current || displayCanvas.height,
+            isTapeHit,
+            offsetXRef.current,
+            offsetYRef.current
+          );
           let clickedFace = null;
           let clickedUv = null;
           for (const comp of uvComponentsRef.current) {
@@ -2560,7 +2727,7 @@ const Canvas = forwardRef(
       // First, check if we hit any handle on the currently selected image
       const sel = selectedImageRef.current;
       if (sel) {
-        const handle = sel.hitTest(mx, my, scale);
+        const handle = sel.hitTest(mx, my, scale, offsetXRef.current, offsetYRef.current);
         if (handle !== HANDLE.NONE) {
           interaction.isDragging = true;
           interaction.mode = handle;
@@ -2573,8 +2740,8 @@ const Canvas = forwardRef(
           interaction.aspectRatio = sel.width / sel.height;
 
           if (handle === HANDLE.ROTATE) {
-            const cx = (sel.x + sel.width / 2) / scale;
-            const cy = (sel.y + sel.height / 2) / scale;
+            const cx = (sel.x + sel.width / 2) / scale + offsetXRef.current;
+            const cy = (sel.y + sel.height / 2) / scale + offsetYRef.current;
             interaction.startAngle = Math.atan2(my - cy, mx - cx);
             interaction.startRotation = sel.rotation;
             setCursor("grabbing");
@@ -2592,7 +2759,7 @@ const Canvas = forwardRef(
       let clickedImage = null;
       for (let i = imagesRef.current.length - 1; i >= 0; i--) {
         const img = imagesRef.current[i];
-        if (img.contains(mx, my, scale) && !img.locked) {
+        if (img.contains(mx, my, scale, offsetXRef.current, offsetYRef.current, uvComponentsRef.current, !!(modelUrl && modelUrl.includes("Tape")), uvContentWRef.current || displayCanvas.width, uvContentHRef.current || displayCanvas.height) && !img.locked) {
           clickedImage = img;
           break;
         }
@@ -2615,7 +2782,15 @@ const Canvas = forwardRef(
 
         // Also check if we should select/toggle the UV face underneath
         const isTapeHit2 = !!(modelUrl && modelUrl.includes("Tape"));
-        const { u, v } = pxToUv(mx, my, displayCanvas.width, displayCanvas.height, isTapeHit2);
+        const { u, v } = pxToUv(
+          mx,
+          my,
+          uvContentWRef.current || displayCanvas.width,
+          uvContentHRef.current || displayCanvas.height,
+          isTapeHit2,
+          offsetXRef.current,
+          offsetYRef.current
+        );
         let clickedFace = null;
         let clickedUv = null;
         for (const comp of uvComponentsRef.current) {
@@ -2688,85 +2863,19 @@ const Canvas = forwardRef(
           }
         }
       } else {
-        // Check for UV face click
-        const isTapeHit = !!(modelUrl && modelUrl.includes("Tape"));
-        const { u, v } = pxToUv(mx, my, displayCanvas.width, displayCanvas.height, isTapeHit);
-        let clickedFace = null;
-        let clickedUv = null;
-        for (const comp of uvComponentsRef.current) {
-          if (pointInPolygon({ u, v }, comp.path)) {
-            clickedFace = comp.id;
-            clickedUv = { u, v };
-            break;
-          }
-        }
-
-        const getFacesToSelect = (clickedFaceId) => {
-          if (
-            modelUrl &&
-            modelUrl.includes("Tape") &&
-            uvTapeMergedRef.current
-          ) {
-            const groups = Object.values(uvTapeMergedRef.current.mergedGroups);
-            for (const group of groups) {
-              if (group.comps.some((c) => c.id === clickedFaceId)) {
-                return group.comps.map((c) => c.id);
-              }
-            }
-          }
-          return [clickedFaceId];
-        };
-
-        if (clickedFace) {
-          const facesToToggle = getFacesToSelect(clickedFace);
-
-          // Keep current image selection when selecting a UV face!
-          if (toolMode === "multiselect") {
-            const nextFaces = new Set(selectedFacesRef.current);
-            if (nextFaces.has(clickedFace)) {
-              facesToToggle.forEach((fid) => nextFaces.delete(fid));
-              if (selectedFace === clickedFace) {
-                if (nextFaces.size > 0) {
-                  // Pick the first remaining face as the anchor
-                  const iter = nextFaces.values();
-                  const firstFace = iter.next().value;
-                  setSelectedFace(firstFace);
-                  const comp = uvComponentsRef.current.find(
-                    (c) => c.id === firstFace,
-                  );
-                  if (comp) {
-                    setSelectedFaceUv({
-                      u: (comp.minU + comp.maxU) / 2,
-                      v: (comp.minV + comp.maxV) / 2,
-                    });
-                  } else {
-                    setSelectedFaceUv(null);
-                  }
-                } else {
-                  setSelectedFace(null);
-                  setSelectedFaceUv(null);
-                }
-              }
-            } else {
-              facesToToggle.forEach((fid) => nextFaces.add(fid));
-              setSelectedFace(clickedFace);
-              setSelectedFaceUv(clickedUv);
-            }
-            setSelectedFaces(nextFaces);
-          } else {
-            const nextFaces = new Set(facesToToggle);
-            setSelectedFaces(nextFaces);
-            setSelectedFace(clickedFace);
-            setSelectedFaceUv(clickedUv);
-          }
-        } else {
-          // Clicked outside both an image and any UV face (blank background): clear all
-          setSelectedFaces(new Set());
-          setSelectedFace(null);
-          setSelectedFaceUv(null);
-          selectedImageRef.current = null;
-          setSelectedImage(null);
-          onSelectedLayerChangeRef.current?.(null);
+        if (toolMode === "cursor" || toolMode === "multiselect") {
+          interaction.isDragging = true;
+          interaction.mode = HANDLE.NONE;
+          interaction.isSelecting = true;
+          interaction.startX = mx;
+          interaction.startY = my;
+          selectionMarqueeRef.current = {
+            startX: mx,
+            startY: my,
+            currentX: mx,
+            currentY: my,
+          };
+          displayCanvas.setPointerCapture(e.pointerId);
         }
       }
 
@@ -2833,6 +2942,14 @@ const Canvas = forwardRef(
       const my = (e.clientY - rect.top) / zoom;
       const scale = canvasScaleRef.current;
 
+      if (interaction.isSelecting) {
+        selectionMarqueeRef.current.currentX = mx;
+        selectionMarqueeRef.current.currentY = my;
+        needsDisplayRedrawRef.current = true;
+        redrawDisplay();
+        return;
+      }
+
       if (toolMode === "eraser" || toolMode === "eraser-pick") {
         if (toolMode === "eraser-pick") {
           setCursor("crosshair");
@@ -2891,9 +3008,9 @@ const Canvas = forwardRef(
     // Resize logic: handles both corner (proportional) and edge (non-proportional) resizing
     const applyResize = (img, mode, mx, my, scale, interaction) => {
       const startCx =
-        (interaction.startImgX + interaction.startImgW / 2) / scale;
+        (interaction.startImgX + interaction.startImgW / 2) / scale + offsetXRef.current;
       const startCy =
-        (interaction.startImgY + interaction.startImgH / 2) / scale;
+        (interaction.startImgY + interaction.startImgH / 2) / scale + offsetYRef.current;
 
       const dx = mx - startCx;
       const dy = my - startCy;
@@ -2977,7 +3094,200 @@ const Canvas = forwardRef(
       const interaction = interactionRef.current;
       if (!interaction.isDragging) return;
 
-      if (interaction.isPanning) {
+      const displayCanvas = displayCanvasRef.current;
+      if (!displayCanvas) return;
+
+      displayCanvas.releasePointerCapture(e.pointerId);
+
+      if (interaction.isSelecting) {
+        interaction.isSelecting = false;
+        
+        if (selectionMarqueeRef.current) {
+          const { startX, startY, currentX, currentY } = selectionMarqueeRef.current;
+          selectionMarqueeRef.current = null;
+
+          const dist = Math.hypot(currentX - startX, currentY - startY);
+          const scale = canvasScaleRef.current;
+
+          if (dist < 4) {
+            // --- Click Selection Logic (exactly matching original behavior) ---
+            const isTapeHit = !!(modelUrl && modelUrl.includes("Tape"));
+            const { u, v } = pxToUv(
+              startX,
+              startY,
+              uvContentWRef.current || displayCanvas.width,
+              uvContentHRef.current || displayCanvas.height,
+              isTapeHit,
+              offsetXRef.current,
+              offsetYRef.current
+            );
+            let clickedFace = null;
+            let clickedUv = null;
+            for (const comp of uvComponentsRef.current) {
+              if (pointInPolygon({ u, v }, comp.path)) {
+                clickedFace = comp.id;
+                clickedUv = { u, v };
+                break;
+              }
+            }
+
+            const getFacesToSelect = (clickedFaceId) => {
+              if (
+                modelUrl &&
+                modelUrl.includes("Tape") &&
+                uvTapeMergedRef.current
+              ) {
+                const groups = Object.values(uvTapeMergedRef.current.mergedGroups);
+                for (const group of groups) {
+                  if (group.comps.some((c) => c.id === clickedFaceId)) {
+                    return group.comps.map((c) => c.id);
+                  }
+                }
+              }
+              return [clickedFaceId];
+            };
+
+            if (clickedFace) {
+              const facesToToggle = getFacesToSelect(clickedFace);
+
+              if (toolMode === "multiselect") {
+                const nextFaces = new Set(selectedFacesRef.current);
+                if (nextFaces.has(clickedFace)) {
+                  facesToToggle.forEach((fid) => nextFaces.delete(fid));
+                  if (selectedFace === clickedFace) {
+                    if (nextFaces.size > 0) {
+                      const iter = nextFaces.values();
+                      const firstFace = iter.next().value;
+                      setSelectedFace(firstFace);
+                      const comp = uvComponentsRef.current.find(
+                        (c) => c.id === firstFace,
+                      );
+                      if (comp) {
+                        setSelectedFaceUv({
+                          u: (comp.minU + comp.maxU) / 2,
+                          v: (comp.minV + comp.maxV) / 2,
+                        });
+                      } else {
+                        setSelectedFaceUv(null);
+                      }
+                    } else {
+                      setSelectedFace(null);
+                      setSelectedFaceUv(null);
+                    }
+                  }
+                } else {
+                  facesToToggle.forEach((fid) => nextFaces.add(fid));
+                  setSelectedFace(clickedFace);
+                  setSelectedFaceUv(clickedUv);
+                }
+                setSelectedFaces(nextFaces);
+              } else {
+                const nextFaces = new Set(facesToToggle);
+                setSelectedFaces(nextFaces);
+                setSelectedFace(clickedFace);
+                setSelectedFaceUv(clickedUv);
+              }
+            } else {
+              // Clicked outside both an image and any UV face (blank background): clear all
+              setSelectedFaces(new Set());
+              setSelectedFace(null);
+              setSelectedFaceUv(null);
+              selectedImageRef.current = null;
+              setSelectedImage(null);
+              onSelectedLayerChangeRef.current?.(null);
+            }
+          } else {
+            // --- Marquee Selection Logic ---
+            const xMin = Math.min(startX, currentX);
+            const xMax = Math.max(startX, currentX);
+            const yMin = Math.min(startY, currentY);
+            const yMax = Math.max(startY, currentY);
+
+            const isTapeHit = !!(modelUrl && modelUrl.includes("Tape"));
+            const newlySelectedFaces = new Set(toolMode === "multiselect" ? selectedFacesRef.current : []);
+
+            // 1. Check which UV components/faces intersect the marquee box
+            uvComponentsRef.current.forEach((comp) => {
+              if (polygonIntersectsBox(
+                comp.path,
+                xMin,
+                yMin,
+                xMax,
+                yMax,
+                uvContentWRef.current || displayCanvas.width,
+                uvContentHRef.current || displayCanvas.height,
+                isTapeHit,
+                offsetXRef.current,
+                offsetYRef.current
+              )) {
+                if (toolMode === "multiselect" && selectedFacesRef.current.has(comp.id)) {
+                  newlySelectedFaces.delete(comp.id);
+                } else {
+                  newlySelectedFaces.add(comp.id);
+                }
+              }
+            });
+
+            let firstNewFace = null;
+            if (newlySelectedFaces.size > 0) {
+              const iter = newlySelectedFaces.values();
+              firstNewFace = iter.next().value;
+            }
+
+            setSelectedFaces(newlySelectedFaces);
+            setSelectedFace(firstNewFace);
+            if (firstNewFace) {
+              const comp = uvComponentsRef.current.find(c => c.id === firstNewFace);
+              if (comp) {
+                setSelectedFaceUv({
+                  u: (comp.minU + comp.maxU) / 2,
+                  v: (comp.minV + comp.maxV) / 2
+                });
+              }
+            } else {
+              setSelectedFaceUv(null);
+            }
+
+            // 2. Check which draggable images/texts intersect the marquee box
+            let selectedImg = null;
+            for (let i = imagesRef.current.length - 1; i >= 0; i--) {
+              const img = imagesRef.current[i];
+              if (img.locked) continue;
+              const corners = getElementCorners(
+                img,
+                scale,
+                uvContentWRef.current || displayCanvas.width,
+                uvContentHRef.current || displayCanvas.height
+              );
+              if (polygonIntersectsBox(
+                corners,
+                xMin,
+                yMin,
+                xMax,
+                yMax,
+                uvContentWRef.current || displayCanvas.width,
+                uvContentHRef.current || displayCanvas.height,
+                false,
+                offsetXRef.current,
+                offsetYRef.current
+              )) {
+                selectedImg = img;
+                break; // Select the topmost one
+              }
+            }
+
+            if (selectedImg) {
+              selectedImageRef.current = selectedImg;
+              setSelectedImage(selectedImg);
+              onSelectedLayerChangeRef.current?.(selectedImg);
+            } else {
+              selectedImageRef.current = null;
+              setSelectedImage(null);
+              onSelectedLayerChangeRef.current?.(null);
+            }
+          }
+        }
+      } else if (interaction.isPanning) {
         interaction.isPanning = false;
         setCursor(toolMode === "hand" ? "grab" : "default");
       } else {
@@ -3010,7 +3320,7 @@ const Canvas = forwardRef(
       const scale = canvasScaleRef.current;
       let clickedImage = null;
       for (let i = imagesRef.current.length - 1; i >= 0; i--) {
-        if (imagesRef.current[i].contains(mx, my, scale)) {
+        if (imagesRef.current[i].contains(mx, my, scale, offsetXRef.current, offsetYRef.current, uvComponentsRef.current, !!(modelUrl && modelUrl.includes("Tape")), uvContentWRef.current || displayCanvas.width, uvContentHRef.current || displayCanvas.height)) {
           clickedImage = imagesRef.current[i];
           break;
         }
@@ -3373,6 +3683,12 @@ const Canvas = forwardRef(
               imgHeight = heightInTex;
               imgWidth = heightInTex * imgAspect;
             }
+          } else if (fitType === "texture") {
+            const imgW = img.naturalWidth || img.width || 300;
+            const imgH = img.naturalHeight || img.height || 300;
+            const imgAspect = imgW / imgH;
+            imgWidth = widthInTex / 3;
+            imgHeight = imgWidth / imgAspect;
           }
 
           sel.width = imgWidth;
@@ -3594,8 +3910,8 @@ const Canvas = forwardRef(
       const renderScale = canvasRect.width / displayCanvasRef.current.width;
       const scale = canvasScaleRef.current;
 
-      const imgX_unscaled = (sel.x + sel.width / 2) / scale;
-      const imgY_unscaled = sel.y / scale;
+      const imgX_unscaled = (sel.x + sel.width / 2) / scale + offsetXRef.current;
+      const imgY_unscaled = sel.y / scale + offsetYRef.current;
 
       const left =
         canvasRect.left - containerRect.left + imgX_unscaled * renderScale;
@@ -3620,15 +3936,19 @@ const Canvas = forwardRef(
 
       const unscaledW = displayCanvasRef.current.width;
       const unscaledH = displayCanvasRef.current.height;
+      const contentW = uvContentWRef.current || unscaledW;
+      const contentH = uvContentHRef.current || unscaledH;
+      const offsetX = offsetXRef.current;
+      const offsetY = offsetYRef.current;
       const isTapePos = !!(modelUrl && modelUrl.includes("Tape"));
 
       let cx_unscaled, top_unscaled;
       if (selectedFaceUv) {
-        const p = uvToPx(selectedFaceUv.u, selectedFaceUv.v, unscaledW, unscaledH, isTapePos);
+        const p = uvToPx(selectedFaceUv.u, selectedFaceUv.v, contentW, contentH, isTapePos, offsetX, offsetY);
         cx_unscaled = p.x;
         top_unscaled = p.y - 30 / zoom;
       } else {
-        const p = uvToPx((comp.minU + comp.maxU) / 2, comp.minV, unscaledW, unscaledH, isTapePos);
+        const p = uvToPx((comp.minU + comp.maxU) / 2, comp.minV, contentW, contentH, isTapePos, offsetX, offsetY);
         cx_unscaled = p.x;
         top_unscaled = p.y - 15 / zoom;
       }
@@ -3703,11 +4023,11 @@ const Canvas = forwardRef(
                   const sel = selectedImageRef.current;
                   if (
                     sel instanceof DraggableText &&
-                    sel.contains(mx, my, scale)
+                    sel.contains(mx, my, scale, offsetXRef.current, offsetYRef.current)
                   ) {
                     const renderScale = rect.width / displayCanvas.width;
-                    const scaledX = (sel.x / scale) * renderScale + rect.left;
-                    const scaledY = (sel.y / scale) * renderScale + rect.top;
+                    const scaledX = (sel.x / scale + offsetXRef.current) * renderScale + rect.left;
+                    const scaledY = (sel.y / scale + offsetYRef.current) * renderScale + rect.top;
                     const scaledW = (sel.width / scale) * renderScale;
                     const scaledH = (sel.height / scale) * renderScale;
                     setEditingText({

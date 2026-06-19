@@ -87,6 +87,7 @@ input[type="range"]::-moz-range-thumb {
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

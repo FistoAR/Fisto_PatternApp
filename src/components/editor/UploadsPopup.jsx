@@ -18,6 +18,19 @@ import tsg14 from "../../assets/images/Editor 2/t-shirtGraphics/14.webp";
 
 const tShirtGraphics = [tsg1,tsg2,tsg3,tsg4,tsg5,tsg6,tsg7,tsg8,tsg9,tsg10,tsg11,tsg12,tsg13,tsg14];
 
+// ── Carry Bag Graphics (9 images) ─────────────────────────────────────────────
+import cb1 from "../../assets/images/Editor 2/carryBag/1.jpg";
+import cb2 from "../../assets/images/Editor 2/carryBag/2.jpg";
+import cb3 from "../../assets/images/Editor 2/carryBag/3.jpg";
+import cb4 from "../../assets/images/Editor 2/carryBag/4.jpg";
+import cb5 from "../../assets/images/Editor 2/carryBag/5.jpg";
+import cb6 from "../../assets/images/Editor 2/carryBag/6.jpg";
+import cb7 from "../../assets/images/Editor 2/carryBag/7.jpg";
+import cb8 from "../../assets/images/Editor 2/carryBag/8.jpg";
+import cb9 from "../../assets/images/Editor 2/carryBag/9.jpg";
+
+const carryBagGraphics = [cb1, cb2, cb3, cb4, cb5, cb6, cb7, cb8, cb9];
+
 // ── Upload type options ───────────────────────────────────────────────────────
 const UPLOAD_TYPES = [
   {
@@ -53,7 +66,7 @@ const UPLOAD_TYPES = [
 const USER_CATEGORIES = ['All', 'Logo', 'Pattern', 'Image'];
 
 // ── Default asset sub-tabs ────────────────────────────────────────────────────
-const DEFAULT_TABS = ['T-Shirt Graphics', 'Patterns', 'Material'];
+const DEFAULT_TABS = ['T-Shirt Graphics', 'Patterns', 'Material', 'Carry Bag'];
 
 // ── Small pill tab ────────────────────────────────────────────────────────────
 function PillTab({ label, active, onClick, count }) {
@@ -148,6 +161,9 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
   const [defaultTab, setDefaultTab] = useState('T-Shirt Graphics');
   const [contextMenu, setContextMenu] = useState(null);
   const [warningMessage, setWarningMessage] = useState('');
+  const [isYourDropdownOpen, setIsYourDropdownOpen] = useState(false);
+  const [isDefaultDropdownOpen, setIsDefaultDropdownOpen] = useState(false);
+  const [isUploadCollapsed, setIsUploadCollapsed] = useState(false);
   const warningTimeoutRef = useRef(null);
 
   // ── Categorised user uploads (stored per type) ─────────────────────────────
@@ -169,11 +185,16 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
     ? allUploads
     : allUploads.filter(i => i.type === userCategory.toLowerCase());
 
+  const logoUploads = allUploads.filter(i => i.type === 'logo');
+  const patternUploads = allUploads.filter(i => i.type === 'pattern');
+  const imageUploads = allUploads.filter(i => i.type === 'image');
+
   // ── Default assets by sub-tab ──────────────────────────────────────────────
   const defaultAssets = {
     'T-Shirt Graphics': tShirtGraphics,
     'Patterns': [],      // add pattern imports here when available
     'Material': [],      // add material imports here when available
+    'Carry Bag': carryBagGraphics,
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -216,97 +237,139 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
   return (
     <div style={{ width: '100%', height: '100%', minHeight: 0, background: '#fff', borderRadius: 15, boxShadow: '0 8px 30px rgba(0,0,0,0.08)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
-      {/* ── Header ── */}
-      <div style={{ padding: '18px 20px 10px', flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#111827' }}>Uploads</h2>
-        <p style={{ margin: '3px 0 0', fontSize: 11, color: '#9ca3af' }}>Choose a type, then upload or pick from assets</p>
-      </div>
-
       {/* ── Scrollable Body ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16, scrollbarWidth: 'thin' }}>
 
-        {/* ── 1. Upload Type Selector ── */}
-        <div style={{ flexShrink: 0 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Upload as</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-            {UPLOAD_TYPES.map(t => {
-              const active = selectedType === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedType(t.id)}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                    padding: '10px 4px',
-                    borderRadius: 10,
-                    border: active ? `2px solid ${accentBg}` : `1.5px solid ${borderClr}`,
-                    background: active ? accentLight : '#f9fafb',
-                    color: active ? accentBg : '#6b7280',
-                    cursor: 'pointer',
-                    fontWeight: active ? 700 : 500,
-                    fontSize: 10,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {t.icon}
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {!isUploadCollapsed && (
+          <>
+            {/* ── 1. Upload Type Selector ── */}
+            <div style={{ flexShrink: 0 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Upload as</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                {UPLOAD_TYPES.map(t => {
+                  const active = selectedType === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setSelectedType(t.id)}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                        padding: '10px 4px',
+                        borderRadius: 10,
+                        border: active ? `2px solid ${accentBg}` : `1.5px solid ${borderClr}`,
+                        background: active ? accentLight : '#f9fafb',
+                        color: active ? accentBg : '#6b7280',
+                        cursor: 'pointer',
+                        fontWeight: active ? 700 : 500,
+                        fontSize: 10,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {t.icon}
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* ── 2. Drop Zone ── */}
-        <div
-          onDragOver={handleDragOver} onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave} onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          style={{
-            flexShrink: 0,
-            border: `2px dashed ${isDragOver ? accentBg : borderClr}`,
-            borderRadius: 12,
-            padding: '20px 12px',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            background: isDragOver ? accentLight : '#f9fafb',
-            transition: 'all 0.18s',
-            transform: isDragOver ? 'scale(1.01)' : 'scale(1)',
-          }}
-        >
-          <div style={{ transform: isDragOver ? 'translateY(-4px)' : 'translateY(0)', transition: 'transform 0.2s' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}
-              stroke={isDragOver ? accentBg : '#9ca3af'} style={{ width: 36, height: 36, marginBottom: 8, display: 'block', margin: '0 auto 8px' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-            </svg>
-          </div>
-          {isDragOver ? (
-            <p style={{ fontSize: 12, fontWeight: 700, color: accentBg, margin: 0 }}>Drop to upload!</p>
-          ) : (
-            <>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', margin: '0 0 2px' }}>
-                Drag &amp; drop your <strong style={{ color: accentBg }}>{UPLOAD_TYPES.find(t => t.id === selectedType)?.label}</strong> here
-              </p>
-              <p style={{ fontSize: 10, color: '#9ca3af', margin: '0 0 10px' }}>or click to browse</p>
-              <button
-                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                style={{ padding: '6px 18px', background: accentBg, color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 14, height: 14 }}>
+            {/* ── 2. Drop Zone ── */}
+            <div
+              onDragOver={handleDragOver} onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave} onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                flexShrink: 0,
+                border: `2px dashed ${isDragOver ? accentBg : borderClr}`,
+                borderRadius: 12,
+                padding: '20px 12px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                background: isDragOver ? accentLight : '#f9fafb',
+                transition: 'all 0.18s',
+                transform: isDragOver ? 'scale(1.01)' : 'scale(1)',
+              }}
+            >
+              <div style={{ transform: isDragOver ? 'translateY(-4px)' : 'translateY(0)', transition: 'transform 0.2s' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}
+                  stroke={isDragOver ? accentBg : '#9ca3af'} style={{ width: 36, height: 36, marginBottom: 8, display: 'block', margin: '0 auto 8px' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                 </svg>
-                Upload {UPLOAD_TYPES.find(t => t.id === selectedType)?.label}
-              </button>
-            </>
-          )}
-          <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
-        </div>
-        <p style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', marginTop: -8, flexShrink: 0 }}>Supports PNG, JPG, WEBP, SVG</p>
+              </div>
+              {isDragOver ? (
+                <p style={{ fontSize: 12, fontWeight: 700, color: accentBg, margin: 0 }}>Drop to upload!</p>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', margin: '0 0 2px' }}>
+                    Drag &amp; drop your <strong style={{ color: accentBg }}>{UPLOAD_TYPES.find(t => t.id === selectedType)?.label}</strong> here
+                  </p>
+                  <p style={{ fontSize: 10, color: '#9ca3af', margin: '0 0 10px' }}>or click to browse</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                    style={{ padding: '6px 18px', background: accentBg, color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 14, height: 14 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                    Upload {UPLOAD_TYPES.find(t => t.id === selectedType)?.label}
+                  </button>
+                </>
+              )}
+              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+            </div>
+            <p style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', marginTop: -8, flexShrink: 0 }}>Supports PNG, JPG, WEBP, SVG</p>
+          </>
+        )}
 
         {/* ── Image Formatting ── */}
         <div style={{ flexShrink: 0, borderBottom: `1px solid ${borderClr}`, paddingBottom: 14 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Image Formatting</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Image Formatting</p>
+            <button 
+              onClick={() => setIsUploadCollapsed(!isUploadCollapsed)}
+              style={{
+                background: '#fff',
+                border: `1.5px solid ${accentBg}`,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                fontWeight: 700,
+                color: accentBg,
+                padding: '4px 10px',
+                borderRadius: 8,
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = accentLight;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#fff';
+              }}
+            >
+              {isUploadCollapsed ? 'Show Upload' : 'Hide Upload'}
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                strokeWidth={2.5} 
+                stroke="currentColor" 
+                style={{ 
+                  width: 12, 
+                  height: 12, 
+                  transform: isUploadCollapsed ? 'rotate(180deg)' : 'rotate(0deg)', 
+                  transition: 'transform 0.2s' 
+                }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+              </svg>
+            </button>
+          </div>
           <div style={{ background: '#f3f4f6', padding: 4, borderRadius: 10, display: 'flex', gap: 4 }}>
-            {['contain', 'cover'].map(fit => {
+            {['contain', 'cover', 'texture'].map(fit => {
               const active = isImageSelected && selectedLayer?.fitType === fit;
               return (
                 <button key={fit} onClick={() => handleApplyFit(fit)} style={{
@@ -317,18 +380,24 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                   boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
                   transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, textTransform: 'capitalize',
                 }}>
-                  {fit === 'contain' ? (
+                  {fit === 'contain' && (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13 }}>
                       <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
                       <rect x="5" y="7" width="14" height="10" rx="1" stroke="currentColor" fill="currentColor" fillOpacity="0.1" />
                     </svg>
-                  ) : (
+                  )}
+                  {fit === 'cover' && (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13 }}>
                       <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeDasharray="3 3" />
                       <rect x="1" y="5" width="22" height="14" rx="1.5" stroke="currentColor" fill="currentColor" fillOpacity="0.15" />
                     </svg>
                   )}
-                  {fit.charAt(0).toUpperCase() + fit.slice(1)}
+                  {fit === 'texture' && (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 13, height: 13 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75a2.25 2.25 0 0 1 2.25-2.25H6a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V8.25a2.25 2.25 0 0 1-2.25 2.25H18A2.25 2.25 0 0 1 13.5 8.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H18A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                    </svg>
+                  )}
+                  {fit === 'texture' ? 'As Texture' : fit.charAt(0).toUpperCase() + fit.slice(1)}
                 </button>
               );
             })}
@@ -368,33 +437,148 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
           {mainTab === 'your' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Category chips with count */}
-              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
-                {USER_CATEGORIES.map(cat => (
-                  <PillTab
-                    key={cat}
-                    label={cat}
-                    active={userCategory === cat}
-                    count={categoryCounts[cat]}
-                    onClick={() => setUserCategory(cat)}
-                  />
-                ))}
-              </div>
-              {/* Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                {filteredUploads.length === 0 ? (
-                  <EmptyState label={`No ${userCategory === 'All' ? '' : userCategory + ' '}assets uploaded yet.`} />
-                ) : (
-                  filteredUploads.map((item, idx) => (
-                    <ImageTile
-                      key={idx}
-                      url={item.url}
-                      alt={`Upload ${idx}`}
-                      onClick={() => onUpload(null, item.url)}
-                      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between', position: 'relative', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'thin' }}>
+                  {USER_CATEGORIES.filter((c, i) => i < 2 || c === userCategory).map(cat => (
+                    <PillTab
+                      key={cat}
+                      label={cat}
+                      active={userCategory === cat}
+                      count={categoryCounts[cat]}
+                      onClick={() => setUserCategory(cat)}
                     />
-                  ))
-                )}
+                  ))}
+                </div>
+
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <button
+                    onClick={() => setIsYourDropdownOpen(!isYourDropdownOpen)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '20px',
+                      fontSize: '11px',
+                      background: isYourDropdownOpen ? '#f3f4f6' : 'transparent',
+                      color: '#6b7280',
+                      border: '1.5px solid #e5e7eb',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: 12, height: 12 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  {isYourDropdownOpen && (
+                    <>
+                      <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                        onClick={() => setIsYourDropdownOpen(false)}
+                      />
+                      <div style={{
+                        position: 'absolute', right: 0, top: '100%', marginTop: '6px',
+                        width: '140px', background: '#fff', border: '1px solid #e5e7eb',
+                        borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                        zIndex: 50, maxHeight: '200px', overflowY: 'auto', padding: '6px 0',
+                        display: 'flex', flexDirection: 'column',
+                      }}>
+                        {USER_CATEGORIES.map(cat => (
+                          <button
+                            key={cat}
+                            onClick={() => {
+                              setUserCategory(cat);
+                              setIsYourDropdownOpen(false);
+                            }}
+                            style={{
+                              width: '100%', padding: '8px 16px', border: 'none', background: 'transparent',
+                              textAlign: 'left', fontSize: '11px', fontWeight: 600,
+                              color: userCategory === cat ? '#c0623a' : '#374151',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {cat} ({categoryCounts[cat]})
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
+              {/* Grid / Grouped Content */}
+              {userCategory === 'All' ? (
+                allUploads.length === 0 ? (
+                  <EmptyState label="No assets uploaded yet." />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {logoUploads.length > 0 && (
+                      <div>
+                        <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Logos</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                          {logoUploads.map((item, idx) => (
+                            <ImageTile
+                              key={idx}
+                              url={item.url}
+                              alt={`Logo ${idx}`}
+                              onClick={() => onUpload(null, item.url)}
+                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {patternUploads.length > 0 && (
+                      <div>
+                        <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Patterns</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                          {patternUploads.map((item, idx) => (
+                            <ImageTile
+                              key={idx}
+                              url={item.url}
+                              alt={`Pattern ${idx}`}
+                              onClick={() => onUpload(null, item.url)}
+                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {imageUploads.length > 0 && (
+                      <div>
+                        <h4 style={{ fontSize: '11px', fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Images</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                          {imageUploads.map((item, idx) => (
+                            <ImageTile
+                              key={idx}
+                              url={item.url}
+                              alt={`Image ${idx}`}
+                              onClick={() => onUpload(null, item.url)}
+                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {filteredUploads.length === 0 ? (
+                    <EmptyState label={`No ${userCategory} assets uploaded yet.`} />
+                  ) : (
+                    filteredUploads.map((item, idx) => (
+                      <ImageTile
+                        key={idx}
+                        url={item.url}
+                        alt={`Upload ${idx}`}
+                        onClick={() => onUpload(null, item.url)}
+                        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX + 2, y: e.clientY + 2, url: item.url }); }}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -402,16 +586,74 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
           {mainTab === 'default' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Sub-tab chips */}
-              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
-                {DEFAULT_TABS.map(tab => (
-                  <PillTab
-                    key={tab}
-                    label={tab}
-                    active={defaultTab === tab}
-                    count={defaultAssets[tab].length}
-                    onClick={() => setDefaultTab(tab)}
-                  />
-                ))}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between', position: 'relative', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'thin' }}>
+                  {DEFAULT_TABS.filter((c, i) => i < 2 || c === defaultTab).map(tab => (
+                    <PillTab
+                      key={tab}
+                      label={tab}
+                      active={defaultTab === tab}
+                      count={defaultAssets[tab].length}
+                      onClick={() => setDefaultTab(tab)}
+                    />
+                  ))}
+                </div>
+
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <button
+                    onClick={() => setIsDefaultDropdownOpen(!isDefaultDropdownOpen)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '20px',
+                      fontSize: '11px',
+                      background: isDefaultDropdownOpen ? '#f3f4f6' : 'transparent',
+                      color: '#6b7280',
+                      border: '1.5px solid #e5e7eb',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: 12, height: 12 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  {isDefaultDropdownOpen && (
+                    <>
+                      <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                        onClick={() => setIsDefaultDropdownOpen(false)}
+                      />
+                      <div style={{
+                        position: 'absolute', right: 0, top: '100%', marginTop: '6px',
+                        width: '140px', background: '#fff', border: '1px solid #e5e7eb',
+                        borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                        zIndex: 50, maxHeight: '200px', overflowY: 'auto', padding: '6px 0',
+                        display: 'flex', flexDirection: 'column',
+                      }}>
+                        {DEFAULT_TABS.map(tab => (
+                          <button
+                            key={tab}
+                            onClick={() => {
+                              setDefaultTab(tab);
+                              setIsDefaultDropdownOpen(false);
+                            }}
+                            style={{
+                              width: '100%', padding: '8px 16px', border: 'none', background: 'transparent',
+                              textAlign: 'left', fontSize: '11px', fontWeight: 600,
+                              color: defaultTab === tab ? '#c0623a' : '#374151',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {tab} ({defaultAssets[tab].length})
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               {/* Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
