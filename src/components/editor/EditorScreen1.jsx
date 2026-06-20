@@ -8,6 +8,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
+import { gsap } from "gsap";
 import {
   Canvas as R3FCanvas,
   useThree,
@@ -58,7 +59,7 @@ function BackgroundImage({ url }) {
 
 import LeftSidebar from "./LeftSidebar";
 import ModelsPopup from "./ModelsPopup";
-import LayoutPopup from "./LayoutPopup";
+import LayoutPopup, { getSingleModelUrl } from "./LayoutPopup";
 import ScenePopup from "./ScenePopup";
 import GalleryPopup from "./GalleryPopup";
 import { getTextureLibrary } from "../../utils/TextureLibrary";
@@ -164,6 +165,8 @@ function AutoSizedModelWithDimensions({
   appliedColors,
   appliedMaterials,
   appliedLastApplied,
+  appliedMetallic,
+  appliedRoughness,
   shadowEnabled,
   customSize,
   selectedMaterialId,
@@ -651,6 +654,17 @@ function AutoSizedModelWithDimensions({
           m.metalnessMap = null;
           m.aoMap = null;
         }
+
+        // Apply custom metallic/roughness overrides if set
+        const customMetallic = appliedMetallic ? (appliedMetallic[id] !== undefined ? appliedMetallic[id] : appliedMetallic["all"]) : undefined;
+        const customRoughness = appliedRoughness ? (appliedRoughness[id] !== undefined ? appliedRoughness[id] : appliedRoughness["all"]) : undefined;
+
+        if (customMetallic !== undefined) {
+          m.metalness = customMetallic;
+        }
+        if (customRoughness !== undefined) {
+          m.roughness = customRoughness;
+        }
       });
     });
   }, [
@@ -659,6 +673,8 @@ function AutoSizedModelWithDimensions({
     appliedColors,
     appliedMaterials,
     appliedLastApplied,
+    appliedMetallic,
+    appliedRoughness,
   ]);
 
   if (!clonedScene) return null;
@@ -841,12 +857,16 @@ export default function EditorScreen1({
   appliedMaterials,
   appliedLastApplied,
   appliedCustomSize,
+  appliedMetallic,
+  appliedRoughness,
   selectedMaterial,
   setSelectedMaterial,
   onProceed,
   onApplyColor,
   onApplyMaterial,
   onApplyCustomSize,
+  onApplyMetallic,
+  onApplyRoughness,
   onUndo,
   onRedo,
   onResetAll,
@@ -906,12 +926,51 @@ export default function EditorScreen1({
   const [pendingModelUrl, setPendingModelUrl] = useState(null);
   const [showSwitchDialog, setShowSwitchDialog] = useState(false);
 
+  useEffect(() => {
+    if (activeTab === "edit" && modelUrl) {
+      const singleModelUrl = getSingleModelUrl(modelUrl);
+      if (singleModelUrl !== modelUrl) {
+        setModelUrl(singleModelUrl);
+      }
+    }
+  }, [activeTab, modelUrl, setModelUrl]);
+
+  // Custom size logic
+  const [baseDimensions, setBaseDimensions] = useState(null);
+  const [customSizeInput, setCustomSizeInput] = useState({
+    length: 180,
+    width: 60,
+    height: 160,
+  });
+
+  const getModelCenterY = () => {
+    if (!baseDimensions) return 0;
+    const currentHeight = appliedCustomSize?.height || baseDimensions.height;
+    const maxDim = Math.max(baseDimensions.length, baseDimensions.height, baseDimensions.width) / 1000;
+    const scale = 2.0 / maxDim;
+    return ((currentHeight / 1000) * scale) / 2 + 0.18;
+  };
+
   // Zoom state
-  const [zoomPercent, setZoomPercent] = useState(100);
+  const [zoomPercent, setZoomPercent] = useState(60);
   const [showLegend, setShowLegend] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
   const activeSceneRef = useRef(null);
   const measureOverlayRef = useRef(null);
+
+  useEffect(() => {
+    if (baseDimensions && cameraRef.current && orbitControlsRef.current) {
+      setZoomPercent(60);
+      const newDist = 4 / 0.6;
+      const controls = orbitControlsRef.current;
+      const camera = cameraRef.current;
+      const targetY = getModelCenterY();
+      
+      controls.target.set(0, targetY, 0);
+      camera.position.set(0, targetY, newDist);
+      controls.update();
+    }
+  }, [baseDimensions]);
 
   // Save scene states
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -975,21 +1034,7 @@ export default function EditorScreen1({
     }
   };
 
-  // Custom size logic
-  const [baseDimensions, setBaseDimensions] = useState(null);
-  const [customSizeInput, setCustomSizeInput] = useState({
-    length: 180,
-    width: 60,
-    height: 160,
-  });
 
-  const getModelCenterY = () => {
-    if (!baseDimensions) return 0;
-    const currentHeight = appliedCustomSize?.height || baseDimensions.height;
-    const maxDim = Math.max(baseDimensions.length, baseDimensions.height, baseDimensions.width) / 1000;
-    const scale = 3.0 / maxDim;
-    return ((currentHeight / 1000) * scale) / 2;
-  };
 
   // Export Modal states and handlers
   const captureRef = useRef(null);
@@ -1018,6 +1063,28 @@ export default function EditorScreen1({
       if (textureFallbackTimeoutRef.current)
         clearTimeout(textureFallbackTimeoutRef.current);
     };
+  }, []);
+
+  // Fade and slide in entry animations for editor UI panels
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        ".editor-left-container",
+        { x: -50, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out" }
+      );
+      gsap.fromTo(
+        ".editor-right-actions",
+        { x: 50, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out", delay: 0.1 }
+      );
+      gsap.fromTo(
+        ".editor-right-tools",
+        { x: 50, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out", delay: 0.2 }
+      );
+    });
+    return () => ctx.revert();
   }, []);
 
   useEffect(() => {
@@ -1248,7 +1315,7 @@ export default function EditorScreen1({
         style={{ cursor: toolMode === "hand" ? "grab" : "default" }}
       >
         <R3FCanvas
-          camera={{ position: [0, 0.5, 4.5], fov: 45 }}
+          camera={{ position: [0, 0.5, 6.667], fov: 45 }}
           dpr={[1, 2]}
           gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
           shadows={shadowEnabled ? { type: THREE.PCFShadowMap } : false}
@@ -1346,6 +1413,8 @@ export default function EditorScreen1({
                 appliedColors={appliedColors}
                 appliedMaterials={appliedMaterials}
                 appliedLastApplied={appliedLastApplied}
+                appliedMetallic={appliedMetallic}
+                appliedRoughness={appliedRoughness}
                 shadowEnabled={shadowEnabled}
                 customSize={appliedCustomSize}
                 selectedMaterialId={selectedMaterial}
@@ -1512,14 +1581,14 @@ export default function EditorScreen1({
       {/* Floating UI Elements */}
 
       {/* Left Sidebar Container */}
-      <div className="absolute left-6 top-6 bottom-6 z-10 flex gap-4 pointer-events-none">
+      <div className="editor-left-container absolute left-6 top-6 bottom-6 z-10 flex gap-[0.5vw] pointer-events-none">
         <div className="pointer-events-auto h-full">
           <LeftSidebar active={activeTab} setActive={setActiveTab} />
         </div>
 
         {/* Popups */}
         <div
-          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto h-full ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" || activeTab === "gallery" ? "w-[350px]" : "w-0"}`}
+          className={`transition-all duration-300 overflow-hidden shrink-0 pointer-events-auto h-full ${activeTab === "models" || activeTab === "layout" || activeTab === "scene" || activeTab === "gallery" ? "w-[280px] sm:w-[350px]" : "w-0"}`}
         >
           {activeTab === "models" && (
             <ModelsPopup
@@ -1541,7 +1610,22 @@ export default function EditorScreen1({
           {activeTab === "layout" && (
             <LayoutPopup
               currentModelUrl={modelUrl}
-              onSelectLayout={setModelUrl}
+              onSelectLayout={(url) => {
+                if (url === modelUrl) {
+                  const singleModelUrl = getSingleModelUrl(modelUrl);
+                  setModelUrl(singleModelUrl);
+                  return;
+                }
+                const hasEdits =
+                  Object.keys(appliedTextures || {}).length > 0 ||
+                  Object.keys(appliedColors || {}).length > 0;
+                if (hasEdits) {
+                  setPendingModelUrl(url);
+                  setShowSwitchDialog(true);
+                } else {
+                  setModelUrl(url);
+                }
+              }}
             />
           )}
           {activeTab === "scene" && (
@@ -1576,17 +1660,17 @@ export default function EditorScreen1({
 
         {/* Edit Popup Panel */}
         {activeTab === "edit" && !showCustomSize && (
-          <div className="pointer-events-auto w-[280px] h-fit max-h-full bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4 overflow-y-auto">
+          <div className="editor-edit-popup pointer-events-auto w-[280px] h-fit max-h-full bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4 overflow-y-auto">
             <div className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+                <div className="w-[1.8vw] h-[1.8vw] rounded-xl bg-white shadow-sm flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="w-5 h-5 text-gray-600"
+                    className="w-[1.1vw] h-[1.1vw] text-gray-600"
                   >
                     <path
                       strokeLinecap="round"
@@ -1633,7 +1717,7 @@ export default function EditorScreen1({
                   </svg>
                 </div>
                 <span className="font-bold text-[#c05520] text-[15px] tracking-wide">
-                  Upload Artwork
+                  Custom Features
                 </span>
               </div>
               <svg
@@ -1642,7 +1726,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={2.5}
                 stroke="currentColor"
-                className="w-5 h-5 text-[#c05520] transition-transform duration-300 group-hover:translate-x-1"
+                className="w-[1.1vw] h-[1.1vw] text-[#c05520] animate-bounce-right-loop"
               >
                 <path
                   strokeLinecap="round"
@@ -1672,18 +1756,46 @@ export default function EditorScreen1({
             </div>
 
             <div className="flex flex-col gap-3">
-              <label className="text-sm font-bold text-gray-700">
-                Apply Color
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-bold text-gray-700">
+                  Apply Color
+                </label>
+                {appliedColors?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] && (
+                  <button
+                    onClick={() => {
+                      if (onApplyColor) {
+                        onApplyColor(selectedMaterial, null);
+                      }
+                    }}
+                    className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2.5}
+                      stroke="currentColor"
+                      className="w-3 h-3"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                    Reset
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-3 w-full">
-                <div className="relative w-10 h-10 rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0 flex items-center justify-center bg-gray-50 hover:bg-gray-100 group">
+                <div className="relative w-[1.8vw] h-[1.8vw] rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0 flex items-center justify-center bg-gray-50 hover:bg-gray-100 group">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="w-5 h-5 text-gray-500 absolute z-0 group-hover:scale-110 transition-transform"
+                    className="w-[1.1vw] h-[1.1vw] text-gray-500 absolute z-0 group-hover:scale-110 transition-transform"
                   >
                     <path
                       strokeLinecap="round"
@@ -1728,6 +1840,45 @@ export default function EditorScreen1({
                     }
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Metallic & Roughness Adjustments */}
+            <div className="flex flex-col gap-3.5 pt-2 border-t border-gray-100 mt-1">
+             
+              
+              {/* Metallic Slider */}
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+                  <span>Metallic</span>
+                  <span>{Math.round((appliedMetallic?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.1) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={appliedMetallic?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.1}
+                  onChange={(e) => onApplyMetallic(selectedMaterial, parseFloat(e.target.value))}
+                  className="w-full accent-[#c05520] cursor-pointer h-1 bg-gray-100 rounded-lg appearance-none"
+                />
+              </div>
+
+              {/* Roughness Slider */}
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+                  <span>Roughness</span>
+                  <span>{Math.round((appliedRoughness?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.5) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={appliedRoughness?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.5}
+                  onChange={(e) => onApplyRoughness(selectedMaterial, parseFloat(e.target.value))}
+                  className="w-full accent-[#c05520] cursor-pointer h-1 bg-gray-100 rounded-lg appearance-none"
+                />
               </div>
             </div>
 
@@ -1900,7 +2051,7 @@ export default function EditorScreen1({
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setShowCustomSize(false)}
-                    className="w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer border border-gray-100 shadow-sm"
+                    className="w-[1.8vw] h-[1.8vw] rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer border border-gray-100 shadow-sm"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -1908,7 +2059,7 @@ export default function EditorScreen1({
                       viewBox="0 0 24 24"
                       strokeWidth={2}
                       stroke="currentColor"
-                      className="w-5 h-5 text-gray-700"
+                      className="w-[1.1vw] h-[1.1vw] text-gray-700"
                     >
                       <path
                         strokeLinecap="round"
@@ -1927,7 +2078,7 @@ export default function EditorScreen1({
                     onApplyCustomSize(baseDimensions);
                   }}
                   title="Reset to original size"
-                  className="w-10 h-10 rounded-xl bg-white hover:bg-gray-50 flex items-center justify-center transition-colors cursor-pointer border border-gray-100 shadow-sm"
+                  className="w-[1.8vw] h-[1.8vw] rounded-xl bg-white hover:bg-gray-50 flex items-center justify-center transition-colors cursor-pointer border border-gray-100 shadow-sm"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1935,7 +2086,7 @@ export default function EditorScreen1({
                     viewBox="0 0 24 24"
                     strokeWidth={2}
                     stroke="currentColor"
-                    className="w-5 h-5 text-gray-600"
+                    className="w-[1.1vw] h-[1.1vw] text-gray-600"
                   >
                     <path
                       strokeLinecap="round"
@@ -2009,7 +2160,7 @@ export default function EditorScreen1({
       </div>
 
       {/* Export & Save Action Buttons (Separate Container) */}
-      <div className="absolute right-7 top-6 z-10 pointer-events-none bg-white rounded-[20px] p-2 shadow-lg flex flex-col gap-2 items-center justify-center">
+      <div className="editor-right-actions absolute right-[5vw] top-[2vh] z-10 pointer-events-none bg-white rounded-[20px] p-2 shadow-lg flex flex-col gap-2 items-center justify-center">
         <Tooltip1 label="Save Scene" side="left">
           <button
             onClick={() => setShowSaveModal(true)}
@@ -2021,7 +2172,7 @@ export default function EditorScreen1({
               viewBox="0 0 24 24"
               strokeWidth={2.2}
               stroke="currentColor"
-              className="w-5 h-5"
+              className="w-[1.1vw] h-[1.1vw]"
             >
               <path
                 strokeLinecap="round"
@@ -2043,7 +2194,7 @@ export default function EditorScreen1({
               viewBox="0 0 24 24"
               strokeWidth={2.2}
               stroke="currentColor"
-              className="w-5 h-5"
+              className="w-[1.1vw] h-[1.1vw]"
             >
               <path
                 strokeLinecap="round"
@@ -2056,11 +2207,11 @@ export default function EditorScreen1({
       </div>
 
       {/* Right Floating Pill */}
-      <div className="absolute right-6 top-[136px] z-10 bg-white rounded-full p-2 shadow-lg flex flex-col gap-1">
+      <div className="editor-right-tools absolute right-[1.5vw] top-[2vh] z-10 bg-white rounded-full p-2 shadow-lg flex flex-col gap-[0.6vw]">
         <Tooltip1 label="Select" side="left">
           <button
             onClick={() => handleSetToolMode("cursor")}
-            className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+            className={`w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
               toolMode === "cursor"
                 ? "bg-gray-900 hover:bg-gray-700"
                 : "bg-transparent hover:bg-gray-100"
@@ -2069,14 +2220,14 @@ export default function EditorScreen1({
             <img
               src={cursorIcon}
               alt="Cursor"
-              className={`w-5 h-5 object-contain ${toolMode === "cursor" ? "invert brightness-0 saturate-100" : ""}`}
+              className={`w-[1.1vw] h-[1.1vw] object-contain ${toolMode === "cursor" ? "invert brightness-0 saturate-100" : ""}`}
             />
           </button>
         </Tooltip1>
         <Tooltip1 label="Hand" side="left">
           <button
             onClick={() => handleSetToolMode("hand")}
-            className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+            className={`w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
               toolMode === "hand"
                 ? "bg-gray-900 hover:bg-gray-700"
                 : "bg-transparent hover:bg-gray-100"
@@ -2085,8 +2236,69 @@ export default function EditorScreen1({
             <img
               src={handIcon}
               alt="Hand"
-              className={`w-5 h-5 object-contain ${toolMode === "hand" ? "invert brightness-0 saturate-100" : ""}`}
+              className={`w-[1.1vw] h-[1.1vw] object-contain ${toolMode === "hand" ? "invert brightness-0 saturate-100" : ""}`}
             />
+          </button>
+        </Tooltip1>
+
+        <div className="w-6 h-px bg-gray-200 mx-auto" />
+
+        <Tooltip1 label="Reset Position" side="left">
+          <button
+            onClick={() => {
+              if (orbitControlsRef.current && cameraRef.current) {
+                orbitControlsRef.current.target.set(0, getModelCenterY(), 0);
+                orbitControlsRef.current.update();
+              }
+              setToolMode("cursor");
+            }}
+            className="w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.8}
+              stroke="currentColor"
+              className="w-[1.1vw] h-[1.1vw]"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5"
+              />
+            </svg>
+          </button>
+        </Tooltip1>
+
+        <Tooltip1 label="Reset All Edits" side="left">
+          <button
+            onClick={() => {
+              if (onResetAll) onResetAll();
+              if (baseDimensions) setCustomSizeInput(baseDimensions);
+              setToolMode("cursor");
+            }}
+            className="w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none bg-transparent hover:bg-red-50 hover:text-red-500 cursor-pointer text-gray-600 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.8}
+              stroke="currentColor"
+              className="w-[1.1vw] h-[1.1vw]"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+              />
+            </svg>
           </button>
         </Tooltip1>
 
@@ -2095,7 +2307,7 @@ export default function EditorScreen1({
             <div className="w-6 h-px bg-gray-200 mx-auto" />
             <button
               onClick={() => setShowTools(true)}
-              className="w-10 h-12 rounded-full flex flex-col items-center justify-center border-none bg-transparent hover:bg-orange-50 text-[#c05520] cursor-pointer transition-colors relative"
+              className=" rounded-full flex flex-col items-center justify-center border-none bg-transparent hover:bg-orange-50 text-[#c05520] cursor-pointer transition-colors relative"
               title="More Tools"
             >
               <style>{`
@@ -2105,6 +2317,178 @@ export default function EditorScreen1({
                 }
                 .animate-bounce-down {
                   animation: bounce-down 1.2s infinite ease-in-out;
+                }
+                
+                /* Auto-aligning right side panels using viewport units */
+                .editor-right-tools {
+                  width: 5.6vh !important;
+                  top: 2vh !important;
+                  right: 1.5vw !important;
+                  padding: 0.9vh !important;
+                  gap: 0.7vw !important;
+                  background-color: #ffffff !important;
+                  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+                  border-radius: 9999px !important;
+                  display: flex !important;
+                  flex-direction: column !important;
+                  align-items: center !important;
+                }
+                .editor-right-tools button {
+                  width: 4.2vh !important;
+                  height: 4.2vh !important;
+                  min-width: 4.2vh !important;
+                  min-height: 4.2vh !important;
+                  background-color: transparent !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  border-radius: 9999px !important;
+                  transition: all 0.2s ease !important;
+                }
+                .editor-right-tools button:hover {
+                  background-color: #f3f4f6 !important;
+                }
+                /* Active state color override: keep dark circle when active */
+                .editor-right-tools button[class*="bg-gray-900"] {
+                  background-color: #111827 !important;
+                }
+                .editor-right-tools button[class*="bg-gray-900"]:hover {
+                  background-color: #1f2937 !important;
+                }
+                .editor-right-tools img {
+                  width: 2.4vh !important;
+                  height: 2.4vh !important;
+                }
+                .editor-right-tools svg {
+                  width: 2.4vh !important;
+                  height: 2.4vh !important;
+                }
+                .editor-right-tools .text-\\[13px\\] {
+                  font-size: 1.3vh !important;
+                  line-height: 1.2 !important;
+                }
+                .editor-right-tools span {
+                  font-size: 0.45vw !important;
+                  line-height: 1.1 !important;
+                }
+                .editor-right-tools .bg-gray-200 {
+                  display: block !important;
+                  width: 2.2vh !important;
+                  height: 1px !important;
+                  margin-left: auto !important;
+                  margin-right: auto !important;
+                }
+                
+                .editor-right-actions {
+                  top: 2vh !important;
+                  right: 4.5vw !important;
+                  padding: 0.55vh !important;
+                  gap: 0.7vh !important;
+                  background-color: #ffffff !important;
+                  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+                  border-radius: 9999px !important;
+                }
+                .editor-right-actions button {
+                  width: 4.2vh !important;
+                  height: 4.2vh !important;
+                  min-width: 4.2vh !important;
+                  min-height: 4.2vh !important;
+                  background-color: transparent !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  border-radius: 9999px !important;
+                  transition: all 0.2s ease !important;
+                }
+                .editor-right-actions button:hover {
+                  background-color: #f3f4f6 !important;
+                }
+                .editor-right-actions svg {
+                  width: 2.4vh !important;
+                  height: 2.4vh !important;
+                }
+                .editor-right-actions .bg-gray-100 {
+                  display: block !important;
+                  width: 2vh !important;
+                  height: 1px !important;
+                  margin-left: auto !important;
+                  margin-right: auto !important;
+                }
+                
+                /* Responsive styles for Edit Popup Panel using viewport units */
+                .editor-edit-popup {
+                  width: 17.5vw !important;
+                  padding: 0.9vw !important;
+                  gap: 0.65vw !important;
+                  border-radius: 1.4vw !important;
+                }
+                @keyframes bounce-right-loop {
+                  0%, 100% {
+                    transform: translateX(0);
+                  }
+                  50% {
+                    transform: translateX(4px);
+                  }
+                }
+                .animate-bounce-right-loop {
+                  animation: bounce-right-loop 1s ease-in-out infinite !important;
+                }
+                @media (min-width: 1024px) {
+                  .editor-edit-popup,
+                  .editor-edit-popup * {
+                    scrollbar-width: none !important;
+                    -ms-overflow-style: none !important;
+                  }
+                  .editor-edit-popup::-webkit-scrollbar,
+                  .editor-edit-popup *::-webkit-scrollbar {
+                    display: none !important;
+                  }
+                  /* Avoid scroll by removing max-height constraint on the grid on big screens */
+                  .editor-edit-popup .grid.grid-cols-3 {
+                    max-height: none !important;
+                    overflow: visible !important;
+                    padding-right: 0 !important;
+                  }
+                  /* Reduce internal container paddings */
+                  .editor-edit-popup .bg-gray-50 {
+                    padding: 0.6vw !important;
+                    border-radius: 0.8vw !important;
+                  }
+                  .editor-edit-popup button.border-2 {
+                    padding: 0.6vw !important;
+                    border-radius: 0.8vw !important;
+                  }
+                }
+                .editor-edit-popup .text-sm {
+                  font-size: 0.8vw !important;
+                }
+                .editor-edit-popup .text-xs {
+                  font-size: 0.7vw !important;
+                }
+                .editor-edit-popup .text-\\[15px\\] {
+                  font-size: 0.85vw !important;
+                }
+                .editor-edit-popup select,
+                .editor-edit-popup input {
+                  font-size: 0.8vw !important;
+                  padding: 0.6vw !important;
+                  border-radius: 0.8vw !important;
+                }
+                .editor-edit-popup button {
+                  border-radius: 0.8vw !important;
+                  font-size: 0.85vw !important;
+                }
+                /* Category buttons inside the Texture Library tab */
+                .editor-edit-popup .rounded-full {
+                  font-size: 0.7vw !important;
+                  padding: 0.35vw 0.7vw !important;
+                }
+                .editor-edit-popup span.text-\\[11px\\] {
+                  font-size: 0.65vw !important;
+                }
+                .editor-edit-popup span.text-\\[10px\\] {
+                  font-size: 0.6vw !important;
+                }
+                .editor-edit-popup label {
+                  font-size: 0.8vw !important;
                 }
               `}</style>
               <svg
@@ -2130,80 +2514,19 @@ export default function EditorScreen1({
 
         {/* Collapsible Container for Remaining Tools */}
         <div
-          className={`transition-all duration-300 overflow-hidden flex flex-col gap-1 items-center w-full ${
+          className={`transition-all duration-300 flex flex-col gap-[0.6vw] items-center w-full ${
             showTools
-              ? "max-h-[1000px] opacity-100 mt-1"
-              : "max-h-0 opacity-0 pointer-events-none"
+              ? "max-h-[1000px] opacity-100 mt-1 overflow-visible"
+              : "max-h-0 opacity-0 pointer-events-none overflow-hidden"
           }`}
         >
-          <Tooltip1 label="Reset Position" side="left">
-            <button
-              onClick={() => {
-                if (orbitControlsRef.current && cameraRef.current) {
-                  orbitControlsRef.current.target.set(0, getModelCenterY(), 0);
-                  // The camera is usually at z=300 to z=400 depending on model size,
-                  // let's just reset the pivot target, which fulfills "reset the pivot to 0"
-                  orbitControlsRef.current.update();
-                }
-                setToolMode("cursor");
-              }}
-              className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.8}
-                stroke="currentColor"
-                className="w-5 h-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5"
-                />
-              </svg>
-            </button>
-          </Tooltip1>
 
-          <Tooltip1 label="Reset All Edits" side="left">
-            <button
-              onClick={() => {
-                if (onResetAll) onResetAll();
-                if (baseDimensions) setCustomSizeInput(baseDimensions);
-                setToolMode("cursor");
-              }}
-              className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-red-50 hover:text-red-500 cursor-pointer text-gray-600 transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.8}
-                stroke="currentColor"
-                className="w-5 h-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                />
-              </svg>
-            </button>
-          </Tooltip1>
-
-          <div className="w-6 h-px bg-gray-200 mx-auto" />
 
           <Tooltip1 label="Undo" side="left">
             <button
               onClick={onUndo}
               disabled={!canUndo}
-              className={`w-10 h-10 rounded-full flex items-center justify-center border-none transition-colors ${canUndo ? "bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600" : "bg-transparent text-gray-300 cursor-not-allowed"}`}
+              className={`w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none transition-colors ${canUndo ? "bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600" : "bg-transparent text-gray-300 cursor-not-allowed"}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2211,7 +2534,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={1.8}
                 stroke="currentColor"
-                className="w-5 h-5"
+                className="w-[1.1vw] h-[1.1vw]"
               >
                 <path
                   strokeLinecap="round"
@@ -2226,7 +2549,7 @@ export default function EditorScreen1({
             <button
               onClick={onRedo}
               disabled={!canRedo}
-              className={`w-10 h-10 rounded-full flex items-center justify-center border-none transition-colors ${canRedo ? "bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600" : "bg-transparent text-gray-300 cursor-not-allowed"}`}
+              className={`w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none transition-colors ${canRedo ? "bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600" : "bg-transparent text-gray-300 cursor-not-allowed"}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2234,7 +2557,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={1.8}
                 stroke="currentColor"
-                className="w-5 h-5"
+                className="w-[1.1vw] h-[1.1vw]"
               >
                 <path
                   strokeLinecap="round"
@@ -2248,7 +2571,7 @@ export default function EditorScreen1({
           <Tooltip1 label="Zoom In" side="left">
             <button
               onClick={() => handleZoom(10)}
-              className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
+              className="w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2256,7 +2579,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={1.8}
                 stroke="currentColor"
-                className="w-5 h-5"
+                className="w-[1.1vw] h-[1.1vw]"
               >
                 <path
                   strokeLinecap="round"
@@ -2274,7 +2597,7 @@ export default function EditorScreen1({
           <Tooltip1 label="Zoom Out" side="left">
             <button
               onClick={() => handleZoom(-10)}
-              className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
+              className="w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none bg-transparent hover:bg-gray-100 cursor-pointer text-gray-600 transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2282,7 +2605,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={1.8}
                 stroke="currentColor"
-                className="w-5 h-5"
+                className="w-[1.1vw] h-[1.1vw]"
               >
                 <path
                   strokeLinecap="round"
@@ -2301,7 +2624,7 @@ export default function EditorScreen1({
           >
             <button
               onClick={() => setShadowEnabled((s) => !s)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+              className={`w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
                 shadowEnabled
                   ? "bg-gray-900 text-white hover:bg-gray-700"
                   : "bg-transparent text-gray-500 hover:bg-gray-100"
@@ -2313,7 +2636,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={1.8}
                 stroke="currentColor"
-                className="w-5 h-5"
+                className="w-[1.1vw] h-[1.1vw]"
               >
                 <path
                   strokeLinecap="round"
@@ -2337,7 +2660,7 @@ export default function EditorScreen1({
                   return nextVal;
                 });
               }}
-              className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+              className={`w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
                 showMeasurements
                   ? "bg-gray-900 text-white hover:bg-gray-700"
                   : "bg-transparent text-gray-500 hover:bg-gray-100"
@@ -2349,7 +2672,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={1.8}
                 stroke="currentColor"
-                className="w-5 h-5"
+                className="w-[1.1vw] h-[1.1vw]"
               >
                 <path
                   strokeLinecap="round"
@@ -2373,7 +2696,7 @@ export default function EditorScreen1({
           >
             <button
               onClick={toggleFullscreen}
-              className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+              className={`w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
                 isFullscreen
                   ? "bg-gray-900 text-white hover:bg-gray-700"
                   : "bg-transparent text-gray-500 hover:bg-gray-100"
@@ -2386,7 +2709,7 @@ export default function EditorScreen1({
                   viewBox="0 0 24 24"
                   strokeWidth={1.8}
                   stroke="currentColor"
-                  className="w-5 h-5"
+                  className="w-[1.1vw] h-[1.1vw]"
                 >
                   <path
                     strokeLinecap="round"
@@ -2401,7 +2724,7 @@ export default function EditorScreen1({
                   viewBox="0 0 24 24"
                   strokeWidth={1.8}
                   stroke="currentColor"
-                  className="w-5 h-5"
+                  className="w-[1.1vw] h-[1.1vw]"
                 >
                   <path
                     strokeLinecap="round"
@@ -2418,7 +2741,7 @@ export default function EditorScreen1({
           <Tooltip1 label="Help & Controls" side="left">
             <button
               onClick={() => setShowLegend(!showLegend)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+              className={`w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
                 showLegend
                   ? "bg-gray-900 text-white hover:bg-gray-700"
                   : "bg-transparent text-gray-500 hover:bg-gray-100"
@@ -2430,7 +2753,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={1.8}
                 stroke="currentColor"
-                className="w-5 h-5"
+                className="w-[1.1vw] h-[1.1vw]"
               >
                 <path
                   strokeLinecap="round"
@@ -2447,7 +2770,7 @@ export default function EditorScreen1({
           <Tooltip1 label="Close Tools" side="left">
             <button
               onClick={() => setShowTools(false)}
-              className="w-10 h-10 rounded-full flex items-center justify-center border-none bg-transparent hover:bg-orange-50 text-[#c05520] cursor-pointer transition-colors"
+              className="w-[1.8vw] h-[1.8vw] rounded-full flex items-center justify-center border-none bg-transparent hover:bg-orange-50 text-[#c05520] cursor-pointer transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2455,7 +2778,7 @@ export default function EditorScreen1({
                 viewBox="0 0 24 24"
                 strokeWidth={2.5}
                 stroke="currentColor"
-                className="w-5 h-5"
+                className="w-[1.1vw] h-[1.1vw]"
               >
                 <path
                   strokeLinecap="round"
@@ -2608,7 +2931,7 @@ export default function EditorScreen1({
                     type="checkbox"
                     checked={exportGlbChecked}
                     onChange={(e) => setExportGlbChecked(e.target.checked)}
-                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                    className="w-[1.1vw] h-[1.1vw] accent-[#c05520] cursor-pointer rounded"
                   />
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-gray-800">
@@ -2624,7 +2947,7 @@ export default function EditorScreen1({
                     type="checkbox"
                     checked={exportPngChecked}
                     onChange={(e) => setExportPngChecked(e.target.checked)}
-                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                    className="w-[1.1vw] h-[1.1vw] accent-[#c05520] cursor-pointer rounded"
                   />
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-gray-800">
@@ -2641,7 +2964,7 @@ export default function EditorScreen1({
                     type="checkbox"
                     checked={exportJpgChecked}
                     onChange={(e) => setExportJpgChecked(e.target.checked)}
-                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                    className="w-[1.1vw] h-[1.1vw] accent-[#c05520] cursor-pointer rounded"
                   />
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-gray-800">
@@ -2658,7 +2981,7 @@ export default function EditorScreen1({
                     type="checkbox"
                     checked={exportPdfChecked}
                     onChange={(e) => setExportPdfChecked(e.target.checked)}
-                    className="w-5 h-5 accent-[#c05520] cursor-pointer rounded"
+                    className="w-[1.1vw] h-[1.1vw] accent-[#c05520] cursor-pointer rounded"
                   />
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-gray-800">
@@ -2852,7 +3175,7 @@ function ViewBtn({ label, onClick }) {
         viewBox="0 0 24 24"
         strokeWidth={1.5}
         stroke="currentColor"
-        className="w-5 h-5"
+        className="w-[1.1vw] h-[1.1vw]"
       >
         <path
           strokeLinecap="round"

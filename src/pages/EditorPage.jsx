@@ -38,11 +38,14 @@ export default function EditorPage() {
     materials: {},
     customSize: null,
     lastApplied: {},
+    metallic: {},
+    roughness: {},
   });
 
   // History stack
   const history = useRef([editorState]);
   const historyIndex = useRef(0);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   const pushHistory = (newStateUpdates) => {
     setEditorState((prevState) => {
@@ -54,11 +57,14 @@ export default function EditorPage() {
         lastItem.textures === nextState.textures &&
         lastItem.colors === nextState.colors &&
         lastItem.materials === nextState.materials &&
-        lastItem.customSize === nextState.customSize;
+        lastItem.customSize === nextState.customSize &&
+        lastItem.metallic === nextState.metallic &&
+        lastItem.roughness === nextState.roughness;
 
       if (!isDuplicate) {
         history.current = [...currentStack, nextState];
         historyIndex.current = history.current.length - 1;
+        setHistoryVersion((v) => v + 1);
       }
       return nextState;
     });
@@ -68,6 +74,7 @@ export default function EditorPage() {
     if (historyIndex.current > 0) {
       historyIndex.current -= 1;
       setEditorState(history.current[historyIndex.current]);
+      setHistoryVersion((v) => v + 1);
     }
   };
 
@@ -75,11 +82,24 @@ export default function EditorPage() {
     if (historyIndex.current < history.current.length - 1) {
       historyIndex.current += 1;
       setEditorState(history.current[historyIndex.current]);
+      setHistoryVersion((v) => v + 1);
     }
   };
 
   const canUndo = historyIndex.current > 0;
   const canRedo = historyIndex.current < history.current.length - 1;
+
+  const handleApplyMetallic = (materialId, value) => {
+    const targetMat = (materialId && materialId !== "none") ? materialId : "all";
+    const nextMetallic = { ...editorState.metallic, [targetMat]: value };
+    pushHistory({ metallic: nextMetallic });
+  };
+
+  const handleApplyRoughness = (materialId, value) => {
+    const targetMat = (materialId && materialId !== "none") ? materialId : "all";
+    const nextRoughness = { ...editorState.roughness, [targetMat]: value };
+    pushHistory({ roughness: nextRoughness });
+  };
 
   const handleResetAll = () => {
     const defaultState = {
@@ -88,11 +108,14 @@ export default function EditorPage() {
       materials: {},
       customSize: null,
       lastApplied: {},
+      metallic: {},
+      roughness: {},
     };
     setEditorState(defaultState);
     history.current = [defaultState];
     historyIndex.current = 0;
     setCanvasResetKey((k) => k + 1);
+    setHistoryVersion((v) => v + 1);
   };
 
   const onLoadScene = (scene) => {
@@ -103,6 +126,7 @@ export default function EditorPage() {
       setEditorState(scene.editorState);
       history.current = [scene.editorState];
       historyIndex.current = 0;
+      setHistoryVersion((v) => v + 1);
     }
     if (scene.hdriPreset !== undefined) setHdriPreset(scene.hdriPreset);
     if (scene.envIntensity !== undefined) setEnvIntensity(scene.envIntensity);
@@ -177,19 +201,32 @@ export default function EditorPage() {
     const targetMat = (materialId && materialId !== "none") ? materialId : "all";
     
     setEditorState((prevState) => {
-      const nextMaterials = { ...prevState.materials };
-      if (targetMat === "all") {
-        Object.keys(nextMaterials).forEach((k) => delete nextMaterials[k]);
+      const nextColors = { ...prevState.colors };
+      const nextLastApplied = { ...prevState.lastApplied };
+      
+      if (colorHex === null) {
+        delete nextColors[targetMat];
+        delete nextLastApplied[targetMat];
       } else {
-        delete nextMaterials[targetMat];
-        delete nextMaterials["all"];
+        nextColors[targetMat] = colorHex;
+        nextLastApplied[targetMat] = "color";
+      }
+
+      const nextMaterials = { ...prevState.materials };
+      if (colorHex !== null) {
+        if (targetMat === "all") {
+          Object.keys(nextMaterials).forEach((k) => delete nextMaterials[k]);
+        } else {
+          delete nextMaterials[targetMat];
+          delete nextMaterials["all"];
+        }
       }
 
       const nextState = {
         ...prevState,
-        colors: { ...prevState.colors, [targetMat]: colorHex },
+        colors: nextColors,
         materials: nextMaterials,
-        lastApplied: { ...prevState.lastApplied, [targetMat]: "color" },
+        lastApplied: nextLastApplied,
       };
 
       if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
@@ -197,6 +234,7 @@ export default function EditorPage() {
         history.current = history.current.slice(0, historyIndex.current + 1);
         history.current.push(nextState);
         historyIndex.current = history.current.length - 1;
+        setHistoryVersion((v) => v + 1);
       }, 300);
 
       return nextState;
@@ -256,6 +294,10 @@ export default function EditorPage() {
           appliedMaterials={editorState.materials}
           appliedLastApplied={editorState.lastApplied}
           appliedCustomSize={editorState.customSize}
+          appliedMetallic={editorState.metallic}
+          appliedRoughness={editorState.roughness}
+          onApplyMetallic={handleApplyMetallic}
+          onApplyRoughness={handleApplyRoughness}
           selectedMaterial={selectedMaterial}
           setSelectedMaterial={setSelectedMaterial}
           sceneBgColor={sceneBgColor}

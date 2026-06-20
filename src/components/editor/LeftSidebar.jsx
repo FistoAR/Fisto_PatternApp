@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const tools = [
   {
@@ -11,7 +12,7 @@ const tools = [
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="w-[22px] h-[22px]"
+        className="w-[2.2vw] h-[2.2vh]"
       >
         <path
           strokeLinecap="round"
@@ -29,7 +30,7 @@ const tools = [
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
         fill="currentColor"
-        className="w-[22px] h-[22px]"
+        className="w-[2.2vw] h-[2.2vh]"
       >
         <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32L19.513 8.2Z" />
       </svg>
@@ -45,7 +46,7 @@ const tools = [
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="w-[22px] h-[22px]"
+        className="w-[2.2vw] h-[2.2vh]"
       >
         <path
           strokeLinecap="round"
@@ -65,7 +66,7 @@ const tools = [
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="w-[22px] h-[22px]"
+        className="w-[2.2vw] h-[2.2vh]"
       >
         <path
           strokeLinecap="round"
@@ -85,7 +86,7 @@ const tools = [
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="w-[22px] h-[22px]"
+        className="w-[2.2vw] h-[2.2vh]"
       >
         <path
           strokeLinecap="round"
@@ -98,6 +99,7 @@ const tools = [
 ];
 
 export default function LeftSidebar({ active, setActive, items }) {
+  const navigate = useNavigate();
   const displayTools = items
     ? tools.filter((t) => items.includes(t.id))
     : tools;
@@ -112,23 +114,83 @@ export default function LeftSidebar({ active, setActive, items }) {
   return (
     <aside
       className="
+      left-sidebar-container
       flex flex-col items-center py-6 gap-3
       bg-white rounded-[15px]
 
-      w-[88px] h-fit shrink-0
+      w-[4.3vw] h-fit shrink-0
       overflow-y-auto overflow-x-hidden scrollbar-hide
 
       max-[640px]:w-[68px]
       max-[640px]:py-4 max-[640px]:gap-4
     "
     >
+      <style>{`
+        @media (max-height: 800px) {
+          .left-sidebar-container {
+            padding-top: 12px !important;
+            padding-bottom: 12px !important;
+            gap: 4px !important;
+          }
+          .left-sidebar-button {
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+            gap: 4px !important;
+            font-size: 10px !important;
+          }
+          .left-sidebar-button svg {
+            width: 18px !important;
+            height: 18px !important;
+          }
+          .left-sidebar-back-button {
+            padding-bottom: 4px !important;
+            font-size: 9px !important;
+          }
+          .left-sidebar-back-button svg {
+            width: 16px !important;
+            height: 16px !important;
+          }
+          .left-sidebar-indicator {
+            height: 32px !important;
+          }
+        }
+      `}</style>
+      {/* Back button to mockup page */}
+      <button
+        onClick={() => navigate("/modelsMockup")}
+        className="
+          left-sidebar-back-button
+          flex flex-col items-center justify-center gap-[0.4vw] border-none cursor-pointer bg-transparent
+          text-[#9f9891] hover:text-[#C15F27] transition-all duration-200 text-[0.65vw] font-bold pb-[0.1vw] w-full
+          max-[640px]:text-[8px] shrink-0
+        "
+        title="Back to Mockups"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className="w-[4vw] h-[1vw]"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+          />
+        </svg>
+        <span>BACK</span>
+      </button>
+      <div className="w-[3.5vw] h-[1px] bg-gray-100 mb-1 max-[640px]:w-[2vw] shrink-0" />
       {displayTools.map((tool) => (
         <button
           key={tool.id}
           onClick={() => setActive(active === tool.id ? null : tool.id)}
           className={`
-            relative flex flex-col items-center justify-center gap-2 border-none cursor-pointer bg-transparent
-            transition-all duration-200 text-[12.5px] font-bold p-0 w-full py-3
+            left-sidebar-button
+            relative flex flex-col items-center justify-center gap-[0.6vw] border-none cursor-pointer bg-transparent
+            transition-all duration-200 text-[0.65vw] font-bold p-0 w-full py-[0.6vw]
             max-[640px]:text-[9px]
             ${
               active === tool.id
@@ -138,7 +200,7 @@ export default function LeftSidebar({ active, setActive, items }) {
           `}
         >
           {active === tool.id && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-[44px] bg-[#C15F27] rounded-r-full" />
+            <div className="left-sidebar-indicator absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-[44px] bg-[#C15F27] rounded-r-full" />
           )}
           <div
             className={`
@@ -154,7 +216,7 @@ export default function LeftSidebar({ active, setActive, items }) {
       <div className="w-[44px] h-[1px] bg-gray-100 my-1 max-[640px]:w-[32px] shrink-0" />
       <button
         onClick={() => setActive(active ? null : lastActive)}
-        className="flex items-center justify-center border-none cursor-pointer bg-transparent text-[#9f9891] hover:text-[#C15F27] transition-all duration-200 py-3 w-full shrink-0"
+        className="flex items-center justify-center border-none cursor-pointer bg-transparent text-[#9f9891] hover:text-[#C15F27] transition-all duration-200 py-[0.1vw] w-full shrink-0"
         title={active ? "Close Panel" : "Open Panel"}
       >
         {active ? (

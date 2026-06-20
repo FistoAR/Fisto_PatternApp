@@ -1,7 +1,11 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Footer from "../components/Footer";
 import ReadyMockupBanner from "../components/ReadyMockupBanner";
+
+gsap.registerPlugin(ScrollTrigger);
 
 import mockupBanner from "../assets/images/MockupsSection/banner.svg";
 
@@ -424,9 +428,30 @@ export default function ModelsMockupPage() {
     ...(initialCategory !== "All" && { [initialCategory]: true })
   });
 
+  const [hasLoaded, setHasLoaded] = useState(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    // Initial mount GSAP animations
+    const sidebarHeader = document.querySelector(".sidebar-header");
+    const sidebarItems = document.querySelectorAll(".sidebar-items > div, .sidebar-items > button");
+    const mockupBanner = document.querySelector(".mockup-banner-wrap");
+
+    // Set initial states to avoid flashing
+    gsap.set([sidebarHeader, mockupBanner], { opacity: 0 });
+    gsap.set(sidebarItems, { opacity: 0, x: -20 });
+
+    const tl = gsap.timeline({
+      onComplete: () => setHasLoaded(true)
+    });
+    
+    tl.to(sidebarHeader, { opacity: 1, duration: 0.6, ease: "power2.out" })
+      .to(sidebarItems, { opacity: 1, x: 0, duration: 0.5, stagger: 0.04, ease: "power2.out" }, "-=0.3")
+      .fromTo(mockupBanner, { opacity: 0, y: 35 }, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, "-=0.4");
   }, []);
+
+
 
   useEffect(() => {
     if (location.state?.activeCategory) {
@@ -492,12 +517,67 @@ export default function ModelsMockupPage() {
       .filter(Boolean);
   }, [activeCategory]);
 
+  // Animate products when activeCategory / displayedSections updates using ScrollTrigger
+  useEffect(() => {
+    // Kill any existing ScrollTrigger instances for the cards to avoid memory leaks/conflicts
+    const triggers = ScrollTrigger.getAll();
+    triggers.forEach((trigger) => {
+      if (trigger.trigger && typeof trigger.trigger === 'object' && trigger.trigger.closest && trigger.trigger.closest('.products-container')) {
+        trigger.kill();
+      }
+    });
+
+    const sections = scrollRef.current?.querySelectorAll(".products-container > section");
+    if (sections && sections.length > 0) {
+      sections.forEach((section) => {
+        const heading = section.querySelector("div");
+        const cards = section.querySelectorAll("article");
+        
+        if (cards.length === 0) return;
+
+        // Set initial state of elements
+        gsap.set(heading, { opacity: 0, y: 15 });
+        gsap.set(cards, { opacity: 0, y: 35, scale: 0.95 });
+
+        // Trigger animation when the section scrolls into view
+        ScrollTrigger.create({
+          trigger: section,
+          scroller: scrollRef.current, // Target the scroll container!
+          start: "top 92%", // Triggers when the top of the section reaches 92% of the viewport height
+          onEnter: () => {
+            gsap.to(heading, {
+              opacity: 1,
+              y: 0,
+              duration: 0.4,
+              ease: "power2.out",
+              overwrite: "auto"
+            });
+            
+            gsap.to(cards, {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.6,
+              stagger: 0.08,
+              ease: "power2.out",
+              overwrite: "auto"
+            });
+          },
+          toggleActions: "play none none none"
+        });
+      });
+    }
+
+    // Refresh ScrollTrigger to update positions
+    ScrollTrigger.refresh();
+  }, [displayedSections]);
+
   return (
     <div className="h-[calc(100vh-64px)] w-full overflow-hidden text-[#292929]">
       <main className="flex h-full w-full flex-col">
         <div className="grid min-h-0 flex-1 grid-cols-[290px_1fr] bg-[#FBF9F6] md:grid-cols-[290px_1fr] lg:grid-cols-[300px_1fr] xl:grid-cols-[22%_78%]">
           <aside className="flex min-h-0 flex-col border-r border-[#e5ded9] px-3 pb-6 pt-6 sm:px-4 lg:pt-8 xl:px-7">
-            <header className="shrink-0 pb-7">
+            <header className="shrink-0 pb-7 sidebar-header">
               <h1 className="m-0 text-[clamp(16px,2.8vw,23px)] font-bold leading-[1.05]">
                 BROWSE BY CATEGORY
               </h1>
@@ -507,7 +587,7 @@ export default function ModelsMockupPage() {
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto pr-3">
-              <div className="space-y-2 pb-8">
+              <div className="space-y-2 pb-8 sidebar-items">
                 <SidebarItem
                   label="All"
                   isGroup={true}
@@ -578,7 +658,7 @@ export default function ModelsMockupPage() {
             className="min-h-0 min-w-0 overflow-y-auto pb-0"
           >
             <div className="px-6 pt-8 lg:px-10 xl:px-12">
-              <div className="relative mb-7 overflow-hidden rounded-[10px] shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
+              <div className="relative mb-7 overflow-hidden rounded-[10px] shadow-[0_12px_30px_rgba(15,23,42,0.12)] mockup-banner-wrap">
                 <img
                   src={mockupBanner}
                   alt="Design smarter, not harder"
@@ -595,7 +675,7 @@ export default function ModelsMockupPage() {
                 </button>
               </div>
 
-              <div className="space-y-10">
+              <div className="space-y-10 products-container">
                 {displayedSections.map((section, sectionIndex) => (
                   <section key={section.title} className="scroll-mt-7">
                     <div className="group/heading mb-5 flex w-fit cursor-default items-center gap-3">

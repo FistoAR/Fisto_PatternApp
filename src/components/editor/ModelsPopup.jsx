@@ -130,7 +130,7 @@ export default function ModelsPopup({ onSelectModel, currentModelUrl }) {
   }
 
   return (
-    <div className="w-[350px] h-full shrink-0 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
+    <div className="w-[280px] sm:w-[350px] h-full shrink-0 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
       <div className="p-5 border-b border-gray-100 flex flex-col gap-3">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-xl font-bold text-gray-900 m-0">Select Model</h2>

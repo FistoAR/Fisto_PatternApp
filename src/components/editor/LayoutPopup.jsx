@@ -95,7 +95,7 @@ export default function LayoutPopup({ currentModelUrl, onSelectLayout }) {
   }, [currentModel]);
 
   return (
-    <div className="w-[350px] h-fit max-h-full shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
+    <div className="w-[280px] sm:w-[350px] h-fit max-h-full shrink-0 bg-white rounded-[15px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
       <div className="p-5 pb-3 flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900 m-0">Layouts</h2>
         <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-md font-semibold">

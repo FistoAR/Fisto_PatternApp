@@ -73,7 +73,7 @@ export default function ReadyMockupBanner({
         <img
           src={trustedByImg}
           alt="Trusted By"
-          className="absolute top-4 left-1/2 -translate-x-1/2 lg:left-auto lg:translate-x-0 lg:right-[360px] xl:right-[440px] lg:top-8 w-16 md:w-20 lg:w-24 h-auto z-20 pointer-events-none"
+          className="trusted-by-badge absolute top-4 left-1/2 -translate-x-1/2 lg:left-auto lg:translate-x-0 lg:right-[360px] xl:right-[440px] lg:top-8 w-16 md:w-20 lg:w-24 h-auto z-20 pointer-events-none"
         />
 
         <img

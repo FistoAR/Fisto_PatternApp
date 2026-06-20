@@ -37,6 +37,12 @@ import bg6 from "../assets/images/Home/Hero/slide6/bg.webp";
 import prod6_1 from "../assets/images/Home/Hero/slide6/product1.webp";
 import prod6_2 from "../assets/images/Home/Hero/slide6/product2.webp";
 import prod6_3 from "../assets/images/Home/Hero/slide6/product3.webp";
+import prod6_4 from "../assets/images/Home/Hero/slide6/product4.webp";
+import prod6_5 from "../assets/images/Home/Hero/slide6/product5.webp";
+import prod6_6 from "../assets/images/Home/Hero/slide6/product6.webp";
+import prod6_7 from "../assets/images/Home/Hero/slide6/product7.webp";
+import prod6_8 from "../assets/images/Home/Hero/slide6/product8.webp";
+
 
 // Slide 7 (Fashion Wear)
 import bg7 from "../assets/images/Home/Hero/slide7/bg.webp";
@@ -53,18 +59,27 @@ import card4 from "../assets/images/Home/cards/card4.svg?url";
 import card5 from "../assets/images/Home/cards/card5.svg?url";
 import card6 from "../assets/images/Home/cards/card6.svg?url";
 import card7 from "../assets/images/Home/cards/card7.svg?url";
+
+import bgCard1 from "../assets/images/Home/cards/bg1.webp";
+import bgCard2 from "../assets/images/Home/cards/bg2.webp";
+import bgCard3 from "../assets/images/Home/cards/bg3.webp";
+import bgCard4 from "../assets/images/Home/cards/bg4.webp";
+import bgCard5 from "../assets/images/Home/cards/bg5.webp";
+import bgCard6 from "../assets/images/Home/cards/bg6.webp";
+import bgCard7 from "../assets/images/Home/cards/bg7.webp";
+
 import Footer from "../components/Footer";
 import GsapSmoothScroll from "../components/GsapSmoothScroll";
 import ReadyMockupBanner from "../components/ReadyMockupBanner";
 
 const cardsConfig = [
-  { src: card1, category: "Food Containers" },
-  { src: card2, category: "Food Packaging" },
-  { src: card3, category: "Drinkware Bottles" },
-  { src: card4, category: "Carton Boxes" },
-  { src: card5, category: "Eco-Friendly Bags" },
-  { src: card6, category: "Packaging Tapes" },
-  { src: card7, category: "Fashion Wear" },
+  { src: card1, bg: bgCard1, category: "Food Containers" },
+  { src: card2, bg: bgCard2, category: "Food Packaging" },
+  { src: card3, bg: bgCard3, category: "Drinkware Bottles" },
+  { src: card4, bg: bgCard4, category: "Carton Boxes" },
+  { src: card5, bg: bgCard5, category: "Eco-Friendly Bags" },
+  { src: card6, bg: bgCard6, category: "Packaging Tapes" },
+  { src: card7, bg: bgCard7, category: "Fashion Wear" },
 ];
 
 gsap.registerPlugin(ScrollTrigger);
@@ -125,8 +140,8 @@ const slideConfigs = [
         src: prod2,
         css: {
           left: "47.97%",
-          top: "18.85%",
-          width: "38.03%",
+          top: "20.85%",
+          width: "42.03%",
           height: "auto",
         },
       },
@@ -175,15 +190,32 @@ const slideConfigs = [
     assets: [
       {
         src: prod6_1,
-        css: { left: "54%", top: "29%", width: "27%", objectFit: "contain" },
+        css: { left: "54%", top: "22%", width: "24%", objectFit: "contain" },
       },
       {
         src: prod6_2,
-        css: { left: "64%", top: "36%", width: "21%", objectFit: "contain" },
+        css: { left: "64%", top: "29%", width: "21%", objectFit: "contain" },
       },
       {
         src: prod6_3,
-        css: { left: "75%", top: "56%", width: "17%", objectFit: "contain" },
+        css: { left: "77%", top: "49%", width: "17%", objectFit: "contain" },
+      },
+            {
+        src: prod6_5,
+        css: { left: "43%", top: "38%", width: "17%", objectFit: "contain" },
+      },
+     
+      {
+        src: prod6_7,
+        css: { left: "70%", top: "59%", width: "14%", objectFit: "contain" },
+      },
+      {
+        src: prod6_8,
+        css: { left: "54%", top: "48%", width: "13%", objectFit: "contain" },
+      },
+          {
+        src: prod6_4,
+        css: { left: "57%", top: "63%", width: "15%", objectFit: "contain" },
       },
     ],
   },
@@ -463,8 +495,8 @@ export default function HomePage({ onLoaded }) {
     });
   }, []);
 
-  const changeSlide = (nextIndex) => {
-    if (isTransitioning) return;
+  const changeSlide = (nextIndex, isManual = false) => {
+    if (!isManual && isTransitioning) return;
 
     let logicalNext = nextIndex;
     if (nextIndex >= slideConfigs.length) logicalNext = 0;
@@ -472,41 +504,73 @@ export default function HomePage({ onLoaded }) {
 
     if (currentSlide === logicalNext) return;
 
-    setIsTransitioning(true);
-
     const leftContent = pageRef.current?.querySelector(".hero-left-content");
 
-    if (leftContent && leftContent.children) {
-      gsap.to(leftContent.children, {
-        y: 40,
-        opacity: 0,
-        duration: 0.3, // Faster text exit
-        stagger: 0.05,
-        ease: "power2.inOut",
-        onComplete: () => {
-          setCurrentSlide(logicalNext);
-
-          setTimeout(() => {
-            gsap.fromTo(
-              leftContent.children,
-              { y: 80, opacity: 0 },
-              {
-                y: 0,
-                opacity: 1,
-                duration: 0.8,
-                stagger: 0.1,
-                ease: "power3.out",
-                onComplete: () => {
-                  setIsTransitioning(false);
-                },
-              },
-            );
-          }, 50);
-        },
-      });
-    } else {
-      setCurrentSlide(logicalNext);
+    if (isManual) {
+      // Manual click: switch content instantly without slow exit animation, then play entry animation like before
       setIsTransitioning(false);
+      
+      if (leftContent && leftContent.children) {
+        gsap.killTweensOf(leftContent.children);
+        gsap.set(leftContent, { opacity: 1 });
+        // Hide instantly to avoid flashing before entry animation starts
+        gsap.set(leftContent.children, { y: 80, opacity: 0 });
+      }
+      
+      setCurrentSlide(logicalNext);
+
+      if (leftContent && leftContent.children) {
+        setTimeout(() => {
+          gsap.fromTo(
+            leftContent.children,
+            { y: 80, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 1.0,
+              stagger: 0.12,
+              ease: "power3.out",
+            },
+          );
+        }, 30);
+      }
+    } else {
+      // Auto-transition (timer): play full exit -> switch -> entry animation like before
+      setIsTransitioning(true);
+
+      if (leftContent && leftContent.children) {
+        gsap.killTweensOf(leftContent.children);
+        gsap.to(leftContent.children, {
+          y: 40,
+          opacity: 0,
+          duration: 0.3,
+          stagger: 0.05,
+          ease: "power2.inOut",
+          onComplete: () => {
+            setCurrentSlide(logicalNext);
+
+            setTimeout(() => {
+              gsap.fromTo(
+                leftContent.children,
+                { y: 80, opacity: 0 },
+                {
+                  y: 0,
+                  opacity: 1,
+                  duration: 0.8,
+                  stagger: 0.1,
+                  ease: "power3.out",
+                  onComplete: () => {
+                    setIsTransitioning(false);
+                  },
+                },
+              );
+            }, 50);
+          },
+        });
+      } else {
+        setCurrentSlide(logicalNext);
+        setIsTransitioning(false);
+      }
     }
   };
 
@@ -738,6 +802,9 @@ export default function HomePage({ onLoaded }) {
   }, [currentSlide, bannersContent]);
 
   useEffect(() => {
+    if (window.history.scrollRestoration) {
+      window.history.scrollRestoration = "manual";
+    }
     window.scrollTo(0, 0);
   }, []);
 
@@ -952,6 +1019,26 @@ export default function HomePage({ onLoaded }) {
         },
       );
 
+      gsap.fromTo(
+        ".trusted-by-badge",
+        { autoAlpha: 0, scale: 0.8, y: -60 },
+        {
+          autoAlpha: 1,
+          scale: 1,
+          y: 0,
+          duration: 0.9,
+          ease: "back.out(1.5)",
+          immediateRender: false,
+          overwrite: "auto",
+          scrollTrigger: {
+            trigger: ".frame-banner",
+            start: "top 82%",
+            end: "bottom 18%",
+            toggleActions: "play reverse play reverse",
+          },
+        },
+      );
+
       revealOnScroll(
         "footer > div > div",
         { autoAlpha: 0, y: 30, scale: 0.98 },
@@ -1124,10 +1211,10 @@ export default function HomePage({ onLoaded }) {
               </div>
             </div>
 
-            {/* Carousel Navigation Arrows */}
+             {/* Carousel Navigation Arrows */}
             <button
               onClick={() =>
-                changeSlide(currentSlide === 0 ? -1 : currentSlide - 1)
+                changeSlide(currentSlide === 0 ? -1 : currentSlide - 1, true)
               }
               className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/15 hover:bg-black/30 border border-white/20 text-white flex items-center justify-center cursor-pointer z-20 backdrop-blur-sm transition-all hover:scale-105"
               aria-label="Previous slide"
@@ -1148,7 +1235,7 @@ export default function HomePage({ onLoaded }) {
               </svg>
             </button>
             <button
-              onClick={() => changeSlide(currentSlide + 1)}
+              onClick={() => changeSlide(currentSlide + 1, true)}
               className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/15 hover:bg-black/30 border border-white/20 text-white flex items-center justify-center cursor-pointer z-20 backdrop-blur-sm transition-all hover:scale-105"
               aria-label="Next slide"
             >
@@ -1173,7 +1260,7 @@ export default function HomePage({ onLoaded }) {
               {slideConfigs.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => changeSlide(index)}
+                  onClick={() => changeSlide(index, true)}
                   className={`h-3.5 rounded-full transition-all duration-300 cursor-pointer ${
                     currentSlide === index
                       ? "w-8 bg-[#C15F27]"
@@ -1269,14 +1356,28 @@ export default function HomePage({ onLoaded }) {
                   {cardsConfig.map((card, idx) => (
                     <div
                       key={idx}
-                      className="explore-card w-[260px] sm:w-[280px] lg:w-[calc(25%-36px)] xl:w-[calc(20%-42px)] max-w-[320px] shrink-0 snap-center cursor-pointer bg-white rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.12)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.20)] transition-shadow duration-300 p-1 sm:p-2 border border-gray-50 flex items-center justify-center relative"
+                      className="explore-card group w-[260px] sm:w-[280px] lg:w-[calc(25%-36px)] xl:w-[calc(20%-42px)] max-w-[320px] shrink-0 snap-center cursor-pointer bg-transparent rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.08)] hover:shadow-[0_24px_60px_rgba(0,0,0,0.18)] transition-all duration-300 border-none flex items-center justify-center relative hover:scale-[1.02] hover:-translate-y-1"
                       onClick={() =>
                         navigate("/modelsMockup", {
                           state: { activeCategory: card.category },
                         })
                       }
                     >
-                      <AnimatedSvgCard src={card.src} index={idx} />
+                      {/* Background Image on Hover wrapped in a container that has rounded-3xl and overflow-hidden */}
+                      <div className="absolute inset-0 w-full h-full rounded-[24px] overflow-hidden z-0 pointer-events-none">
+                        <img
+                          src={card.bg}
+                          alt=""
+                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 opacity-0 group-hover:opacity-100 ${
+                            idx === 1 || idx === 5 || idx === 6 ? "scale-[1.14]" : "scale-[1.08]"
+                          }`}
+                        />
+                      </div>
+                      
+                      {/* SVG Content on top */}
+                      <div className="relative z-10 w-full">
+                        <AnimatedSvgCard src={card.src} index={idx} />
+                      </div>
                     </div>
                   ))}
                 </div>

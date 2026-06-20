@@ -25,19 +25,16 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
         if (svgElement) {
           svgElement.style.width = "100%";
           svgElement.style.height = "auto";
-          svgElement.style.transform = "scale(1.1)";
+          svgElement.style.transform = "scale(1.15)";
           svgElement.style.transformOrigin = "center 15%";
           svgElement.style.marginTop = "-8%";
           svgElement.style.marginBottom = "-10%";
         }
 
-        // Hide card background container and border
-        const rects = container.querySelectorAll("rect");
-        rects.forEach((rect) => {
+        // Find card background container and border rects (non-pattern)
+        const bgRects = Array.from(container.querySelectorAll("rect")).filter((rect) => {
           const fill = rect.getAttribute("fill") || "";
-          if (!fill.startsWith("url(")) {
-            rect.style.display = "none";
-          }
+          return !fill.startsWith("url(");
         });
 
         // Remove card drop-shadow filters
@@ -51,29 +48,38 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
 
         const titleText = container.querySelector('path[fill="#111827"]');
         const descText = container.querySelector('path[fill="#6B7280"]');
+        const productImage = container.querySelector('rect[fill^="url("]');
+
+          if (titleText) {
+          gsap.set(titleText, { scale: 0.9, transformOrigin: "center center" });
+        }
+        if (descText) {
+          gsap.set(descText, { scale: 0.9, transformOrigin: "center center" });
+        }
+        if (productImage) {
+          gsap.set(productImage, { scale: 0.8, transformOrigin: "center center" });
+        }
 
         const enter = () => {
           gsap.to(wrapper, {
-            y: -14,
-            scale: 1.045,
-            rotate: index % 2 === 0 ? -1.2 : 1.2,
-            duration: 0.35,
-            ease: "power3.out",
+            y: -6,
+            rotate: index % 2 === 0 ? -0.6 : 0.6,
+            duration: 0.4,
+            ease: "power2.out",
           });
-          if (titleText) {
-            gsap.to(titleText, {
-              y: -8,
-              duration: 0.35,
-              ease: "power3.out",
-              overwrite: "auto",
+          if (bgRects.length > 0) {
+            gsap.to(bgRects, {
+              opacity: 0,
+              duration: 0.4,
+              ease: "power2.out",
             });
           }
-          if (descText) {
-            gsap.to(descText, {
-              y: -4,
-              duration: 0.35,
-              ease: "power3.out",
-              overwrite: "auto",
+          if (productImage) {
+            gsap.to(productImage, {
+              scale: 1,
+              transformOrigin: "center center",
+              duration: 0.4,
+              ease: "power2.out",
             });
           }
         };
@@ -81,25 +87,23 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
         const leave = () => {
           gsap.to(wrapper, {
             y: 0,
-            scale: 1,
             rotate: 0,
-            duration: 0.35,
-            ease: "power3.out",
+            duration: 0.4,
+            ease: "power2.out",
           });
-          if (titleText) {
-            gsap.to(titleText, {
-              y: 0,
-              duration: 0.35,
-              ease: "power3.out",
-              overwrite: "auto",
+          if (bgRects.length > 0) {
+            gsap.to(bgRects, {
+              opacity: 1,
+              duration: 0.4,
+              ease: "power2.out",
             });
           }
-          if (descText) {
-            gsap.to(descText, {
-              y: 0,
-              duration: 0.35,
-              ease: "power3.out",
-              overwrite: "auto",
+          if (productImage) {
+            gsap.to(productImage, {
+              scale: 0.8,
+              transformOrigin: "center center",
+              duration: 0.4,
+              ease: "power2.out",
             });
           }
         };
@@ -111,7 +115,6 @@ export default function AnimatedSvgCard({ src, index = 0 }) {
           wrapper.removeEventListener("mouseleave", leave);
         });
 
-        const productImage = container.querySelector('rect[fill^="url("]');
         if (productImage) {
           tweens.push(
             gsap.to(productImage, {
