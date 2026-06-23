@@ -6,14 +6,18 @@ import {
   useMemo,
   useRef,
   useState,
+  useCallback,
 } from "react";
 import { Canvas as R3FCanvas, useThree, useLoader } from "@react-three/fiber";
-import { OrbitControls, useGLTF, useProgress, Html } from "@react-three/drei";
+import { OrbitControls, useGLTF, useProgress, Html, GizmoHelper, GizmoViewport } from "@react-three/drei";
 import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
+import { isMeasurementMesh } from "./EditorScreen1";
+import { CAPS } from "../../pages/EditorPage";
+import { gsap } from "gsap";
 
 function BackgroundImage({ url }) {
   const { scene } = useThree();
@@ -130,7 +134,14 @@ export default function RightPanel({
   onOpenTapeLayout,
   showPreview,
   setShowPreview,
+  selectedCapUrl,
+  onSelectCap,
 }) {
+  const isBottleModel = modelUrl && (
+    modelUrl.toLowerCase().includes("plastic") ||
+    modelUrl.toLowerCase().includes("glass") ||
+    modelUrl.toLowerCase().includes("soft")
+  );
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -262,6 +273,10 @@ export default function RightPanel({
     orbitControlsRef.current?.reset();
   };
 
+  const containerWidth = panelWidth - 24;
+  const gizmoScale = Math.max(0.45, Math.min(0.7, containerWidth / 480));
+  const gizmoMarginVal = Math.max(30, Math.min(42, containerWidth * 0.11));
+
   return (
     <aside
       style={{
@@ -381,6 +396,7 @@ export default function RightPanel({
                     bgColor={bgColor}
                     selectedColor={selectedColor}
                     isActive={isActive}
+                    selectedCapUrl={selectedCapUrl}
                   />
                 )}
               </Suspense>
@@ -396,6 +412,16 @@ export default function RightPanel({
                 minPolarAngle={0}
                 maxPolarAngle={Math.PI}
               />
+              <GizmoHelper
+                alignment="top-left"
+                margin={[gizmoMarginVal, gizmoMarginVal]}
+              >
+                <GizmoViewport
+                  axisColors={['#ef4444', '#22c55e', '#3b82f6']}
+                  labelColor="white"
+                  scale={40 * gizmoScale}
+                />
+              </GizmoHelper>
             </R3FCanvas>
 
             {/* Collapse button */}
@@ -657,15 +683,15 @@ export default function RightPanel({
               {/* Canvas PNG */}
               <button
                 onClick={handleExportCanvasPNG}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-blue-50 transition-colors border-none cursor-pointer bg-transparent text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-orange-50 transition-colors border-none cursor-pointer bg-transparent text-left"
               >
-                <span className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                <span className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
-                    stroke="#3b82f6"
+                    stroke="#c05520"
                     className="w-4 h-4"
                   >
                     <path
@@ -680,7 +706,7 @@ export default function RightPanel({
                     Canvas as .PNG
                   </span>
                   <span className="text-xs text-gray-500 font-medium">
-                    Flat texture image (2048×2048)
+                    2D texture file
                   </span>
                 </div>
               </button>
@@ -690,21 +716,21 @@ export default function RightPanel({
               {/* Canvas SVG */}
               <button
                 onClick={handleExportSVG}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-green-50 transition-colors border-none cursor-pointer bg-transparent text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-orange-50 transition-colors border-none cursor-pointer bg-transparent text-left"
               >
-                <span className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+                <span className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
-                    stroke="#16a34a"
+                    stroke="#c05520"
                     className="w-4 h-4"
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
+                      d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
                     />
                   </svg>
                 </span>
@@ -717,41 +743,62 @@ export default function RightPanel({
                   </span>
                 </div>
               </button>
-
-              <div className="h-px bg-gray-100 mx-4" />
-
-              {/* Canvas PDF */}
-              <button
-                onClick={handleExportPDF}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-800 font-semibold hover:bg-red-50 transition-colors border-none cursor-pointer bg-transparent text-left"
-              >
-                <span className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="#dc2626"
-                    className="w-4 h-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                    />
-                  </svg>
-                </span>
-                <div className="flex flex-col">
-                  <span className="text-gray-900 leading-tight mb-0.5">
-                    Canvas as .PDF
-                  </span>
-                  <span className="text-xs text-gray-500 font-medium">
-                    Layered PDF document
-                  </span>
-                </div>
-              </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Cap Selector (Only for Bottle Models) */}
+      {isBottleModel && (
+        <div className="px-3 pb-4 pt-2 border-t border-gray-100 flex flex-col gap-2">
+         
+
+          {/* Scrollable Container with exact 3-row visible height */}
+          <div className="overflow-y-auto pr-0.5 flex flex-col gap-2 max-h-[220px]">
+            <div className="grid grid-cols-2 gap-1.5">
+              {/* Default Slot */}
+              <button
+                onClick={() => onSelectCap && onSelectCap("none")}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all cursor-pointer outline-none ${
+                  selectedCapUrl === "none"
+                    ? "border-[#c05520] bg-orange-50/50 text-[#c05520] ring-1 ring-[#c05520]"
+                    : "border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100/80 hover:border-gray-200"
+                }`}
+              >
+                {/* Visual Image Placeholder for Default Cap */}
+                <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-200/50 flex items-center justify-center mb-1 relative overflow-hidden">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                </div>
+              </button>
+
+              {/* Cap 1-8 Slots */}
+              {CAPS.map((cap, i) => (
+                <button
+                  key={cap.id}
+                  onClick={() => onSelectCap && onSelectCap(cap.url)}
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all cursor-pointer outline-none ${
+                    selectedCapUrl === cap.url
+                      ? "border-[#c05520] bg-orange-50/50 text-[#c05520] ring-1 ring-[#c05520]"
+                      : "border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100/80 hover:border-gray-200"
+                  }`}
+                >
+                  {/* Visual Image Placeholder for Cap */}
+                  <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-[#fdfbf7] to-[#f5f0e6] border border-orange-100 flex items-center justify-center mb-1 relative overflow-hidden">
+                    {/* Visual cap illustration */}
+                    <div className="w-8 h-4 bg-[#c05520] rounded-t opacity-85 shadow-sm flex flex-col justify-between p-0.5">
+                      <div className="w-full h-0.5 bg-white/20 rounded" />
+                      <div className="w-full h-0.5 bg-white/20 rounded" />
+                    </div>
+                    <span className="absolute bottom-0.5 right-0.5 text-[7px] bg-[#c05520]/10 text-[#c05520] px-0.5 rounded font-black">
+                      #{i + 1}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </aside>
@@ -818,6 +865,153 @@ function MaterialItem({ icon, title, subtitle, hasArrow }) {
   );
 }
 
+function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimationComplete }) {
+  const { scene } = useGLTF(url);
+  const ref = useRef();
+  const clonedCap = useMemo(() => {
+    if (!scene) return null;
+    const clone = cloneSkeleton(scene);
+    return clone;
+  }, [scene]);
+
+  useEffect(() => {
+    if (!clonedCap) return;
+    clonedCap.traverse((obj) => {
+      if (!obj.isMesh || !obj.material) return;
+      const mArray = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mArray.forEach((m) => {
+        const capKey = Object.keys(appliedColors || {}).find(k => k.toLowerCase().includes("cap"));
+        const color = capKey ? appliedColors[capKey] : (appliedColors?.["all"] || null);
+        if (color && color !== "transparent") {
+          m.color.setHex(parseInt(color.replace("#", "0x")));
+        }
+      });
+    });
+  }, [clonedCap, appliedColors]);
+
+  useEffect(() => {
+    if (!ref.current || !clonedCap) return;
+    const group = ref.current;
+
+    // Initialize position and rotation
+    group.position.copy(transform.position);
+    group.rotation.copy(transform.rotation);
+    group.scale.copy(transform.scale);
+
+    if (isExiting) {
+      // Unscrew slowly, then fly up and fade out fast
+      gsap.killTweensOf(group.position);
+      gsap.killTweensOf(group.rotation);
+      gsap.killTweensOf(group.scale);
+
+      gsap.timeline({
+        onComplete: () => {
+          onAnimationComplete(id);
+        }
+      })
+      .to(group.position, {
+        y: transform.position.y + 0.35, // Rise up unscrewing slowly
+        duration: 1.2,
+        ease: "power1.inOut"
+      })
+      .to(group.rotation, {
+        y: transform.rotation.y + Math.PI * 4, // 2 full rotations slowly
+        duration: 1.2,
+        ease: "power1.inOut"
+      }, 0)
+      .to(group.position, {
+        y: transform.position.y + 1.2, // Fly straight up to hide fast
+        duration: 0.2,
+        ease: "power2.in"
+      }, 1.2)
+      .to(group.scale, {
+        x: 0,
+        y: 0,
+        z: 0,
+        duration: 0.2,
+        ease: "power2.in"
+      }, 1.2);
+    } else {
+      // Spawn high up, fade in fast, then screw down slowly to close
+      gsap.killTweensOf(group.position);
+      gsap.killTweensOf(group.rotation);
+      gsap.killTweensOf(group.scale);
+
+      group.position.y = transform.position.y + 1.5; // Start high up at the top
+      group.position.x = transform.position.x;
+      group.rotation.y = transform.rotation.y - Math.PI * 4; // Rotated back 720 deg
+      group.scale.set(0, 0, 0);
+
+      gsap.timeline()
+      .to(group.scale, {
+        x: transform.scale.x,
+        y: transform.scale.y,
+        z: transform.scale.z,
+        duration: 0.2, // Fade in / scale in fast
+        ease: "power1.out"
+      })
+      .to(group.position, {
+        y: transform.position.y, // Drop slowly into place
+        duration: 1.5,
+        ease: "power2.inOut"
+      }, 0.2)
+      .to(group.rotation, {
+        y: transform.rotation.y, // Screw on rotation slowly
+        duration: 1.5,
+        ease: "power2.inOut"
+      }, 0.2);
+    }
+  }, [clonedCap, isExiting, transform]);
+
+  if (!clonedCap) return null;
+
+  return (
+    <group ref={ref}>
+      <primitive object={clonedCap} dispose={null} />
+    </group>
+  );
+}
+
+function CustomCap({ url, transform, appliedColors }) {
+  const [capsToRender, setCapsToRender] = useState([]);
+
+  useEffect(() => {
+    setCapsToRender((prev) => {
+      const updated = prev.map((c) => ({ ...c, isExiting: true }));
+      if (url && url !== "none") {
+        updated.push({
+          id: url + "_" + Date.now(),
+          url: url,
+          isExiting: false,
+        });
+      }
+      return updated;
+    });
+  }, [url]);
+
+  const handleAnimationComplete = useCallback((id) => {
+    setCapsToRender((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  if (!transform) return null;
+
+  return (
+    <group>
+      {capsToRender.map((cap) => (
+        <CapInstance
+          key={cap.id}
+          id={cap.id}
+          url={cap.url}
+          transform={transform}
+          appliedColors={appliedColors}
+          isExiting={cap.isExiting}
+          onAnimationComplete={handleAnimationComplete}
+        />
+      ))}
+    </group>
+  );
+}
+
 function AutoSizedModel({
   modelUrl,
   canvasRef,
@@ -831,9 +1025,18 @@ function AutoSizedModel({
   selectedColor,
   isActive,
   appliedLastApplied,
+  selectedCapUrl,
 }) {
   const { scene } = useGLTF(modelUrl);
-  const { gl } = useThree();
+  const { gl, invalidate } = useThree();
+
+  useEffect(() => {
+    const isGlassBottle = modelUrl && modelUrl.toLowerCase().includes("glass_bottle");
+    gl.toneMapping = isGlassBottle ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = isGlassBottle ? 1.0 : 0.9;
+    invalidate();
+  }, [modelUrl, gl, invalidate]);
+
   const clonedScene = useMemo(() => {
     if (!scene) return null;
 
@@ -845,9 +1048,7 @@ function AutoSizedModel({
     const clone = cloneSkeleton(scene);
     clone.traverse((obj) => {
       // Hide measurement meshes entirely in Editor 2
-      const name = obj.name || "";
-      const isMeasurement = /^(plane|text)/i.test(name);
-      if (isMeasurement && meshCount > 1) {
+      if (isMeasurementMesh(obj, meshCount)) {
         obj.visible = false;
       }
 
@@ -874,8 +1075,52 @@ function AutoSizedModel({
         ? obj.material.map(processMat)
         : processMat(obj.material);
     });
+    if (modelUrl && modelUrl.toLowerCase().includes("biodegradable")) {
+      clone.rotation.x = Math.PI / 2;
+      clone.updateMatrixWorld(true);
+    }
     return clone;
-  }, [scene]);
+  }, [scene, modelUrl]);
+
+  const [capTransform, setCapTransform] = useState(null);
+
+  useEffect(() => {
+    if (!clonedScene) return;
+    let capMeshes = [];
+    clonedScene.traverse((obj) => {
+      if (obj.isMesh) {
+        const nameLower = obj.name.toLowerCase();
+        const hasCapInName = nameLower.includes("cap") || nameLower.includes("circle003") || nameLower.includes("lid");
+        const hasCapInMaterial = obj.material && (
+          Array.isArray(obj.material)
+            ? obj.material.some(m => m.name && (m.name.toLowerCase().includes("cap") || m.name.toLowerCase().includes("lid")))
+            : (obj.material.name && (obj.material.name.toLowerCase().includes("cap") || obj.material.name.toLowerCase().includes("lid")))
+        );
+        if (hasCapInName || hasCapInMaterial) {
+          capMeshes.push(obj);
+        }
+      }
+    });
+
+    if (capMeshes.length > 0) {
+      if (selectedCapUrl && selectedCapUrl !== "none") {
+        capMeshes.forEach(mesh => {
+          mesh.visible = false;
+        });
+        const anchor = capMeshes.find(m => m.name.toLowerCase().includes("circle003") || m.name.toLowerCase().includes("cap")) || capMeshes[0];
+        setCapTransform({
+          position: anchor.position.clone(),
+          rotation: anchor.rotation.clone(),
+          scale: anchor.scale.clone(),
+        });
+      } else {
+        capMeshes.forEach(mesh => {
+          mesh.visible = true;
+        });
+        setCapTransform(null);
+      }
+    }
+  }, [clonedScene, selectedCapUrl]);
   // No uvLayout memoization needed
   const canvasTextureRef = useRef(null);
   const appliedTextureVersionRef = useRef(null);
@@ -958,9 +1203,47 @@ function AutoSizedModel({
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || obj.userData.isDecal) return;
 
-      const name = obj.name || "";
-      const isMeasurement = /^(plane|text)/i.test(name);
-      if (isMeasurement && meshCount > 1) return;
+      if (isMeasurementMesh(obj, meshCount)) return;
+
+      const shouldApply = (() => {
+        let hasLabelMesh = false;
+        clonedScene.traverse((o) => {
+          if (o.isMesh && !o.userData.isDecal) {
+            const n = (o.name || "").toLowerCase();
+            const mats = Array.isArray(o.material) ? o.material : [o.material];
+            const hasLabelMat = mats.some(m => {
+              if (!m) return false;
+              const matName = (m.name || "").toLowerCase();
+              return matName.includes("label") || matName.includes("wrapper") || matName.includes("design") || matName.includes("artwork");
+            });
+            if (n.includes("label") || n.includes("wrapper") || n.includes("design") || n.includes("artwork") || hasLabelMat) {
+              hasLabelMesh = true;
+            }
+          }
+        });
+
+        if (hasLabelMesh) {
+          const n = (obj.name || "").toLowerCase();
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          const hasLabelMat = mats.some(m => {
+            if (!m) return false;
+            const matName = (m.name || "").toLowerCase();
+            return matName.includes("label") || matName.includes("wrapper") || matName.includes("design") || matName.includes("artwork");
+          });
+          return n.includes("label") || n.includes("wrapper") || n.includes("design") || n.includes("artwork") || hasLabelMat;
+        }
+        return true;
+      })();
+
+      if (!shouldApply) {
+        if (obj.userData.decalMesh) {
+          obj.userData.decalMesh.visible = false;
+        }
+      } else {
+        if (obj.userData.decalMesh) {
+          obj.userData.decalMesh.visible = true;
+        }
+      }
 
       const materials = Array.isArray(obj.material)
         ? obj.material
@@ -968,25 +1251,27 @@ function AutoSizedModel({
       for (const mat of materials) {
         if (!mat) continue;
 
-        // --- OVERLAY CANVAS TEXTURE VIA DECAL MESH ---
-        if (!obj.userData.decalMesh) {
-          const decalMat = new THREE.MeshStandardMaterial({
-            transparent: true,
-            depthWrite: false,
-            polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -4,
-          });
-          const decal = new THREE.Mesh(obj.geometry, decalMat);
-          decal.userData.isDecal = true;
-          obj.add(decal);
-          obj.userData.decalMesh = decal;
-        }
+        if (shouldApply) {
+          // --- OVERLAY CANVAS TEXTURE VIA DECAL MESH ---
+          if (!obj.userData.decalMesh) {
+            const decalMat = new THREE.MeshStandardMaterial({
+              transparent: true,
+              depthWrite: false,
+              polygonOffset: true,
+              polygonOffsetFactor: -1,
+              polygonOffsetUnits: -4,
+            });
+            const decal = new THREE.Mesh(obj.geometry, decalMat);
+            decal.userData.isDecal = true;
+            obj.add(decal);
+            obj.userData.decalMesh = decal;
+          }
 
-        const decalMat = obj.userData.decalMesh.material;
-        decalMat.map = canvasTextureRef.current;
-        decalMat.color.set(0xffffff);
-        decalMat.needsUpdate = true;
+          const decalMat = obj.userData.decalMesh.material;
+          decalMat.map = canvasTextureRef.current;
+          decalMat.color.set(0xffffff);
+          decalMat.needsUpdate = true;
+        }
 
         const hasArtwork = canvasRef?.current?.hasArtwork?.();
         // --- CALCULATE PRIORITY OF ACTIONS ---
@@ -1107,18 +1392,29 @@ function AutoSizedModel({
           mat.aoMap = null;
 
           // A custom color is applied, override properties to look opaque
-          mat.transparent = false;
-          mat.opacity = 1.0;
-          mat.roughness = 0.72;
-          mat.metalness = 0.0;
-          if ("transmission" in mat) mat.transmission = 0;
+          const wasOriginallyTransparent = mat.userData.originalTransparent || (mat.userData.originalTransmission && mat.userData.originalTransmission > 0);
+          if (wasOriginallyTransparent) {
+            mat.transparent = true;
+            mat.opacity = mat.userData.originalOpacity !== undefined ? mat.userData.originalOpacity : 0.35;
+            mat.roughness = mat.userData.originalRoughness !== undefined ? mat.userData.originalRoughness : 0.1;
+            mat.metalness = mat.userData.originalMetalness !== undefined ? mat.userData.originalMetalness : 0.1;
+            if ("transmission" in mat) {
+              mat.transmission = mat.userData.originalTransmission !== undefined ? mat.userData.originalTransmission : 0.9;
+            }
+          } else {
+            mat.transparent = false;
+            mat.opacity = 1.0;
+            mat.roughness = 0.72;
+            mat.metalness = 0.0;
+            if ("transmission" in mat) mat.transmission = 0;
+          }
           mat.color.set(finalColorHex);
           if (mat.map) mat.map.dispose();
           mat.map = null;
           mat.needsUpdate = true;
         } else {
           // Restore original model properties!
-          if (hasArtwork || materialType) {
+          if ((hasArtwork && shouldApply) || materialType) {
             mat.transparent = false;
             mat.opacity = 1.0;
             if ("transmission" in mat) mat.transmission = 0;
@@ -1211,6 +1507,7 @@ function AutoSizedModel({
     appliedBgColorRef.current = bgColor;
     appliedSelectedColorRef.current = selectedColor;
     appliedActiveRef.current = true;
+    invalidate();
   }, [
     clonedScene,
     gl,
@@ -1221,6 +1518,7 @@ function AutoSizedModel({
     bgColor,
     selectedColor,
     isActive,
+    invalidate,
   ]);
 
   // Fast-path for just updating the texture without re-traversing the scene
@@ -1230,9 +1528,10 @@ function AutoSizedModel({
     if (canvasTextureRef.current && textureCanvasRef?.current) {
       // Just mark needsUpdate. Three.js will upload the new canvas pixels to GPU.
       canvasTextureRef.current.needsUpdate = true;
+      invalidate();
     }
     appliedTextureVersionRef.current = textureVersion;
-  }, [textureVersion, textureCanvasRef]);
+  }, [textureVersion, textureCanvasRef, invalidate]);
 
   if (!clonedScene) return null;
 
@@ -1244,6 +1543,9 @@ function AutoSizedModel({
     >
       <group scale={customScale}>
         <primitive object={clonedScene} dispose={null} />
+        {selectedCapUrl && selectedCapUrl !== "none" && capTransform && (
+          <CustomCap url={selectedCapUrl} transform={capTransform} appliedColors={appliedColors} />
+        )}
       </group>
     </group>
   );

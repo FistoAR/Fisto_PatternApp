@@ -17,7 +17,7 @@ import softDrinksBottleUrl from "../../assets/models/Drinkware Bottles/Soft drin
 import softDrinksBottleImg from "../../assets/models/Drinkware Bottles/Soft drinks/05.waterbottle.webp";
 
 // Eco friendly Models
-import biodegradableBagsUrl from "../../assets/models/Eco friendly/Bio degradable/Biodegradable  bags.glb?url";
+import biodegradableBagsUrl from "../../assets/models/Eco friendly/Bio degradable/Biodegradable bags.glb?url";
 import biodegradableBagsImg from "../../assets/models/Eco friendly/Bio degradable/Biodegradable.webp";
 import paperBagUrl from "../../assets/models/Eco friendly/Paper Bags/Paper Bag-1.glb?url";
 import paperBagImg from "../../assets/models/Eco friendly/Paper Bags/02.Plastic Bag.webp";

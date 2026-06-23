@@ -3924,6 +3924,7 @@ const Canvas = forwardRef(
           bakeTexture();
           saveState();
           redrawDisplay();
+          onSelectedLayerChangeRef.current?.({ ...sel });
         }
       },
       addText: (text = "Text") => {

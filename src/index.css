@@ -134,13 +134,13 @@ button:active:not(:disabled),
 
 /* Preset buttons and materials scaling on hover */
 .aspect-square:hover {
-  transform: translateY(-2px) scale(1.04);
+  /* transform: translateY(-2px) scale(1.04); */
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
 }
 
-.aspect-square:active {
+/* .aspect-square:active {
   transform: scale(0.96);
-}
+} */
 
 /* Range inputs smooth adjustments */
 input[type="range"] {

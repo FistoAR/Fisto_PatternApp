@@ -1,17 +1,43 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import EditorScreen1 from "../components/editor/EditorScreen1";
 import EditorScreen2 from "../components/editor/EditorScreen2";
-import ovalContainerUrl from "../assets/models/Food Containers/Oval/oval .glb?url";
+import roundContainerUrl from "../assets/models/Food Containers/Round/Round.glb?url";
 import { getSingleModelUrl } from "../components/editor/LayoutPopup";
+import cap1Url from "../assets/models/Drinkware Bottles/Caps/Cap1.glb?url";
+import cap2Url from "../assets/models/Drinkware Bottles/Caps/Cap2.glb?url";
+import cap3Url from "../assets/models/Drinkware Bottles/Caps/Cap3.glb?url";
+import cap4Url from "../assets/models/Drinkware Bottles/Caps/Cap4.glb?url";
+import cap5Url from "../assets/models/Drinkware Bottles/Caps/Cap5.glb?url";
+import cap6Url from "../assets/models/Drinkware Bottles/Caps/Cap6.glb?url";
+import cap7Url from "../assets/models/Drinkware Bottles/Caps/Cap7.glb?url";
+import cap8Url from "../assets/models/Drinkware Bottles/Caps/Cap8.glb?url";
+
+export const CAPS = [
+  { id: "cap-1", name: "Cap 1", url: cap1Url },
+  { id: "cap-2", name: "Cap 2", url: cap2Url },
+  { id: "cap-3", name: "Cap 3", url: cap3Url },
+  { id: "cap-4", name: "Cap 4", url: cap4Url },
+  { id: "cap-5", name: "Cap 5", url: cap5Url },
+  { id: "cap-6", name: "Cap 6", url: cap6Url },
+  { id: "cap-7", name: "Cap 7", url: cap7Url },
+  { id: "cap-8", name: "Cap 8", url: cap8Url },
+];
 
 export default function EditorPage() {
   const location = useLocation();
   const [currentScreen, setCurrentScreen] = useState(1);
-  const [modelUrl, setModelUrl] = useState(
-    location.state?.initialModelUrl || ovalContainerUrl,
-  );
+  const [modelUrl, setModelUrlState] = useState(() => {
+    const initial = location.state?.initialModelUrl || roundContainerUrl;
+    return typeof initial === 'string' ? initial.replace("Biodegradable%20%20bags.glb", "Biodegradable%20bags.glb").replace("Biodegradable  bags.glb", "Biodegradable bags.glb") : initial;
+  });
+
+  const setModelUrl = (url) => {
+    const cleaned = typeof url === 'string' ? url.replace("Biodegradable%20%20bags.glb", "Biodegradable%20bags.glb").replace("Biodegradable  bags.glb", "Biodegradable bags.glb") : url;
+    setModelUrlState(cleaned);
+  };
   const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [selectedCapUrl, setSelectedCapUrl] = useState("none");
 
   // Global scene background state (from Screen 1)
   const [sceneBgColor, setSceneBgColor] = useState("#e6e2db");
@@ -24,6 +50,18 @@ export default function EditorPage() {
   const [dirLight, setDirLight] = useState(0.8);
   const [shadowOpacity, setShadowOpacity] = useState(0.25);
   const [customHdri, setCustomHdri] = useState(null);
+
+  useEffect(() => {
+    if (modelUrl && modelUrl.toLowerCase().includes("glass_bottle")) {
+      setHdriPreset("apartment");
+      setShadowOpacity(1.0);
+      setEnvIntensity(1.0);
+    } else {
+      setHdriPreset("studio");
+      setShadowOpacity(0.25);
+      setEnvIntensity(0.4);
+    }
+  }, [modelUrl]);
 
   // Key to force Screen 2 canvas re-mount on reset
   const [canvasResetKey, setCanvasResetKey] = useState(0);
@@ -329,6 +367,8 @@ export default function EditorPage() {
           isActive={currentScreen === 1}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          selectedCapUrl={selectedCapUrl}
+          onSelectCap={setSelectedCapUrl}
         />
       </div>
       <div
@@ -345,6 +385,8 @@ export default function EditorPage() {
           canvasResetKey={canvasResetKey}
           sceneBgColor={sceneBgColor}
           sceneBgImage={sceneBgImage}
+          selectedCapUrl={selectedCapUrl}
+          onSelectCap={setSelectedCapUrl}
         />
       </div>
     </div>

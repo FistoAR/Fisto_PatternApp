@@ -27,6 +27,7 @@ import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+import { CAPS } from "../../pages/EditorPage";
 
 function CustomHdriEnvironment({ url, intensity }) {
   const texture = useLoader(RGBELoader, url);
@@ -159,6 +160,170 @@ function TextureActiveOverlay() {
   );
 }
 
+export function isMeasurementMesh(obj, meshCount) {
+  if (!obj || !obj.isMesh) return false;
+  if (meshCount <= 1) return false;
+  const name = obj.name || "";
+  if (!/^(plane|text)/i.test(name)) return false;
+  const nameLower = name.toLowerCase();
+  if (nameLower.includes("label") || nameLower.includes("wrapper") || nameLower.includes("design")) return false;
+  const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+  const hasLabelMat = mats.some(m => {
+    if (!m) return false;
+    const matName = (m.name || "").toLowerCase();
+    return matName.includes("label") || matName.includes("wrapper") || matName.includes("design");
+  });
+  if (hasLabelMat) return false;
+  return true;
+}
+
+function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimationComplete }) {
+  const { scene } = useGLTF(url);
+  const ref = useRef();
+  const clonedCap = useMemo(() => {
+    if (!scene) return null;
+    const clone = cloneSkeleton(scene);
+    return clone;
+  }, [scene]);
+
+  useEffect(() => {
+    if (!clonedCap) return;
+    clonedCap.traverse((obj) => {
+      if (!obj.isMesh || !obj.material) return;
+      const mArray = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mArray.forEach((m) => {
+        const capKey = Object.keys(appliedColors || {}).find(k => k.toLowerCase().includes("cap"));
+        const color = capKey ? appliedColors[capKey] : (appliedColors?.["all"] || null);
+        if (color && color !== "transparent") {
+          m.color.setHex(parseInt(color.replace("#", "0x")));
+        }
+      });
+    });
+  }, [clonedCap, appliedColors]);
+
+  useEffect(() => {
+    if (!ref.current || !clonedCap) return;
+    const group = ref.current;
+
+    // Initialize position and rotation
+    group.position.copy(transform.position);
+    group.rotation.copy(transform.rotation);
+    group.scale.copy(transform.scale);
+
+    if (isExiting) {
+      // Unscrew slowly, then fly up and fade out fast
+      gsap.killTweensOf(group.position);
+      gsap.killTweensOf(group.rotation);
+      gsap.killTweensOf(group.scale);
+
+      gsap.timeline({
+        onComplete: () => {
+          onAnimationComplete(id);
+        }
+      })
+      .to(group.position, {
+        y: transform.position.y + 0.35, // Rise up unscrewing slowly
+        duration: 1.2,
+        ease: "power1.inOut"
+      })
+      .to(group.rotation, {
+        y: transform.rotation.y + Math.PI * 4, // 2 full rotations slowly
+        duration: 1.2,
+        ease: "power1.inOut"
+      }, 0)
+      .to(group.position, {
+        y: transform.position.y + 1.2, // Fly straight up to hide fast
+        duration: 0.2,
+        ease: "power2.in"
+      }, 1.2)
+      .to(group.scale, {
+        x: 0,
+        y: 0,
+        z: 0,
+        duration: 0.2,
+        ease: "power2.in"
+      }, 1.2);
+    } else {
+      // Spawn high up, fade in fast, then screw down slowly to close
+      gsap.killTweensOf(group.position);
+      gsap.killTweensOf(group.rotation);
+      gsap.killTweensOf(group.scale);
+
+      group.position.y = transform.position.y + 1.5; // Start high up at the top
+      group.position.x = transform.position.x;
+      group.rotation.y = transform.rotation.y - Math.PI * 4; // Rotated back 720 deg
+      group.scale.set(0, 0, 0);
+
+      gsap.timeline()
+      .to(group.scale, {
+        x: transform.scale.x,
+        y: transform.scale.y,
+        z: transform.scale.z,
+        duration: 0.2, // Fade in / scale in fast
+        ease: "power1.out"
+      })
+      .to(group.position, {
+        y: transform.position.y, // Drop slowly into place
+        duration: 1.5,
+        ease: "power2.inOut"
+      }, 0.2)
+      .to(group.rotation, {
+        y: transform.rotation.y, // Screw on rotation slowly
+        duration: 1.5,
+        ease: "power2.inOut"
+      }, 0.2);
+    }
+  }, [clonedCap, isExiting, transform]);
+
+  if (!clonedCap) return null;
+
+  return (
+    <group ref={ref}>
+      <primitive object={clonedCap} dispose={null} />
+    </group>
+  );
+}
+
+function CustomCap({ url, transform, appliedColors }) {
+  const [capsToRender, setCapsToRender] = useState([]);
+
+  useEffect(() => {
+    setCapsToRender((prev) => {
+      const updated = prev.map((c) => ({ ...c, isExiting: true }));
+      if (url && url !== "none") {
+        updated.push({
+          id: url + "_" + Date.now(),
+          url: url,
+          isExiting: false,
+        });
+      }
+      return updated;
+    });
+  }, [url]);
+
+  const handleAnimationComplete = useCallback((id) => {
+    setCapsToRender((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  if (!transform) return null;
+
+  return (
+    <group>
+      {capsToRender.map((cap) => (
+        <CapInstance
+          key={cap.id}
+          id={cap.id}
+          url={cap.url}
+          transform={transform}
+          appliedColors={appliedColors}
+          isExiting={cap.isExiting}
+          onAnimationComplete={handleAnimationComplete}
+        />
+      ))}
+    </group>
+  );
+}
+
 function AutoSizedModelWithDimensions({
   modelUrl,
   appliedTextures,
@@ -176,9 +341,18 @@ function AutoSizedModelWithDimensions({
   onTextureLoadStart,
   onTextureLoadEnd,
   showMeasurements,
+  selectedCapUrl,
 }) {
   const { scene } = useGLTF(modelUrl);
-  const { invalidate } = useThree();
+  const { gl, invalidate } = useThree();
+  
+  useEffect(() => {
+    const isGlassBottle = modelUrl && modelUrl.toLowerCase().includes("glass_bottle");
+    gl.toneMapping = isGlassBottle ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = isGlassBottle ? 1.0 : 0.9;
+    invalidate();
+  }, [modelUrl, gl, invalidate]);
+
   const clonedScene = useMemo(() => {
     if (!scene) return null;
     const clone = cloneSkeleton(scene);
@@ -188,8 +362,52 @@ function AutoSizedModelWithDimensions({
         ? obj.material.map((mat) => mat?.clone())
         : obj.material.clone();
     });
+    if (modelUrl && modelUrl.toLowerCase().includes("biodegradable")) {
+      clone.rotation.x = Math.PI / 2;
+      clone.updateMatrixWorld(true);
+    }
     return clone;
-  }, [scene]);
+  }, [scene, modelUrl]);
+
+  const [capTransform, setCapTransform] = useState(null);
+
+  useEffect(() => {
+    if (!clonedScene) return;
+    let capMeshes = [];
+    clonedScene.traverse((obj) => {
+      if (obj.isMesh) {
+        const nameLower = obj.name.toLowerCase();
+        const hasCapInName = nameLower.includes("cap") || nameLower.includes("circle003") || nameLower.includes("lid");
+        const hasCapInMaterial = obj.material && (
+          Array.isArray(obj.material)
+            ? obj.material.some(m => m.name && (m.name.toLowerCase().includes("cap") || m.name.toLowerCase().includes("lid")))
+            : (obj.material.name && (obj.material.name.toLowerCase().includes("cap") || obj.material.name.toLowerCase().includes("lid")))
+        );
+        if (hasCapInName || hasCapInMaterial) {
+          capMeshes.push(obj);
+        }
+      }
+    });
+
+    if (capMeshes.length > 0) {
+      if (selectedCapUrl && selectedCapUrl !== "none") {
+        capMeshes.forEach(mesh => {
+          mesh.visible = false;
+        });
+        const anchor = capMeshes.find(m => m.name.toLowerCase().includes("circle003") || m.name.toLowerCase().includes("cap")) || capMeshes[0];
+        setCapTransform({
+          position: anchor.position.clone(),
+          rotation: anchor.rotation.clone(),
+          scale: anchor.scale.clone(),
+        });
+      } else {
+        capMeshes.forEach(mesh => {
+          mesh.visible = true;
+        });
+        setCapTransform(null);
+      }
+    }
+  }, [clonedScene, selectedCapUrl]);
 
   useEffect(() => {
     if (clonedScene && onSceneLoaded) {
@@ -207,9 +425,7 @@ function AutoSizedModelWithDimensions({
     });
 
     clonedScene.traverse((obj) => {
-      const name = obj.name || "";
-      const isMeasurement = /^(plane|text)/i.test(name);
-      if (isMeasurement && meshCount > 1) {
+      if (isMeasurementMesh(obj, meshCount)) {
         obj.visible = !!showMeasurements;
       }
     });
@@ -239,9 +455,7 @@ function AutoSizedModelWithDimensions({
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || !obj.material || obj.userData.isDecal) return;
 
-      const name = obj.name || "";
-      const isMeasurement = /^(plane|text)/i.test(name);
-      if (isMeasurement && meshCount > 1) return;
+      if (isMeasurementMesh(obj, meshCount)) return;
 
       const mArray = Array.isArray(obj.material)
         ? obj.material
@@ -366,9 +580,7 @@ function AutoSizedModelWithDimensions({
     clonedScene.traverse((obj) => {
       if (!obj.isMesh || !obj.material || obj.userData.isDecal) return;
 
-      const name = obj.name || "";
-      const isMeasurement = /^(plane|text)/i.test(name);
-      if (isMeasurement && meshCount > 1) return;
+      if (isMeasurementMesh(obj, meshCount)) return;
 
       const mArray = Array.isArray(obj.material)
         ? obj.material
@@ -414,47 +626,84 @@ function AutoSizedModelWithDimensions({
           else textureUrl = appliedTextures[id] || appliedTextures["all"];
         }
 
-        // --- HANDLE DECAL MESH FOR CANVAS EDITS ---
-        if (!obj.userData.decalMesh) {
-          const decalMat = new THREE.MeshStandardMaterial({
-            transparent: true,
-            depthWrite: false,
-            polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -4,
-          });
-          const decal = new THREE.Mesh(obj.geometry, decalMat);
-          decal.userData.isDecal = true;
-          obj.add(decal);
-          obj.userData.decalMesh = decal;
-        }
-
-        const decalMat = obj.userData.decalMesh.material;
-        if (textureUrl) {
-          obj.userData.decalMesh.visible = true;
-          if (decalMat.userData.currentTextureUrl !== textureUrl) {
-            decalMat.userData.currentTextureUrl = textureUrl;
-            loader.load(textureUrl, (texture) => {
-              texture.colorSpace = THREE.SRGBColorSpace;
-              texture.flipY = textureUrl.startsWith("data:image");
-              if (modelUrl && modelUrl.includes("Tape")) {
-                texture.center.set(0.5, 0.5);
-                texture.rotation = -Math.PI / 2;
+        const shouldApply = (() => {
+          if (!obj.isMesh) return false;
+          let hasLabelMesh = false;
+          clonedScene.traverse((o) => {
+            if (o.isMesh && !o.userData.isDecal) {
+              const n = (o.name || "").toLowerCase();
+              const mats = Array.isArray(o.material) ? o.material : [o.material];
+              const hasLabelMat = mats.some(m => {
+                if (!m) return false;
+                const matName = (m.name || "").toLowerCase();
+                return matName.includes("label") || matName.includes("wrapper") || matName.includes("design") || matName.includes("artwork");
+              });
+              if (n.includes("label") || n.includes("wrapper") || n.includes("design") || n.includes("artwork") || hasLabelMat) {
+                hasLabelMesh = true;
               }
-              if (decalMat.map) decalMat.map.dispose();
-              decalMat.map = texture;
-              decalMat.color.setHex(0xffffff);
-              decalMat.needsUpdate = true;
-              invalidate();
+            }
+          });
+
+          if (hasLabelMesh) {
+            const n = (obj.name || "").toLowerCase();
+            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+            const hasLabelMat = mats.some(m => {
+              if (!m) return false;
+              const matName = (m.name || "").toLowerCase();
+              return matName.includes("label") || matName.includes("wrapper") || matName.includes("design") || matName.includes("artwork");
             });
+            return n.includes("label") || n.includes("wrapper") || n.includes("design") || n.includes("artwork") || hasLabelMat;
+          }
+          return true;
+        })();
+
+        if (!shouldApply) {
+          if (obj.userData.decalMesh) {
+            obj.userData.decalMesh.visible = false;
           }
         } else {
-          obj.userData.decalMesh.visible = false;
-          if (decalMat.map) decalMat.map.dispose();
-          decalMat.map = null;
-          decalMat.userData.currentTextureUrl = null;
-          decalMat.needsUpdate = true;
-          invalidate();
+          // --- HANDLE DECAL MESH FOR CANVAS EDITS ---
+          if (!obj.userData.decalMesh) {
+            const decalMat = new THREE.MeshStandardMaterial({
+              transparent: true,
+              depthWrite: false,
+              polygonOffset: true,
+              polygonOffsetFactor: -1,
+              polygonOffsetUnits: -4,
+            });
+            const decal = new THREE.Mesh(obj.geometry, decalMat);
+            decal.userData.isDecal = true;
+            obj.add(decal);
+            obj.userData.decalMesh = decal;
+          }
+
+          const decalMat = obj.userData.decalMesh.material;
+          if (textureUrl) {
+            obj.userData.decalMesh.visible = true;
+            if (decalMat.userData.currentTextureUrl !== textureUrl) {
+              decalMat.userData.currentTextureUrl = textureUrl;
+              loader.load(textureUrl, (texture) => {
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.flipY = textureUrl.startsWith("data:image");
+                if (modelUrl && modelUrl.includes("Tape")) {
+                  texture.center.set(0.5, 0.5);
+                  texture.rotation = -Math.PI / 2;
+                }
+                if (decalMat.map) decalMat.map.dispose();
+                decalMat.map = texture;
+                decalMat.color.setHex(0xffffff);
+                decalMat.needsUpdate = true;
+                invalidate();
+              });
+            }
+          } else {
+            obj.userData.decalMesh.visible = false;
+            if (decalMat.map) decalMat.map.dispose();
+            decalMat.map = null;
+            decalMat.userData.currentTextureUrl = null;
+            decalMat.needsUpdate = true;
+            invalidate();
+          }
         }
 
         // --- HANDLE BASE MESH (PBR OR COLOR) ---
@@ -478,17 +727,28 @@ function AutoSizedModelWithDimensions({
             if ("transmission" in m) m.transmission = 0.9;
             m.color.setHex(0xffffff);
           } else {
-            m.transparent = false;
-            m.opacity = 1.0;
-            m.roughness =
-              m.userData.originalRoughness !== undefined
-                ? m.userData.originalRoughness
-                : 0.5;
-            m.metalness =
-              m.userData.originalMetalness !== undefined
-                ? m.userData.originalMetalness
-                : 0.1;
-            if ("transmission" in m) m.transmission = 0;
+            const wasOriginallyTransparent = m.userData.originalTransparent || (m.userData.originalTransmission && m.userData.originalTransmission > 0);
+            if (wasOriginallyTransparent) {
+              m.transparent = true;
+              m.opacity = m.userData.originalOpacity !== undefined ? m.userData.originalOpacity : 0.35;
+              m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.1;
+              m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
+              if ("transmission" in m) {
+                m.transmission = m.userData.originalTransmission !== undefined ? m.userData.originalTransmission : 0.9;
+              }
+            } else {
+              m.transparent = false;
+              m.opacity = 1.0;
+              m.roughness =
+                m.userData.originalRoughness !== undefined
+                  ? m.userData.originalRoughness
+                  : 0.5;
+              m.metalness =
+                m.userData.originalMetalness !== undefined
+                  ? m.userData.originalMetalness
+                  : 0.1;
+              if ("transmission" in m) m.transmission = 0;
+            }
             m.color.set(colorHex);
           }
           if (m.map) m.map.dispose();
@@ -497,7 +757,7 @@ function AutoSizedModelWithDimensions({
           invalidate();
         } else {
           // Restore original transparency settings
-          if (textureUrl || materialType) {
+          if ((textureUrl && shouldApply) || materialType) {
             m.transparent = false;
             m.opacity = 1.0;
             if ("transmission" in m) m.transmission = 0;
@@ -683,6 +943,9 @@ function AutoSizedModelWithDimensions({
     <group position={baseTransform.offset} scale={baseTransform.scale}>
       <group scale={customScale}>
         <primitive object={clonedScene} />
+        {selectedCapUrl && selectedCapUrl !== "none" && capTransform && (
+          <CustomCap url={selectedCapUrl} transform={capTransform} appliedColors={appliedColors} />
+        )}
       </group>
     </group>
   );
@@ -859,21 +1122,10 @@ export default function EditorScreen1({
   appliedCustomSize,
   appliedMetallic,
   appliedRoughness,
-  selectedMaterial,
-  setSelectedMaterial,
-  onProceed,
-  onApplyColor,
-  onApplyMaterial,
-  onApplyCustomSize,
   onApplyMetallic,
   onApplyRoughness,
-  onUndo,
-  onRedo,
-  onResetAll,
-  canUndo,
-  canRedo,
-  activeTab,
-  setActiveTab,
+  selectedMaterial,
+  setSelectedMaterial,
   sceneBgColor: bgColor,
   setSceneBgColor: setBgColor,
   sceneBgImage: bgImage,
@@ -891,8 +1143,77 @@ export default function EditorScreen1({
   customHdri,
   setCustomHdri,
   onLoadScene,
+  onProceed,
+  onApplyColor,
+  onApplyMaterial,
+  onApplyCustomSize,
+  onUndo,
+  onRedo,
+  onResetAll,
+  canUndo,
+  canRedo,
+  isActive,
+  activeTab,
+  setActiveTab,
+  selectedCapUrl,
+  onSelectCap,
 }) {
+  const isBottleModel = modelUrl && (
+    modelUrl.toLowerCase().includes("plastic") ||
+    modelUrl.toLowerCase().includes("glass") ||
+    modelUrl.toLowerCase().includes("soft")
+  );
   const [showTools, setShowTools] = useState(false);
+  const [capPanelPosition, setCapPanelPosition] = useState({ x: 0, y: 0 });
+  const [isCapPanelMinimized, setIsCapPanelMinimized] = useState(false);
+  const [isDraggingCapPanel, setIsDraggingCapPanel] = useState(false);
+  const capPanelDragStart = useRef({ startX: 0, startY: 0, posX: 0, posY: 0 });
+  const capPanelRef = useRef(null);
+
+  const handleCapPanelPointerDown = (e) => {
+    setIsDraggingCapPanel(true);
+    capPanelDragStart.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      posX: capPanelPosition.x,
+      posY: capPanelPosition.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleCapPanelPointerMove = (e) => {
+    if (!isDraggingCapPanel) return;
+    const dx = e.clientX - capPanelDragStart.current.startX;
+    const dy = e.clientY - capPanelDragStart.current.startY;
+    let newX = capPanelDragStart.current.posX + dx;
+    let newY = capPanelDragStart.current.posY + dy;
+
+    if (capPanelRef.current) {
+      const rect = capPanelRef.current.getBoundingClientRect();
+      const parentWidth = window.innerWidth;
+      const parentHeight = window.innerHeight;
+
+      // Initial position: right-24 is 96px, top-[10vh] is parentHeight * 0.1
+      const initialLeft = parentWidth - rect.width - 96;
+      const initialTop = parentHeight * 0.1;
+
+      const leftBound = -initialLeft + 16;
+      const rightBound = parentWidth - (initialLeft + rect.width) - 16;
+      const topBound = -initialTop + 16;
+      const bottomBound = parentHeight - (initialTop + rect.height) - 16;
+
+      newX = Math.max(leftBound, Math.min(rightBound, newX));
+      newY = Math.max(topBound, Math.min(bottomBound, newY));
+    }
+    setCapPanelPosition({ x: newX, y: newY });
+  };
+
+  const handleCapPanelPointerUp = (e) => {
+    if (isDraggingCapPanel) {
+      setIsDraggingCapPanel(false);
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
   const [showCustomSize, setShowCustomSize] = useState(false);
   const [showCameraViews, setShowCameraViews] = useState(false);
   const orbitControlsRef = useRef(null);
@@ -947,8 +1268,8 @@ export default function EditorScreen1({
     if (!baseDimensions) return 0;
     const currentHeight = appliedCustomSize?.height || baseDimensions.height;
     const maxDim = Math.max(baseDimensions.length, baseDimensions.height, baseDimensions.width) / 1000;
-    const scale = 2.0 / maxDim;
-    return ((currentHeight / 1000) * scale) / 2 + 0.18;
+    const scale = 3.0 / maxDim;
+    return ((currentHeight / 1000) * scale) / 2 + 0.3;
   };
 
   // Zoom state
@@ -1424,6 +1745,7 @@ export default function EditorScreen1({
                 onTextureLoadStart={handleTextureLoadStart}
                 onTextureLoadEnd={handleTextureLoadEnd}
                 showMeasurements={showMeasurements}
+                selectedCapUrl={selectedCapUrl}
               />
             )}
           </Suspense>
@@ -1754,6 +2076,7 @@ export default function EditorScreen1({
                 ))}
               </select>
             </div>
+
 
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -2790,6 +3113,143 @@ export default function EditorScreen1({
           </Tooltip1>
         </div>
       </div>
+
+      {/* Floating Right Side Cap Selector (Only for Bottle Models when in Edit mode) */}
+      {activeTab === "edit" && isBottleModel && (
+        <div
+          ref={capPanelRef}
+          className="absolute right-[7.4vw] top-[2.5vh] z-20 pointer-events-auto bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 select-none flex flex-col gap-3 transition-all duration-300"
+          style={{
+            transform: `translate(${capPanelPosition.x}px, ${capPanelPosition.y}px)`,
+            transition: isDraggingCapPanel ? "none" : "transform 0.1s ease, width 0.3s ease, height 0.3s ease, padding 0.3s ease",
+            width: isCapPanelMinimized ? "130px" : "250px",
+            padding: isCapPanelMinimized ? "8px 12px" : "20px",
+          }}
+        >
+          {isCapPanelMinimized ? (
+            /* Minimized State UI */
+            <div 
+              className="flex items-center justify-between w-full cursor-grab active:cursor-grabbing gap-1"
+              onPointerDown={handleCapPanelPointerDown}
+              onPointerMove={handleCapPanelPointerMove}
+              onPointerUp={handleCapPanelPointerUp}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                {/* Drag handle dots icon */}
+                <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
+                <span className="text-xs font-bold text-gray-700 truncate">Caps</span>
+              </div>
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); setIsCapPanelMinimized(false); }}
+                className="w-5 h-5 rounded-md hover:bg-gray-100 flex items-center justify-center border-none text-gray-500 hover:text-gray-800 cursor-pointer shrink-0"
+                title="Maximize"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            /* Maximized State UI */
+            <>
+              {/* Drag Handle */}
+              <div
+                className="w-full h-4 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-gray-50 rounded-t-2xl border-b border-gray-50 select-none -mt-3 -mx-5 px-5 py-2.5 bg-gray-50/50"
+                onPointerDown={handleCapPanelPointerDown}
+                onPointerMove={handleCapPanelPointerMove}
+                onPointerUp={handleCapPanelPointerUp}
+                title="Drag Panel"
+              >
+                <div className="w-12 h-1 bg-gray-300 rounded-full" />
+              </div>
+
+              <div className="flex flex-col gap-1 -mt-2">
+                <div className="flex items-center justify-end">
+                  <div className="flex items-center gap-1.5">
+                    {/* Reset Position Button */}
+                    {(capPanelPosition.x !== 0 || capPanelPosition.y !== 0) && (
+                      <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => setCapPanelPosition({ x: 0, y: 0 })}
+                        className="w-5 h-5 rounded-md hover:bg-gray-100 flex items-center justify-center border-none text-gray-400 hover:text-[#c05520] cursor-pointer"
+                        title="Reset to Original Position"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5" />
+                        </svg>
+                      </button>
+                    )}
+                    {/* Minimize Button */}
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => setIsCapPanelMinimized(true)}
+                      className="w-5 h-5 rounded-md hover:bg-gray-100 flex items-center justify-center border-none text-gray-500 hover:text-gray-800 cursor-pointer"
+                      title="Minimize"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Scrollable Container with exact 3-row visible height */}
+              <div className="overflow-y-auto pr-1 flex flex-col gap-2 max-h-[300px]">
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Default Slot */}
+                  <button
+                    onClick={() => onSelectCap && onSelectCap("none")}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all cursor-pointer outline-none ${
+                      selectedCapUrl === "none"
+                        ? "border-[#c05520] bg-orange-50/50 text-[#c05520] ring-1 ring-[#c05520]"
+                        : "border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100/80 hover:border-gray-200"
+                    }`}
+                  >
+                    {/* Visual Image Placeholder for Default Cap */}
+                    <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-200/50 flex items-center justify-center mb-1.5 relative overflow-hidden">
+                      <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      </svg>
+                    </div>
+                    <span className="text-[11px] font-bold">Default</span>
+                  </button>
+
+                  {/* Cap 1-8 Slots */}
+                  {CAPS.map((cap, i) => (
+                    <button
+                      key={cap.id}
+                      onClick={() => onSelectCap && onSelectCap(cap.url)}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all cursor-pointer outline-none ${
+                        selectedCapUrl === cap.url
+                          ? "border-[#c05520] bg-orange-50/50 text-[#c05520] ring-1 ring-[#c05520]"
+                          : "border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100/80 hover:border-gray-200"
+                      }`}
+                    >
+                      {/* Visual Image Placeholder for Cap */}
+                      <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-[#fdfbf7] to-[#f5f0e6] border border-orange-100 flex items-center justify-center mb-1.5 relative overflow-hidden">
+                        {/* Visual cap illustration */}
+                        <div className="w-10 h-5 bg-[#c05520] rounded-t-md opacity-85 shadow-sm flex flex-col justify-between p-0.5">
+                          <div className="w-full h-0.5 bg-white/20 rounded" />
+                          <div className="w-full h-0.5 bg-white/20 rounded" />
+                        </div>
+                        <span className="absolute bottom-1 right-1 text-[8px] bg-[#c05520]/10 text-[#c05520] px-1 rounded font-black">
+                          #{i + 1}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-bold">Cap {i + 1}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Help / Legend Panel */}
       {showLegend && (

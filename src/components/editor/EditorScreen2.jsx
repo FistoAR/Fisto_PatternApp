@@ -209,6 +209,8 @@ export default function EditorScreen2({
   canvasResetKey,
   sceneBgColor,
   sceneBgImage,
+  selectedCapUrl,
+  onSelectCap,
 }) {
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [showTapeLayout, setShowTapeLayout] = useState(false);
@@ -1249,6 +1251,8 @@ export default function EditorScreen2({
               isActive={isActive}
               showPreview={showPreview}
               setShowPreview={setShowPreview}
+              selectedCapUrl={selectedCapUrl}
+              onSelectCap={onSelectCap}
             />
           </div>
         </div>
