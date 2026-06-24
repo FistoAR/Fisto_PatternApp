@@ -34,6 +34,8 @@ import plasticWaterBottleUrl from "../assets/models/Drinkware Bottles/Plastic wa
 import plasticWaterBottleImg from "../assets/models/Drinkware Bottles/Plastic water bottles/plastic water bottle.webp";
 import softDrinksBottleUrl from "../assets/models/Drinkware Bottles/Soft drinks/Soft drinks bottle.glb?url";
 import softDrinksBottleImg from "../assets/models/Drinkware Bottles/Soft drinks/05.waterbottle.webp";
+import steelBottleUrl from "../assets/models/Drinkware Bottles/Steel Bottle/Steel bottle.glb?url";
+import steelBottleImg from "../assets/models/Drinkware Bottles/Steel Bottle/Steel bottle.webp";
 
 // Eco friendly Models & Images
 import biodegradableBagsUrl from "../assets/models/Eco friendly/Bio degradable/Biodegradable bags.glb?url";
@@ -73,6 +75,7 @@ const modelMappings = {
   "Glass Water Bottle": glassBottleUrl,
   "Plastic Water Bottle": plasticWaterBottleUrl,
   "Soft Drink Bottles": softDrinksBottleUrl,
+  "Steel Bottle": steelBottleUrl,
 
   "Biodegradable Bags": biodegradableBagsUrl,
   "Paper Bags": paperBagUrl,
@@ -117,7 +120,7 @@ const catalogSections = [
     title: "Drinkware Bottles",
     icon: "bottle",
     sidebarLabels: ["Drinkware Bottles"],
-    products: ["Plastic Water Bottle", "Glass Water Bottle", "Soft Drink Bottles"],
+    products: ["Plastic Water Bottle", "Glass Water Bottle", "Soft Drink Bottles", "Steel Bottle"],
   },
   {
     title: "Carton Boxes",
@@ -237,6 +240,7 @@ const productImages = {
   "glass water bottle": glassBottleImg,
   "plastic water bottle": plasticWaterBottleImg,
   "soft drink bottles": softDrinksBottleImg,
+  "steel bottle": steelBottleImg,
 
   "biodegradable bags": biodegradableBagsImg,
   "paper bags": paperBagImg,

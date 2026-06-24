@@ -62,7 +62,7 @@ export default function GalleryPopup({ onLoadScene }) {
   };
 
   return (
-    <div className="w-full h-full bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 flex flex-col overflow-hidden border border-gray-100">
+    <div className="w-full h-full bg-white rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.14)] ring-1 ring-gray-100 p-6 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="mb-5 shrink-0">
         <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">

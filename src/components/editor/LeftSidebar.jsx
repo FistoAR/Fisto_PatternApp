@@ -117,6 +117,7 @@ export default function LeftSidebar({ active, setActive, items }) {
       left-sidebar-container
       flex flex-col items-center py-6 gap-3
       bg-white rounded-[15px]
+      shadow-[0_8px_30px_rgba(0,0,0,0.12)]
 
       w-[4.3vw] h-fit shrink-0
       overflow-y-auto overflow-x-hidden scrollbar-hide

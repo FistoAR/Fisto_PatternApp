@@ -602,12 +602,13 @@ class DraggableText {
       let textWidth = 0;
       const charWidths = [];
       const chars = line.split("");
+      const scaledSpacing = (this.letterSpacing || 0) / scale;
       chars.forEach((c) => {
         const w = ctx.measureText(c).width;
         charWidths.push(w);
-        textWidth += w + (this.letterSpacing || 0);
+        textWidth += w + scaledSpacing;
       });
-      if (chars.length > 0) textWidth -= this.letterSpacing || 0;
+      if (chars.length > 0) textWidth -= scaledSpacing;
 
       if (!this.bend || Math.abs(this.bend) < 1) {
         if (!this.letterSpacing) {
@@ -617,7 +618,7 @@ class DraggableText {
           chars.forEach((char, idx) => {
             const w = charWidths[idx];
             ctx.fillText(char, currX + w / 2, lineY);
-            currX += w + this.letterSpacing;
+            currX += w + scaledSpacing;
           });
         }
 
@@ -645,7 +646,7 @@ class DraggableText {
         chars.forEach((char, idx) => {
           const w = charWidths[idx];
           const charTotalW =
-            w + (idx < chars.length - 1 ? this.letterSpacing || 0 : 0);
+            w + (idx < chars.length - 1 ? scaledSpacing : 0);
           const charAngle = charTotalW / R;
 
           // Place character in the center of its arc segment
@@ -1649,65 +1650,65 @@ const Canvas = forwardRef(
       toolModeRef.current = toolMode;
     }, [toolMode]);
 
-    useEffect(() => {
-      const container = containerRef.current;
-      if (!container) return;
+      useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
 
-      const handleWheel = (e) => {
-        if (toolModeRef.current !== "hand") {
-          const sel = selectedImageRef.current;
-          if (sel) {
-            e.preventDefault();
-            const scaleStep = 0.05;
-            let scaleFactor = 1;
-            if (e.deltaY < 0) {
-              scaleFactor = 1 + scaleStep;
-            } else if (e.deltaY > 0) {
-              scaleFactor = 1 - scaleStep;
-            }
-
-            if (scaleFactor !== 1) {
-              const oldWidth = sel.width;
-              const oldHeight = sel.height;
-
-              if (sel.text !== undefined) {
-                // It's a text layer
-                sel.fontSize = Math.max(10, sel.fontSize * scaleFactor);
-                if (typeof sel.updateDimensions === 'function') {
-                  sel.updateDimensions();
-                }
-              } else {
-                // It's an image layer
-                sel.width = oldWidth * scaleFactor;
-                sel.height = oldHeight * scaleFactor;
+        const handleWheel = (e) => {
+          if (toolModeRef.current !== "hand") {
+            const sel = selectedImageRef.current;
+            if (sel) {
+              e.preventDefault();
+              const scaleStep = 0.05;
+              let scaleFactor = 1;
+              if (e.deltaY < 0) {
+                scaleFactor = 1 + scaleStep;
+              } else if (e.deltaY > 0) {
+                scaleFactor = 1 - scaleStep;
               }
 
-              // Center the scaling around the object's own center
-              sel.x -= (sel.width - oldWidth) / 2;
-              sel.y -= (sel.height - oldHeight) / 2;
+              if (scaleFactor !== 1) {
+                const oldWidth = sel.width;
+                const oldHeight = sel.height;
 
-              pushHistory(imagesRef.current, faceColorsRef.current);
-              if (forceRedrawRef.current) forceRedrawRef.current();
+                if (sel.text !== undefined) {
+                  // It's a text layer
+                  sel.fontSize = Math.max(10, sel.fontSize * scaleFactor);
+                  if (typeof sel.updateDimensions === 'function') {
+                    sel.updateDimensions();
+                  }
+                } else {
+                  // It's an image layer
+                  sel.width = oldWidth * scaleFactor;
+                  sel.height = oldHeight * scaleFactor;
+                }
+
+                // Center the scaling around the object's own center
+                sel.x -= (sel.width - oldWidth) / 2;
+                sel.y -= (sel.height - oldHeight) / 2;
+
+                pushHistory(imagesRef.current, faceColorsRef.current);
+                if (forceRedrawRef.current) forceRedrawRef.current();
+              }
             }
+            return;
           }
-          return;
-        }
 
-        e.preventDefault();
-        // deltaY > 0 is scroll down (zoom out), deltaY < 0 is scroll up (zoom in)
-        const zoomStep = 0.05;
-        if (e.deltaY > 0) {
-          setZoom((z) => Math.max(0.5, z - zoomStep));
-        } else if (e.deltaY < 0) {
-          setZoom((z) => Math.min(1.5, z + zoomStep));
-        }
-      };
+          e.preventDefault();
+          // deltaY > 0 is scroll down (zoom out), deltaY < 0 is scroll up (zoom in)
+          const zoomStep = 0.05;
+          if (e.deltaY > 0) {
+            setZoom((z) => Math.max(0.5, z - zoomStep));
+          } else if (e.deltaY < 0) {
+            setZoom((z) => Math.min(1.5, z + zoomStep));
+          }
+        };
 
-      container.addEventListener("wheel", handleWheel, { passive: false });
-      return () => {
-        container.removeEventListener("wheel", handleWheel);
-      };
-    }, []);
+        container.addEventListener("wheel", handleWheel, { passive: false });
+        return () => {
+          container.removeEventListener("wheel", handleWheel);
+        };
+      }, []);
 
     const [eraserTolerance, setEraserTolerance] = useState(30);
     const [eraserTargetColor, setEraserTargetColor] = useState(null);
@@ -3472,10 +3473,12 @@ const Canvas = forwardRef(
                 }
                 return [clickedFaceId];
               };
-              const faces = getFacesToSelect(targetFace);
-              img.selectedFaceIds = faces;
-              setSelectedFaces(new Set(faces));
-              setSelectedFace(targetFace);
+              if (!img.selectedFaceIds || !img.selectedFaceIds.includes(targetFace)) {
+                const faces = getFacesToSelect(targetFace);
+                img.selectedFaceIds = faces;
+                setSelectedFaces(new Set(faces));
+                setSelectedFace(targetFace);
+              }
             }
           }
           saveState();

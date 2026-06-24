@@ -13,15 +13,24 @@ import cap6Url from "../assets/models/Drinkware Bottles/Caps/Cap6.glb?url";
 import cap7Url from "../assets/models/Drinkware Bottles/Caps/Cap7.glb?url";
 import cap8Url from "../assets/models/Drinkware Bottles/Caps/Cap8.glb?url";
 
+import cap1Img from "../assets/models/Drinkware Bottles/Caps/Cap1.webp";
+import cap2Img from "../assets/models/Drinkware Bottles/Caps/Cap2.webp";
+import cap3Img from "../assets/models/Drinkware Bottles/Caps/Cap3.webp";
+import cap4Img from "../assets/models/Drinkware Bottles/Caps/Cap4.webp";
+import cap5Img from "../assets/models/Drinkware Bottles/Caps/Cap5.webp";
+import cap6Img from "../assets/models/Drinkware Bottles/Caps/Cap6.webp";
+import cap7Img from "../assets/models/Drinkware Bottles/Caps/Cap7.webp";
+import cap8Img from "../assets/models/Drinkware Bottles/Caps/Cap8.webp";
+
 export const CAPS = [
-  { id: "cap-1", name: "Cap 1", url: cap1Url },
-  { id: "cap-2", name: "Cap 2", url: cap2Url },
-  { id: "cap-3", name: "Cap 3", url: cap3Url },
-  { id: "cap-4", name: "Cap 4", url: cap4Url },
-  { id: "cap-5", name: "Cap 5", url: cap5Url },
-  { id: "cap-6", name: "Cap 6", url: cap6Url },
-  { id: "cap-7", name: "Cap 7", url: cap7Url },
-  { id: "cap-8", name: "Cap 8", url: cap8Url },
+  { id: "cap-1", name: "Cap 1", url: cap1Url, imageUrl: cap1Img },
+  { id: "cap-2", name: "Cap 2", url: cap2Url, imageUrl: cap2Img },
+  { id: "cap-3", name: "Cap 3", url: cap3Url, imageUrl: cap3Img },
+  { id: "cap-4", name: "Cap 4", url: cap4Url, imageUrl: cap4Img },
+  { id: "cap-5", name: "Cap 5", url: cap5Url, imageUrl: cap5Img },
+  { id: "cap-6", name: "Cap 6", url: cap6Url, imageUrl: cap6Img },
+  { id: "cap-7", name: "Cap 7", url: cap7Url, imageUrl: cap7Img },
+  { id: "cap-8", name: "Cap 8", url: cap8Url, imageUrl: cap8Img },
 ];
 
 export default function EditorPage() {
@@ -54,7 +63,7 @@ export default function EditorPage() {
   useEffect(() => {
     if (modelUrl && modelUrl.toLowerCase().includes("glass_bottle")) {
       setHdriPreset("apartment");
-      setShadowOpacity(1.0);
+      setShadowOpacity(0.25);
       setEnvIntensity(1.0);
     } else {
       setHdriPreset("studio");
@@ -256,7 +265,6 @@ export default function EditorPage() {
           Object.keys(nextMaterials).forEach((k) => delete nextMaterials[k]);
         } else {
           delete nextMaterials[targetMat];
-          delete nextMaterials["all"];
         }
       }
 
@@ -304,7 +312,6 @@ export default function EditorPage() {
         Object.keys(nextColors).forEach((k) => delete nextColors[k]);
       } else {
         delete nextColors[targetMat];
-        delete nextColors["all"];
       }
 
       pushHistory({

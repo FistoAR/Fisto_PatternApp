@@ -21,6 +21,8 @@ import {
   Html,
   useProgress,
   Environment,
+  GizmoHelper,
+  GizmoViewport,
 } from "@react-three/drei";
 import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
@@ -59,8 +61,9 @@ function BackgroundImage({ url }) {
 }
 
 import LeftSidebar from "./LeftSidebar";
-import ModelsPopup from "./ModelsPopup";
+import ModelsPopup, { MODELS } from "./ModelsPopup";
 import LayoutPopup, { getSingleModelUrl } from "./LayoutPopup";
+import modelPositionsConfig from "./modelPositions.json";
 import ScenePopup from "./ScenePopup";
 import GalleryPopup from "./GalleryPopup";
 import { getTextureLibrary } from "../../utils/TextureLibrary";
@@ -166,18 +169,34 @@ export function isMeasurementMesh(obj, meshCount) {
   const name = obj.name || "";
   if (!/^(plane|text)/i.test(name)) return false;
   const nameLower = name.toLowerCase();
-  if (nameLower.includes("label") || nameLower.includes("wrapper") || nameLower.includes("design")) return false;
+  if (
+    nameLower.includes("label") ||
+    nameLower.includes("wrapper") ||
+    nameLower.includes("design")
+  )
+    return false;
   const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-  const hasLabelMat = mats.some(m => {
+  const hasLabelMat = mats.some((m) => {
     if (!m) return false;
     const matName = (m.name || "").toLowerCase();
-    return matName.includes("label") || matName.includes("wrapper") || matName.includes("design");
+    return (
+      matName.includes("label") ||
+      matName.includes("wrapper") ||
+      matName.includes("design")
+    );
   });
   if (hasLabelMat) return false;
   return true;
 }
 
-function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimationComplete }) {
+function CapInstance({
+  id,
+  url,
+  transform,
+  appliedColors,
+  isExiting,
+  onAnimationComplete,
+}) {
   const { scene } = useGLTF(url);
   const ref = useRef();
   const clonedCap = useMemo(() => {
@@ -186,14 +205,28 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
     return clone;
   }, [scene]);
 
+  const capLocalBounds = useMemo(() => {
+    if (!clonedCap) return { minY: 0 };
+    const box = new THREE.Box3().setFromObject(clonedCap);
+    return {
+      minY: isFinite(box.min.y) ? box.min.y : 0,
+    };
+  }, [clonedCap]);
+
   useEffect(() => {
     if (!clonedCap) return;
     clonedCap.traverse((obj) => {
       if (!obj.isMesh || !obj.material) return;
-      const mArray = Array.isArray(obj.material) ? obj.material : [obj.material];
+      const mArray = Array.isArray(obj.material)
+        ? obj.material
+        : [obj.material];
       mArray.forEach((m) => {
-        const capKey = Object.keys(appliedColors || {}).find(k => k.toLowerCase().includes("cap"));
-        const color = capKey ? appliedColors[capKey] : (appliedColors?.["all"] || null);
+        const capKey = Object.keys(appliedColors || {}).find((k) =>
+          k.toLowerCase().includes("cap"),
+        );
+        const color = capKey
+          ? appliedColors[capKey]
+          : appliedColors?.["all"] || null;
         if (color && color !== "transparent") {
           m.color.setHex(parseInt(color.replace("#", "0x")));
         }
@@ -216,33 +249,46 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
       gsap.killTweensOf(group.rotation);
       gsap.killTweensOf(group.scale);
 
-      gsap.timeline({
-        onComplete: () => {
-          onAnimationComplete(id);
-        }
-      })
-      .to(group.position, {
-        y: transform.position.y + 0.35, // Rise up unscrewing slowly
-        duration: 1.2,
-        ease: "power1.inOut"
-      })
-      .to(group.rotation, {
-        y: transform.rotation.y + Math.PI * 4, // 2 full rotations slowly
-        duration: 1.2,
-        ease: "power1.inOut"
-      }, 0)
-      .to(group.position, {
-        y: transform.position.y + 1.2, // Fly straight up to hide fast
-        duration: 0.2,
-        ease: "power2.in"
-      }, 1.2)
-      .to(group.scale, {
-        x: 0,
-        y: 0,
-        z: 0,
-        duration: 0.2,
-        ease: "power2.in"
-      }, 1.2);
+      gsap
+        .timeline({
+          onComplete: () => {
+            onAnimationComplete(id);
+          },
+        })
+        .to(group.position, {
+          y: transform.position.y + 0.35, // Rise up unscrewing slowly
+          duration: 1.2,
+          ease: "power1.inOut",
+        })
+        .to(
+          group.rotation,
+          {
+            y: transform.rotation.y + Math.PI * 4, // 2 full rotations slowly
+            duration: 1.2,
+            ease: "power1.inOut",
+          },
+          0,
+        )
+        .to(
+          group.position,
+          {
+            y: transform.position.y + 1.2, // Fly straight up to hide fast
+            duration: 0.2,
+            ease: "power2.in",
+          },
+          1.2,
+        )
+        .to(
+          group.scale,
+          {
+            x: 0,
+            y: 0,
+            z: 0,
+            duration: 0.2,
+            ease: "power2.in",
+          },
+          1.2,
+        );
     } else {
       // Spawn high up, fade in fast, then screw down slowly to close
       gsap.killTweensOf(group.position);
@@ -254,24 +300,33 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
       group.rotation.y = transform.rotation.y - Math.PI * 4; // Rotated back 720 deg
       group.scale.set(0, 0, 0);
 
-      gsap.timeline()
-      .to(group.scale, {
-        x: transform.scale.x,
-        y: transform.scale.y,
-        z: transform.scale.z,
-        duration: 0.2, // Fade in / scale in fast
-        ease: "power1.out"
-      })
-      .to(group.position, {
-        y: transform.position.y, // Drop slowly into place
-        duration: 1.5,
-        ease: "power2.inOut"
-      }, 0.2)
-      .to(group.rotation, {
-        y: transform.rotation.y, // Screw on rotation slowly
-        duration: 1.5,
-        ease: "power2.inOut"
-      }, 0.2);
+      gsap
+        .timeline()
+        .to(group.scale, {
+          x: transform.scale.x,
+          y: transform.scale.y,
+          z: transform.scale.z,
+          duration: 0.2, // Fade in / scale in fast
+          ease: "power1.out",
+        })
+        .to(
+          group.position,
+          {
+            y: transform.position.y, // Drop slowly into place
+            duration: 1.5,
+            ease: "power2.inOut",
+          },
+          0.2,
+        )
+        .to(
+          group.rotation,
+          {
+            y: transform.rotation.y, // Screw on rotation slowly
+            duration: 1.5,
+            ease: "power2.inOut",
+          },
+          0.2,
+        );
     }
   }, [clonedCap, isExiting, transform]);
 
@@ -279,7 +334,9 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
 
   return (
     <group ref={ref}>
-      <primitive object={clonedCap} dispose={null} />
+      <group position={[0, -capLocalBounds.minY, 0]}>
+        <primitive object={clonedCap} dispose={null} />
+      </group>
     </group>
   );
 }
@@ -324,6 +381,96 @@ function CustomCap({ url, transform, appliedColors }) {
   );
 }
 
+function calculateNeckDimensions(clonedScene, capMeshes) {
+  let mainBodyMesh = null;
+  let maxVolume = -1;
+
+  clonedScene.traverse((obj) => {
+    if (obj.isMesh && !obj.userData.isDecal) {
+      const nameLower = obj.name.toLowerCase();
+      const isCap = capMeshes.includes(obj) || 
+                    nameLower.includes("cap") || 
+                    nameLower.includes("lid") || 
+                    nameLower.includes("circle003");
+      if (!isCap && !isMeasurementMesh(obj, 10)) {
+        if (!obj.geometry.boundingBox) {
+          obj.geometry.computeBoundingBox();
+        }
+        const size = obj.geometry.boundingBox.getSize(new THREE.Vector3());
+        const volume = size.x * size.y * size.z;
+        if (volume > maxVolume) {
+          maxVolume = volume;
+          mainBodyMesh = obj;
+        }
+      }
+    }
+  });
+
+  if (!mainBodyMesh) {
+    return { topY: 1.0, radius: 0.025 };
+  }
+
+  const localMatrix = new THREE.Matrix4();
+  let curr = mainBodyMesh;
+  while (curr && curr !== clonedScene) {
+    curr.updateMatrix();
+    localMatrix.premultiply(curr.matrix);
+    curr = curr.parent;
+  }
+
+  const posAttr = mainBodyMesh.geometry.attributes.position;
+  if (!posAttr) {
+    return { topY: 1.0, radius: 0.025 };
+  }
+
+  let minY = Infinity;
+  let maxY = -Infinity;
+  const tempV = new THREE.Vector3();
+  for (let i = 0; i < posAttr.count; i++) {
+    tempV.fromBufferAttribute(posAttr, i);
+    tempV.applyMatrix4(localMatrix);
+    if (tempV.y < minY) minY = tempV.y;
+    if (tempV.y > maxY) maxY = tempV.y;
+  }
+
+  const totalHeight = maxY - minY;
+  const threshold = Math.max(0.01, totalHeight * 0.01); // Top 1% of the bottle height
+
+  let minX = Infinity, maxX = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  let topCount = 0;
+
+  for (let i = 0; i < posAttr.count; i++) {
+    tempV.fromBufferAttribute(posAttr, i);
+    tempV.applyMatrix4(localMatrix);
+    if (tempV.y >= maxY - threshold) {
+      if (tempV.x < minX) minX = tempV.x;
+      if (tempV.x > maxX) maxX = tempV.x;
+      if (tempV.z < minZ) minZ = tempV.z;
+      if (tempV.z > maxZ) maxZ = tempV.z;
+      topCount++;
+    }
+  }
+
+  let radius = totalHeight * 0.05;
+  if (topCount > 2) {
+    radius = (maxX - minX + (maxZ - minZ)) / 4;
+  }
+
+  // Safety boundaries relative to the overall bottle size
+  const minNeckRadius = totalHeight * 0.005;
+  const maxNeckRadius = totalHeight * 0.25;
+
+  if (radius < minNeckRadius || radius > maxNeckRadius) {
+    radius = totalHeight * 0.045;
+  }
+
+  return {
+    topY: maxY,
+    radius: radius
+  };
+}
+
 function AutoSizedModelWithDimensions({
   modelUrl,
   appliedTextures,
@@ -342,13 +489,19 @@ function AutoSizedModelWithDimensions({
   onTextureLoadEnd,
   showMeasurements,
   selectedCapUrl,
+  isLidOpen,
+  onCapHover,
+  onCapLeave,
 }) {
   const { scene } = useGLTF(modelUrl);
-  const { gl, invalidate } = useThree();
-  
+  const { gl, invalidate, camera } = useThree();
+
   useEffect(() => {
-    const isGlassBottle = modelUrl && modelUrl.toLowerCase().includes("glass_bottle");
-    gl.toneMapping = isGlassBottle ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+    const isGlassBottle =
+      modelUrl && modelUrl.toLowerCase().includes("glass_bottle");
+    gl.toneMapping = isGlassBottle
+      ? THREE.NeutralToneMapping
+      : THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = isGlassBottle ? 1.0 : 0.9;
     invalidate();
   }, [modelUrl, gl, invalidate]);
@@ -369,6 +522,369 @@ function AutoSizedModelWithDimensions({
     return clone;
   }, [scene, modelUrl]);
 
+  const lidGroupRef = useRef(null);
+  const originalSceneRotationRef = useRef(null);
+  const containerHeightRef = useRef(0.1);
+  const transitionGroupRef = useRef(null);
+
+  useEffect(() => {
+    if (clonedScene) {
+      originalSceneRotationRef.current = clonedScene.rotation.clone();
+    } else {
+      originalSceneRotationRef.current = null;
+    }
+  }, [clonedScene]);
+
+  // Handle slide-in and spin animation on load
+  useEffect(() => {
+    if (!clonedScene || !transitionGroupRef.current) return;
+
+    const group = transitionGroupRef.current;
+
+    // Randomize direction: 'left', 'right', 'top', 'bottom'
+    const directions = ["left", "right", "top", "bottom"];
+    const chosenDir = directions[Math.floor(Math.random() * directions.length)];
+
+    let startX = 0;
+    let startY = 0;
+    let startZ = 0;
+    const distance = 4; // slide distance
+
+    if (chosenDir === "left") {
+      startX = -distance;
+    } else if (chosenDir === "right") {
+      startX = distance;
+    } else if (chosenDir === "top") {
+      startY = distance;
+    } else if (chosenDir === "bottom") {
+      startY = -distance;
+    }
+
+    // Randomize initial rotation for a cool spinning entry
+    const startRotX = (Math.random() - 0.5) * Math.PI * 1.5;
+    const startRotY = (Math.random() - 0.5) * Math.PI * 1.5;
+    const startRotZ = (Math.random() - 0.5) * Math.PI * 1.5;
+
+    // Set initial state
+    group.position.set(startX, startY, startZ);
+    group.rotation.set(startRotX, startRotY, startRotZ);
+    group.scale.set(0.01, 0.01, 0.01); // start small for a pop-in effect
+
+    // Kill existing tweens
+    gsap.killTweensOf(group.position);
+    gsap.killTweensOf(group.rotation);
+    gsap.killTweensOf(group.scale);
+
+    // Animate to final position (0, 0, 0), rotation (0, 0, 0), scale (1, 1, 1)
+    gsap.to(group.position, {
+      x: 0,
+      y: 0,
+      z: 0,
+      duration: 1.5,
+      ease: "power4.out",
+      onUpdate: () => invalidate()
+    });
+
+    gsap.to(group.rotation, {
+      x: 0,
+      y: 0,
+      z: 0,
+      duration: 1.5,
+      ease: "power4.out",
+      onUpdate: () => invalidate()
+    });
+
+    gsap.to(group.scale, {
+      x: 1,
+      y: 1,
+      z: 1,
+      duration: 1.5,
+      ease: "power4.out",
+      onUpdate: () => invalidate()
+    });
+  }, [clonedScene, invalidate]);
+
+  useEffect(() => {
+    if (!clonedScene) {
+      lidGroupRef.current = null;
+      return;
+    }
+
+    // Clean up any existing group
+    const existingGroup = clonedScene.getObjectByName("dynamicLidGroup");
+    if (existingGroup) {
+      const children = [...existingGroup.children];
+      children.forEach((child) => {
+        clonedScene.attach(child);
+      });
+      clonedScene.remove(existingGroup);
+    }
+
+    // Clean up any previously split lidLabel meshes
+    const splitLidLabels = [];
+    clonedScene.traverse((obj) => {
+      if (obj.userData.isSplitLidLabel) {
+        splitLidLabels.push(obj);
+      }
+    });
+    splitLidLabels.forEach((obj) => {
+      if (obj.parent) obj.parent.remove(obj);
+    });
+
+    // Restore original geometries if they were split in a previous run
+    clonedScene.traverse((obj) => {
+      if (obj.isMesh && obj.userData.originalGeometry) {
+        obj.geometry = obj.userData.originalGeometry;
+        delete obj.userData.originalGeometry;
+      }
+    });
+
+    // 1. Compute overall bounds to find topThresholdY
+    let containerMinY = Infinity;
+    let containerMaxY = -Infinity;
+    clonedScene.updateMatrixWorld(true);
+    clonedScene.traverse((obj) => {
+      if (obj.isMesh && !obj.userData.isDecal && !isMeasurementMesh(obj, 10)) {
+        if (!obj.geometry.boundingBox) {
+          obj.geometry.computeBoundingBox();
+        }
+        
+        const tempBox = new THREE.Box3().copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
+        if (tempBox.min.y < containerMinY) containerMinY = tempBox.min.y;
+        if (tempBox.max.y > containerMaxY) containerMaxY = tempBox.max.y;
+      }
+    });
+
+    const containerHeight = containerMaxY - containerMinY;
+    containerHeightRef.current = containerHeight;
+    const topThresholdY = containerMaxY - 0.15 * containerHeight;
+
+    // Helper to split geometry based on height threshold
+    const splitGeometry = (geometry, thresholdY, matrixWorld) => {
+      const posAttr = geometry.attributes.position;
+      const uvAttr = geometry.attributes.uv;
+      const normalAttr = geometry.attributes.normal;
+      const indexAttr = geometry.index;
+
+      const topPos = [];
+      const topUv = [];
+      const topNormal = [];
+
+      const botPos = [];
+      const botUv = [];
+      const botNormal = [];
+
+      const tempV = new THREE.Vector3();
+      const count = indexAttr ? indexAttr.count : posAttr.count;
+
+      for (let i = 0; i < count; i += 3) {
+        const idx0 = indexAttr ? indexAttr.getX(i) : i;
+        const idx1 = indexAttr ? indexAttr.getX(i + 1) : i + 1;
+        const idx2 = indexAttr ? indexAttr.getX(i + 2) : i + 2;
+
+        tempV.fromBufferAttribute(posAttr, idx0).applyMatrix4(matrixWorld);
+        const y0 = tempV.y;
+        tempV.fromBufferAttribute(posAttr, idx1).applyMatrix4(matrixWorld);
+        const y1 = tempV.y;
+        tempV.fromBufferAttribute(posAttr, idx2).applyMatrix4(matrixWorld);
+        const y2 = tempV.y;
+
+        const avgY = (y0 + y1 + y2) / 3;
+        const isTop = avgY >= thresholdY;
+
+        const destPos = isTop ? topPos : botPos;
+        const destUv = isTop ? topUv : botUv;
+        const destNormal = isTop ? topNormal : botNormal;
+
+        const pushVertex = (idx) => {
+          destPos.push(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx));
+          if (uvAttr) destUv.push(uvAttr.getX(idx), uvAttr.getY(idx));
+          if (normalAttr) destNormal.push(normalAttr.getX(idx), normalAttr.getY(idx), normalAttr.getZ(idx));
+        };
+
+        pushVertex(idx0);
+        pushVertex(idx1);
+        pushVertex(idx2);
+      }
+
+      const createGeom = (pos, uv, norm) => {
+        if (pos.length === 0) return null;
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        if (uv.length > 0) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        if (norm.length > 0) g.setAttribute('normal', new THREE.Float32BufferAttribute(norm, 3));
+        return g;
+      };
+
+      return {
+        top: createGeom(topPos, topUv, topNormal),
+        bottom: createGeom(botPos, botUv, botNormal)
+      };
+    };
+
+    // 2. Identify all lid meshes and split combined label/wrapper meshes
+    const lidMeshes = [];
+    const meshesToProcess = [];
+    clonedScene.traverse((obj) => {
+      if (obj.isMesh && !obj.userData.isDecal) {
+        meshesToProcess.push(obj);
+      }
+    });
+
+    meshesToProcess.forEach((obj) => {
+      const nameLower = obj.name.toLowerCase();
+      const mat = obj.material;
+      const matNameLower = mat ? (Array.isArray(mat) ? mat[0].name : mat.name || "").toLowerCase() : "";
+      
+      const isLid = nameLower.includes("lid") || matNameLower.includes("lid") || nameLower.includes("cap") || matNameLower.includes("cap");
+      const isLabel = nameLower.includes("label") || matNameLower.includes("label") || nameLower.includes("wrapper") || matNameLower.includes("wrapper") || nameLower.includes("design") || matNameLower.includes("design");
+      
+      if (isLid) {
+        lidMeshes.push(obj);
+      } else if (isLabel) {
+        if (!obj.geometry.boundingBox) {
+          obj.geometry.computeBoundingBox();
+        }
+        const tempBox = new THREE.Box3().copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
+        
+        const spansHeight = (tempBox.max.y - tempBox.min.y) > 0.35 * containerHeight;
+        const hasTopPart = tempBox.max.y >= topThresholdY;
+        const hasBottomPart = tempBox.min.y < topThresholdY;
+
+        if (spansHeight && hasTopPart && hasBottomPart) {
+          const split = splitGeometry(obj.geometry, topThresholdY, obj.matrixWorld);
+          if (split.top && split.bottom) {
+            obj.userData.originalGeometry = obj.geometry;
+            obj.geometry = split.bottom;
+
+            const lidLabel = new THREE.Mesh(split.top, obj.material);
+            lidLabel.name = obj.name + "_lidPart";
+            lidLabel.userData.isSplitLidLabel = true;
+            
+            obj.parent.add(lidLabel);
+            lidLabel.position.copy(obj.position);
+            lidLabel.rotation.copy(obj.rotation);
+            lidLabel.scale.copy(obj.scale);
+            lidLabel.matrix.copy(obj.matrix);
+            lidLabel.matrixWorld.copy(obj.matrixWorld);
+            
+            lidMeshes.push(lidLabel);
+          } else if (split.top) {
+            lidMeshes.push(obj);
+          }
+        } else if (hasTopPart && !hasBottomPart) {
+          lidMeshes.push(obj);
+        }
+      }
+    });
+
+    if (lidMeshes.length === 0) {
+      lidGroupRef.current = null;
+      return;
+    }
+
+    // Create a new group
+    const lidGroup = new THREE.Group();
+    lidGroup.name = "dynamicLidGroup";
+    clonedScene.add(lidGroup);
+
+    clonedScene.updateMatrixWorld(true);
+    lidGroup.updateMatrixWorld(true);
+
+    lidMeshes.forEach((mesh) => {
+      lidGroup.attach(mesh);
+    });
+
+    lidGroupRef.current = lidGroup;
+  }, [clonedScene]);
+
+  useEffect(() => {
+    const lidGroup = lidGroupRef.current;
+    if (!lidGroup || !clonedScene) return;
+
+    // Calculate static overall size of the lid meshes in local coordinates
+    const overallBox = new THREE.Box3();
+    lidGroup.children.forEach((child) => {
+      if (child.isMesh) {
+        if (!child.geometry.boundingBox) {
+          child.geometry.computeBoundingBox();
+        }
+        overallBox.expandByPoint(child.geometry.boundingBox.min);
+        overallBox.expandByPoint(child.geometry.boundingBox.max);
+      }
+    });
+    const overallSize = overallBox.getSize(new THREE.Vector3());
+    // Position the lid to rest on the container's mouth rim when opened
+    const liftHeight = overallSize.x * 0.25;
+    const slideOffset = overallSize.x * 0.45;
+
+    // Retrieve original scene rotation
+    if (!originalSceneRotationRef.current) {
+      originalSceneRotationRef.current = clonedScene.rotation.clone();
+    }
+    const origSceneRot = originalSceneRotationRef.current;
+
+    gsap.killTweensOf(lidGroup.position);
+    gsap.killTweensOf(lidGroup.rotation);
+    gsap.killTweensOf(clonedScene.rotation);
+
+    const timeline = gsap.timeline({ onUpdate: () => invalidate() });
+    const isLayoutModel = !MODELS.some((m) => m.modelUrl === modelUrl);
+    const shouldOpen = isLidOpen && !isLayoutModel;
+
+    if (shouldOpen) {
+      // Animate lid group
+      timeline
+        .to(lidGroup.position, {
+          y: liftHeight,
+          x: -slideOffset,
+          z: 0,
+          duration: 1.0,
+          ease: "power2.out"
+        }, 0)
+        .to(lidGroup.rotation, {
+          z: 0.64,
+          x: 0,
+          y: 0,
+          duration: 1.0,
+          ease: "power2.out"
+        }, 0);
+
+      // Tilt container forward and turn slightly to see inside
+      timeline.to(clonedScene.rotation, {
+        x: origSceneRot.x + 0.2,
+        y: origSceneRot.y - 0.08,
+        duration: 1.0,
+        ease: "power2.out"
+      }, 0);
+    } else {
+      // Return lid group
+      timeline
+        .to(lidGroup.position, {
+          y: 0,
+          x: 0,
+          z: 0,
+          duration: 1.0,
+          ease: "power2.inOut"
+        }, 0)
+        .to(lidGroup.rotation, {
+          z: 0,
+          x: 0,
+          y: 0,
+          duration: 1.0,
+          ease: "power2.inOut"
+        }, 0);
+
+      // Return container rotation
+      timeline.to(clonedScene.rotation, {
+        x: origSceneRot.x,
+        y: origSceneRot.y,
+        duration: 1.0,
+        ease: "power2.inOut"
+      }, 0);
+    }
+  }, [isLidOpen, modelUrl, clonedScene, invalidate]);
+
   const [capTransform, setCapTransform] = useState(null);
 
   useEffect(() => {
@@ -377,12 +893,22 @@ function AutoSizedModelWithDimensions({
     clonedScene.traverse((obj) => {
       if (obj.isMesh) {
         const nameLower = obj.name.toLowerCase();
-        const hasCapInName = nameLower.includes("cap") || nameLower.includes("circle003") || nameLower.includes("lid");
-        const hasCapInMaterial = obj.material && (
-          Array.isArray(obj.material)
-            ? obj.material.some(m => m.name && (m.name.toLowerCase().includes("cap") || m.name.toLowerCase().includes("lid")))
-            : (obj.material.name && (obj.material.name.toLowerCase().includes("cap") || obj.material.name.toLowerCase().includes("lid")))
-        );
+        const hasCapInName =
+          nameLower.includes("cap") ||
+          nameLower.includes("circle003") ||
+          nameLower.includes("lid");
+        const hasCapInMaterial =
+          obj.material &&
+          (Array.isArray(obj.material)
+            ? obj.material.some(
+                (m) =>
+                  m.name &&
+                  (m.name.toLowerCase().includes("cap") ||
+                    m.name.toLowerCase().includes("lid")),
+              )
+            : obj.material.name &&
+              (obj.material.name.toLowerCase().includes("cap") ||
+                obj.material.name.toLowerCase().includes("lid")));
         if (hasCapInName || hasCapInMaterial) {
           capMeshes.push(obj);
         }
@@ -391,23 +917,130 @@ function AutoSizedModelWithDimensions({
 
     if (capMeshes.length > 0) {
       if (selectedCapUrl && selectedCapUrl !== "none") {
-        capMeshes.forEach(mesh => {
+        capMeshes.forEach((mesh) => {
           mesh.visible = false;
         });
-        const anchor = capMeshes.find(m => m.name.toLowerCase().includes("circle003") || m.name.toLowerCase().includes("cap")) || capMeshes[0];
+        const anchor =
+          capMeshes.find(
+            (m) =>
+              m.name.toLowerCase().includes("circle003") ||
+              m.name.toLowerCase().includes("cap"),
+          ) || capMeshes[0];
+
+        // Compute rotation and position from anchor as starting point
+        const localMatrix = new THREE.Matrix4();
+        let curr = anchor;
+        while (curr && curr !== clonedScene) {
+          curr.updateMatrix();
+          localMatrix.premultiply(curr.matrix);
+          curr = curr.parent;
+        }
+
+        const pos = new THREE.Vector3();
+        const quart = new THREE.Quaternion();
+        const scl = new THREE.Vector3();
+        localMatrix.decompose(pos, quart, scl);
+
+        // Dynamically calculate the neck dimensions of the bottle
+        const neck = calculateNeckDimensions(clonedScene, capMeshes);
+
+        // A standard custom cap has a width/depth of approx. 0.05 units and height of 0.035 units.
+        // Scale it uniformly to maintain natural cap aspect ratios.
+        const scale = (neck.radius * 2) / 0.05;
+        scl.set(scale, scale, scale);
+
+        // Position cap's bottom flush with the top rim of the neck
+        pos.y = neck.topY - scale * 0.035;
+
         setCapTransform({
-          position: anchor.position.clone(),
-          rotation: anchor.rotation.clone(),
-          scale: anchor.scale.clone(),
+          position: pos,
+          rotation: new THREE.Euler().setFromQuaternion(quart),
+          scale: scl,
         });
       } else {
-        capMeshes.forEach(mesh => {
+        capMeshes.forEach((mesh) => {
           mesh.visible = true;
         });
         setCapTransform(null);
       }
     }
   }, [clonedScene, selectedCapUrl]);
+
+  // Cap hover raycasting — detect when mouse is over a cap/lid mesh
+  const capRaycaster = useMemo(() => new THREE.Raycaster(), []);
+  const capHoverRef = useRef(false);
+  useEffect(() => {
+    if (!clonedScene || !gl) return;
+    const canvas = gl.domElement;
+
+    // Collect cap meshes
+    const capMeshes = [];
+    clonedScene.traverse((obj) => {
+      if (!obj.isMesh) return;
+      const nameLower = obj.name.toLowerCase();
+      const hasCapInName =
+        nameLower.includes("cap") ||
+        nameLower.includes("circle003") ||
+        nameLower.includes("lid");
+      const hasCapInMaterial =
+        obj.material &&
+        (Array.isArray(obj.material)
+          ? obj.material.some(
+              (m) =>
+                m.name &&
+                (m.name.toLowerCase().includes("cap") ||
+                  m.name.toLowerCase().includes("lid")),
+            )
+          : obj.material.name &&
+            (obj.material.name.toLowerCase().includes("cap") ||
+              obj.material.name.toLowerCase().includes("lid")));
+      if (hasCapInName || hasCapInMaterial) {
+        capMeshes.push(obj);
+      }
+    });
+
+    if (capMeshes.length === 0) return;
+
+    const getCapMaterialKey = () => {
+      const mesh = capMeshes[0];
+      if (!mesh || !mesh.material) return "cap";
+      const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+      return mat.name || "cap";
+    };
+
+    const handleMouseMove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      capRaycaster.setFromCamera({ x: ndcX, y: ndcY }, camera);
+      // Raycast against cap meshes
+      const hits = capRaycaster.intersectObjects(capMeshes, false);
+      if (hits.length > 0) {
+        if (!capHoverRef.current) {
+          capHoverRef.current = true;
+          if (onCapHover) onCapHover(e.clientX, e.clientY, getCapMaterialKey());
+        }
+      } else {
+        if (capHoverRef.current) {
+          capHoverRef.current = false;
+          if (onCapLeave) onCapLeave();
+        }
+      }
+    };
+    const handleMouseLeave = () => {
+      if (capHoverRef.current) {
+        capHoverRef.current = false;
+        if (onCapLeave) onCapLeave();
+      }
+    };
+
+    canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener("mouseleave", handleMouseLeave);
+    return () => {
+      canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, [clonedScene, gl, camera, onCapHover, onCapLeave, capRaycaster]);
 
   useEffect(() => {
     if (clonedScene && onSceneLoaded) {
@@ -523,14 +1156,16 @@ function AutoSizedModelWithDimensions({
       width: Math.round(size.z * 1000), // z = width
     };
 
+    const isLayoutModel = !MODELS.some((m) => m.modelUrl === modelUrl);
+
     return {
       baseTransform: {
         scale,
-        offset: [-center.x * scale, -box.min.y * scale, -center.z * scale],
+        offset: isLayoutModel ? [0, 0, 0] : [-center.x * scale, -box.min.y * scale, -center.z * scale],
       },
       baseDims: dims,
     };
-  }, [clonedScene]);
+  }, [clonedScene, modelUrl]);
 
   // Pass dimensions up
   useEffect(() => {
@@ -632,13 +1267,26 @@ function AutoSizedModelWithDimensions({
           clonedScene.traverse((o) => {
             if (o.isMesh && !o.userData.isDecal) {
               const n = (o.name || "").toLowerCase();
-              const mats = Array.isArray(o.material) ? o.material : [o.material];
-              const hasLabelMat = mats.some(m => {
+              const mats = Array.isArray(o.material)
+                ? o.material
+                : [o.material];
+              const hasLabelMat = mats.some((m) => {
                 if (!m) return false;
                 const matName = (m.name || "").toLowerCase();
-                return matName.includes("label") || matName.includes("wrapper") || matName.includes("design") || matName.includes("artwork");
+                return (
+                  matName.includes("label") ||
+                  matName.includes("wrapper") ||
+                  matName.includes("design") ||
+                  matName.includes("artwork")
+                );
               });
-              if (n.includes("label") || n.includes("wrapper") || n.includes("design") || n.includes("artwork") || hasLabelMat) {
+              if (
+                n.includes("label") ||
+                n.includes("wrapper") ||
+                n.includes("design") ||
+                n.includes("artwork") ||
+                hasLabelMat
+              ) {
                 hasLabelMesh = true;
               }
             }
@@ -646,13 +1294,26 @@ function AutoSizedModelWithDimensions({
 
           if (hasLabelMesh) {
             const n = (obj.name || "").toLowerCase();
-            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-            const hasLabelMat = mats.some(m => {
+            const mats = Array.isArray(obj.material)
+              ? obj.material
+              : [obj.material];
+            const hasLabelMat = mats.some((m) => {
               if (!m) return false;
               const matName = (m.name || "").toLowerCase();
-              return matName.includes("label") || matName.includes("wrapper") || matName.includes("design") || matName.includes("artwork");
+              return (
+                matName.includes("label") ||
+                matName.includes("wrapper") ||
+                matName.includes("design") ||
+                matName.includes("artwork")
+              );
             });
-            return n.includes("label") || n.includes("wrapper") || n.includes("design") || n.includes("artwork") || hasLabelMat;
+            return (
+              n.includes("label") ||
+              n.includes("wrapper") ||
+              n.includes("design") ||
+              n.includes("artwork") ||
+              hasLabelMat
+            );
           }
           return true;
         })();
@@ -718,6 +1379,7 @@ function AutoSizedModelWithDimensions({
           m.roughnessMap = null;
           m.metalnessMap = null;
           m.aoMap = null;
+          m.vertexColors = false;
 
           if (colorHex === "transparent") {
             m.transparent = true;
@@ -727,14 +1389,29 @@ function AutoSizedModelWithDimensions({
             if ("transmission" in m) m.transmission = 0.9;
             m.color.setHex(0xffffff);
           } else {
-            const wasOriginallyTransparent = m.userData.originalTransparent || (m.userData.originalTransmission && m.userData.originalTransmission > 0);
+            const wasOriginallyTransparent =
+              m.userData.originalTransparent ||
+              (m.userData.originalTransmission &&
+                m.userData.originalTransmission > 0);
             if (wasOriginallyTransparent) {
               m.transparent = true;
-              m.opacity = m.userData.originalOpacity !== undefined ? m.userData.originalOpacity : 0.35;
-              m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.1;
-              m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
+              m.opacity =
+                m.userData.originalOpacity !== undefined
+                  ? m.userData.originalOpacity
+                  : 0.35;
+              m.roughness =
+                m.userData.originalRoughness !== undefined
+                  ? m.userData.originalRoughness
+                  : 0.1;
+              m.metalness =
+                m.userData.originalMetalness !== undefined
+                  ? m.userData.originalMetalness
+                  : 0.1;
               if ("transmission" in m) {
-                m.transmission = m.userData.originalTransmission !== undefined ? m.userData.originalTransmission : 0.9;
+                m.transmission =
+                  m.userData.originalTransmission !== undefined
+                    ? m.userData.originalTransmission
+                    : 0.9;
               }
             } else {
               m.transparent = false;
@@ -751,15 +1428,21 @@ function AutoSizedModelWithDimensions({
             }
             m.color.set(colorHex);
           }
-          if (m.map) m.map.dispose();
-          m.map = null;
+          if (shouldApply && !textureUrl) {
+            m.map = m.userData.originalMap;
+          } else {
+            if (m.map) m.map.dispose();
+            m.map = null;
+          }
           m.needsUpdate = true;
           invalidate();
         } else {
           // Restore original transparency settings
-          if ((textureUrl && shouldApply) || materialType) {
-            m.transparent = false;
-            m.opacity = 1.0;
+          const hasCustomDesign = !!textureUrl;
+
+          if (shouldApply && !materialType && hasCustomDesign) {
+            m.transparent = true;
+            m.opacity = 0;
             if ("transmission" in m) m.transmission = 0;
             m.roughness =
               m.userData.originalRoughness !== undefined
@@ -795,7 +1478,7 @@ function AutoSizedModelWithDimensions({
           }
 
           // Reset color if no custom color is specified
-          if (m.userData.currentPbrId) {
+          if (typeof materialType === "object" && materialType !== null) {
             m.color.setHex(0xffffff); // PBR active: base color white
           } else {
             m.color.setHex(m.userData.originalColorHex); // Restore original
@@ -804,11 +1487,19 @@ function AutoSizedModelWithDimensions({
           if (!materialType) {
             // Restore Originals (No custom color, no PBR material)
             m.userData.currentPbrId = null;
+            m.vertexColors =
+              m.userData.originalVertexColors !== undefined
+                ? m.userData.originalVertexColors
+                : false;
             if (textureUrl) {
               if (m.map) m.map.dispose();
               m.map = null;
             } else {
-              m.map = m.userData.originalMap;
+              if (hasCustomDesign) {
+                m.map = null;
+              } else {
+                m.map = m.userData.originalMap;
+              }
             }
             if (m.normalMap) m.normalMap.dispose();
             if (m.roughnessMap) m.roughnessMap.dispose();
@@ -865,6 +1556,7 @@ function AutoSizedModelWithDimensions({
             m.roughnessMap = null;
             m.metalnessMap = null;
             m.aoMap = null;
+            m.vertexColors = false;
 
             const loadMap = (url, mapType, isColorSpace) => {
               if (!url) return;
@@ -916,8 +1608,16 @@ function AutoSizedModelWithDimensions({
         }
 
         // Apply custom metallic/roughness overrides if set
-        const customMetallic = appliedMetallic ? (appliedMetallic[id] !== undefined ? appliedMetallic[id] : appliedMetallic["all"]) : undefined;
-        const customRoughness = appliedRoughness ? (appliedRoughness[id] !== undefined ? appliedRoughness[id] : appliedRoughness["all"]) : undefined;
+        const customMetallic = appliedMetallic
+          ? appliedMetallic[id] !== undefined
+            ? appliedMetallic[id]
+            : appliedMetallic["all"]
+          : undefined;
+        const customRoughness = appliedRoughness
+          ? appliedRoughness[id] !== undefined
+            ? appliedRoughness[id]
+            : appliedRoughness["all"]
+          : undefined;
 
         if (customMetallic !== undefined) {
           m.metalness = customMetallic;
@@ -941,11 +1641,17 @@ function AutoSizedModelWithDimensions({
 
   return (
     <group position={baseTransform.offset} scale={baseTransform.scale}>
-      <group scale={customScale}>
-        <primitive object={clonedScene} />
-        {selectedCapUrl && selectedCapUrl !== "none" && capTransform && (
-          <CustomCap url={selectedCapUrl} transform={capTransform} appliedColors={appliedColors} />
-        )}
+      <group ref={transitionGroupRef}>
+        <group scale={customScale}>
+          <primitive object={clonedScene} />
+          {selectedCapUrl && selectedCapUrl !== "none" && capTransform && (
+            <CustomCap
+              url={selectedCapUrl}
+              transform={capTransform}
+              appliedColors={appliedColors}
+            />
+          )}
+        </group>
       </group>
     </group>
   );
@@ -1158,12 +1864,16 @@ export default function EditorScreen1({
   selectedCapUrl,
   onSelectCap,
 }) {
-  const isBottleModel = modelUrl && (
-    modelUrl.toLowerCase().includes("plastic") ||
-    modelUrl.toLowerCase().includes("glass") ||
-    modelUrl.toLowerCase().includes("soft")
-  );
+  const isBottleModel =
+    modelUrl &&
+    (modelUrl.toLowerCase().includes("plastic") ||
+      modelUrl.toLowerCase().includes("glass") ||
+      modelUrl.toLowerCase().includes("soft"));
+  const isLayoutModel = useMemo(() => {
+    return !MODELS.some((m) => m.modelUrl === modelUrl);
+  }, [modelUrl]);
   const [showTools, setShowTools] = useState(false);
+  const [isLidOpen, setIsLidOpen] = useState(false);
   const [capPanelPosition, setCapPanelPosition] = useState({ x: 0, y: 0 });
   const [isCapPanelMinimized, setIsCapPanelMinimized] = useState(false);
   const [isDraggingCapPanel, setIsDraggingCapPanel] = useState(false);
@@ -1241,6 +1951,34 @@ export default function EditorScreen1({
     }
   };
 
+  // Cap hover color panel state
+  const [capHoverPos, setCapHoverPos] = useState(null); // { x, y } — locked once panel is shown
+  const [capHoverMaterialKey, setCapHoverMaterialKey] = useState(null);
+  const capHideTimerRef = useRef(null); // debounce timer to keep panel alive
+  const isOverPanelRef = useRef(false); // true while cursor is inside the color panel
+
+  const handleCapHover = useCallback((x, y, matKey) => {
+    // Cancel any pending hide
+    if (capHideTimerRef.current) {
+      clearTimeout(capHideTimerRef.current);
+      capHideTimerRef.current = null;
+    }
+    // Only pin position on first entry (don't chase cursor once panel is visible)
+    setCapHoverPos((prev) => prev || { x, y });
+    setCapHoverMaterialKey(matKey);
+  }, []);
+
+  const handleCapLeave = useCallback(() => {
+    // Debounce: give 350ms for user to move onto the panel
+    capHideTimerRef.current = setTimeout(() => {
+      if (!isOverPanelRef.current) {
+        setCapHoverPos(null);
+        setCapHoverMaterialKey(null);
+      }
+      capHideTimerRef.current = null;
+    }, 350);
+  }, []);
+
   const [modelMaterials, setModelMaterials] = useState([]);
 
   // Model switch confirmation state
@@ -1267,7 +2005,12 @@ export default function EditorScreen1({
   const getModelCenterY = () => {
     if (!baseDimensions) return 0;
     const currentHeight = appliedCustomSize?.height || baseDimensions.height;
-    const maxDim = Math.max(baseDimensions.length, baseDimensions.height, baseDimensions.width) / 1000;
+    const maxDim =
+      Math.max(
+        baseDimensions.length,
+        baseDimensions.height,
+        baseDimensions.width,
+      ) / 1000;
     const scale = 3.0 / maxDim;
     return ((currentHeight / 1000) * scale) / 2 + 0.3;
   };
@@ -1281,17 +2024,41 @@ export default function EditorScreen1({
 
   useEffect(() => {
     if (baseDimensions && cameraRef.current && orbitControlsRef.current) {
-      setZoomPercent(60);
-      const newDist = 4 / 0.6;
       const controls = orbitControlsRef.current;
       const camera = cameraRef.current;
-      const targetY = getModelCenterY();
-      
-      controls.target.set(0, targetY, 0);
-      camera.position.set(0, targetY, newDist);
+
+      const savedConfig = modelPositionsConfig && modelPositionsConfig[modelUrl];
+
+      if (savedConfig) {
+        const { target, azimuth, polar, distance } = savedConfig;
+        controls.target.set(target[0], target[1], target[2]);
+
+        const spherical = new THREE.Spherical(distance || (4 / 0.6), polar, azimuth);
+        spherical.makeSafe();
+        const offsetVec = new THREE.Vector3().setFromSpherical(spherical);
+
+        camera.position.copy(controls.target).add(offsetVec);
+        camera.lookAt(controls.target);
+
+        controls.setAzimuthalAngle(azimuth);
+        controls.setPolarAngle(polar);
+
+        const calculatedZoom = Math.round((4 / distance) * 100);
+        setZoomPercent(calculatedZoom || 60);
+      } else {
+        setZoomPercent(60);
+        const newDist = 4 / 0.6;
+        const targetY = getModelCenterY();
+
+        controls.target.set(0, targetY, 0);
+        camera.position.set(0, targetY, newDist);
+        camera.lookAt(0, targetY, 0);
+        controls.setAzimuthalAngle(0);
+        controls.setPolarAngle(Math.PI / 2);
+      }
       controls.update();
     }
-  }, [baseDimensions]);
+  }, [baseDimensions, modelUrl]);
 
   // Save scene states
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -1355,8 +2122,6 @@ export default function EditorScreen1({
     }
   };
 
-
-
   // Export Modal states and handlers
   const captureRef = useRef(null);
   const [activeScene, setActiveScene] = useState(null);
@@ -1367,10 +2132,43 @@ export default function EditorScreen1({
   const [exportJpgChecked, setExportJpgChecked] = useState(false);
   const [exportPdfChecked, setExportPdfChecked] = useState(false);
 
-  const textureLibrary = useMemo(() => getTextureLibrary(), []);
+  const textureLibraryRaw = useMemo(() => getTextureLibrary(), []);
+  
+  const textureLibrary = useMemo(() => {
+    const lib = [...textureLibraryRaw];
+    if (modelUrl) {
+      const url = modelUrl.toLowerCase();
+      let firstCategory = null;
+      
+      if (url.includes("round") || url.includes("food container") || url.includes("oval") || url.includes("jar")) {
+        firstCategory = "Floral";
+      } else if (url.includes("bottle") || url.includes("flask") || url.includes("tumbler") || url.includes("can") || url.includes("cup")) {
+        firstCategory = "Metal";
+      } else if (url.includes("biodegradable") || url.includes("die cut") || url.includes("cart") || url.includes("box") || url.includes("mailer")) {
+        firstCategory = "Paper";
+      }
+      
+      if (firstCategory) {
+        const idx = lib.findIndex(c => c.category === firstCategory);
+        if (idx !== -1) {
+          const item = lib.splice(idx, 1)[0];
+          lib.unshift(item);
+        }
+      }
+    }
+    return lib;
+  }, [textureLibraryRaw, modelUrl]);
+
   const [activeTextureCategory, setActiveTextureCategory] = useState(
     textureLibrary[0]?.category || "Wood",
   );
+
+  useEffect(() => {
+    if (textureLibrary.length > 0) {
+      setActiveTextureCategory(textureLibrary[0].category);
+    }
+  }, [textureLibrary]);
+
   const [isTextureDropdownOpen, setIsTextureDropdownOpen] = useState(false);
 
   const [isModelLoading, setIsModelLoading] = useState(false);
@@ -1392,17 +2190,17 @@ export default function EditorScreen1({
       gsap.fromTo(
         ".editor-left-container",
         { x: -50, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out" }
+        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out" },
       );
       gsap.fromTo(
         ".editor-right-actions",
         { x: 50, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out", delay: 0.1 }
+        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out", delay: 0.1 },
       );
       gsap.fromTo(
         ".editor-right-tools",
         { x: 50, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out", delay: 0.2 }
+        { x: 0, opacity: 1, duration: 0.8, ease: "power2.out", delay: 0.2 },
       );
     });
     return () => ctx.revert();
@@ -1626,14 +2424,13 @@ export default function EditorScreen1({
 
   return (
     <div
-      className="flex flex-col h-full w-full transition-colors duration-300 relative"
-      style={{ backgroundColor: bgColor }}
+      className="flex flex-col h-full w-full relative"
     >
       {/* 3D Canvas Background */}
       <div
         id="three-canvas-container"
-        className="absolute inset-0 z-0"
-        style={{ cursor: toolMode === "hand" ? "grab" : "default" }}
+        className="absolute inset-0 z-0 transition-colors duration-300"
+        style={{ cursor: toolMode === "hand" ? "grab" : "default", backgroundColor: bgColor }}
       >
         <R3FCanvas
           camera={{ position: [0, 0.5, 6.667], fov: 45 }}
@@ -1645,7 +2442,10 @@ export default function EditorScreen1({
             gl.outputColorSpace = THREE.SRGBColorSpace;
             gl.toneMapping = THREE.ACESFilmicToneMapping;
             gl.toneMappingExposure = 0.9;
-            gl.setClearColor(new THREE.Color(bgColor === 'transparent' ? '#ffffff' : bgColor), bgColor === 'transparent' ? 0 : 1);
+            gl.setClearColor(
+              new THREE.Color(bgColor === "transparent" ? "#ffffff" : bgColor),
+              bgColor === "transparent" ? 0 : 1,
+            );
             if (shadowEnabled) {
               gl.shadowMap.enabled = true;
               gl.shadowMap.type = THREE.PCFShadowMap;
@@ -1653,7 +2453,9 @@ export default function EditorScreen1({
             cameraRef.current = camera;
           }}
         >
-          {!bgImage && bgColor !== 'transparent' && <color attach="background" args={[bgColor]} />}
+          {!bgImage && bgColor !== "transparent" && (
+            <color attach="background" args={[bgColor]} />
+          )}
           {bgImage && (
             <Suspense fallback={null}>
               <BackgroundImage url={bgImage} />
@@ -1666,12 +2468,13 @@ export default function EditorScreen1({
             castShadow={shadowEnabled}
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
-            shadow-camera-far={30}
+            shadow-camera-far={25}
             shadow-camera-near={0.1}
-            shadow-camera-top={5}
-            shadow-camera-bottom={-5}
-            shadow-camera-left={-5}
-            shadow-camera-right={5}
+            shadow-camera-top={3}
+            shadow-camera-bottom={-3}
+            shadow-camera-left={-3}
+            shadow-camera-right={3}
+            shadow-bias={-0.0005}
           />
           <directionalLight position={[-5, 5, -5]} intensity={0.3} />
           {/* Shadow catcher plane */}
@@ -1746,6 +2549,9 @@ export default function EditorScreen1({
                 onTextureLoadEnd={handleTextureLoadEnd}
                 showMeasurements={showMeasurements}
                 selectedCapUrl={selectedCapUrl}
+                isLidOpen={isLidOpen}
+                onCapHover={isBottleModel ? handleCapHover : undefined}
+                onCapLeave={isBottleModel ? handleCapLeave : undefined}
               />
             )}
           </Suspense>
@@ -1761,6 +2567,16 @@ export default function EditorScreen1({
             filename={getModelName()}
             bgColor={bgColor}
           />
+          <GizmoHelper
+            alignment="top-left"
+            margin={[activeTab ? 560 : 220, 80]}
+          >
+            <GizmoViewport
+              axisColors={["#ef4444", "#22c55e", "#3b82f6"]}
+              labelColor="white"
+              scale={40}
+            />
+          </GizmoHelper>
         </R3FCanvas>
 
         {/* Measurement SVG Overlay */}
@@ -1902,6 +2718,110 @@ export default function EditorScreen1({
 
       {/* Floating UI Elements */}
 
+      {/* Cap Hover Color Panel */}
+      {isBottleModel && capHoverPos && (
+        <div
+          className="fixed z-50 pointer-events-auto"
+          style={{ left: capHoverPos.x + 16, top: capHoverPos.y - 16 }}
+          onMouseDown={() => {
+            // Keep panel alive during click — cancel any pending hide
+            if (capHideTimerRef.current) {
+              clearTimeout(capHideTimerRef.current);
+              capHideTimerRef.current = null;
+            }
+            isOverPanelRef.current = true;
+          }}
+          onMouseEnter={() => {
+            isOverPanelRef.current = true;
+            if (capHideTimerRef.current) {
+              clearTimeout(capHideTimerRef.current);
+              capHideTimerRef.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            isOverPanelRef.current = false;
+            // Don't close if they are actively using the OS color picker
+            if (document.activeElement && document.activeElement.type === "color") {
+              return;
+            }
+            capHideTimerRef.current = setTimeout(() => {
+              setCapHoverPos(null);
+              setCapHoverMaterialKey(null);
+              capHideTimerRef.current = null;
+            }, 200);
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.18)] ring-1 ring-gray-100 p-3 flex flex-col gap-2.5">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-700">Cap Color</span>
+              {appliedColors?.[capHoverMaterialKey] && (
+                <button
+                  onClick={() => onApplyColor && onApplyColor(capHoverMaterialKey, null)}
+                  className="text-[10px] text-gray-400 hover:text-red-500 cursor-pointer flex items-center gap-0.5 transition-colors font-semibold"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-2.5 h-2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {/* 5 color swatches + custom picker */}
+            <div className="flex items-center gap-2">
+              {/* Transparent */}
+              {(() => {
+                const isSelected = appliedColors?.[capHoverMaterialKey] === "transparent";
+                return (
+                  <button
+                    onClick={() => onApplyColor && onApplyColor(capHoverMaterialKey, "transparent")}
+                    className={`w-7 h-7 rounded-full border-2 flex-shrink-0 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md scale-110" : "border-gray-200"}`}
+                    style={{ background: "conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)", backgroundSize: "8px 8px" }}
+                    title="Transparent"
+                  />
+                );
+              })()}
+              {/* 4 preset swatches */}
+              {["#e6e2db", "#1a1a1a", "#2c3e50", "#c05520"].map((color) => {
+                const isSelected = appliedColors?.[capHoverMaterialKey] === color;
+                return (
+                  <button
+                    key={color}
+                    onClick={() => onApplyColor && onApplyColor(capHoverMaterialKey, color)}
+                    className={`w-7 h-7 rounded-full border-2 flex-shrink-0 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md scale-110" : "border-gray-200"}`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                );
+              })}
+              {/* Custom color picker — label wraps a zero-size input so the native picker opens reliably */}
+              <label
+                className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 hover:border-[#c05520] transition-colors flex-shrink-0 cursor-pointer flex items-center justify-center relative"
+                title="Custom color"
+              >
+                <input
+                  type="color"
+                  value={appliedColors?.[capHoverMaterialKey] && appliedColors[capHoverMaterialKey] !== "transparent" ? appliedColors[capHoverMaterialKey] : "#ffffff"}
+                  onChange={(e) => onApplyColor && onApplyColor(capHoverMaterialKey, e.target.value)}
+                  onBlur={() => {
+                    // Close panel if mouse isn't over it when picker closes
+                    if (!isOverPanelRef.current) {
+                      setCapHoverPos(null);
+                      setCapHoverMaterialKey(null);
+                    }
+                  }}
+                  className="absolute opacity-0 pointer-events-none w-0 h-0"
+                />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3 text-gray-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Left Sidebar Container */}
       <div className="editor-left-container absolute left-6 top-6 bottom-6 z-10 flex gap-[0.5vw] pointer-events-none">
         <div className="pointer-events-auto h-full">
@@ -1916,15 +2836,18 @@ export default function EditorScreen1({
             <ModelsPopup
               onSelectModel={(url) => {
                 if (url === modelUrl) return;
-                const hasEdits =
-                  Object.keys(appliedTextures || {}).length > 0 ||
-                  Object.keys(appliedColors || {}).length > 0;
-                if (hasEdits) {
-                  setPendingModelUrl(url);
-                  setShowSwitchDialog(true);
-                } else {
-                  setModelUrl(url);
+                // Clear all styles and start fresh
+                if (onResetAll) onResetAll();
+                setIsLidOpen(false);
+                if (onSelectCap) onSelectCap("none");
+                if (orbitControlsRef.current) {
+                  orbitControlsRef.current.reset();
+                  orbitControlsRef.current.setAzimuthalAngle(0);
+                  orbitControlsRef.current.setPolarAngle(Math.PI / 2);
+                  orbitControlsRef.current.target.set(0, getModelCenterY(), 0);
+                  orbitControlsRef.current.update();
                 }
+                setModelUrl(url);
               }}
               currentModelUrl={modelUrl}
             />
@@ -1938,15 +2861,8 @@ export default function EditorScreen1({
                   setModelUrl(singleModelUrl);
                   return;
                 }
-                const hasEdits =
-                  Object.keys(appliedTextures || {}).length > 0 ||
-                  Object.keys(appliedColors || {}).length > 0;
-                if (hasEdits) {
-                  setPendingModelUrl(url);
-                  setShowSwitchDialog(true);
-                } else {
-                  setModelUrl(url);
-                }
+                // Layout model don't refresh/reset anything, just load with edits
+                setModelUrl(url);
               }}
             />
           )}
@@ -1982,7 +2898,7 @@ export default function EditorScreen1({
 
         {/* Edit Popup Panel */}
         {activeTab === "edit" && !showCustomSize && (
-          <div className="editor-edit-popup pointer-events-auto w-[280px] h-fit max-h-full bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 flex flex-col gap-4 overflow-y-auto">
+          <div className="editor-edit-popup pointer-events-auto w-[280px] h-fit max-h-full bg-white rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.14)] ring-1 ring-gray-100 p-5 flex flex-col gap-4 overflow-y-auto">
             <div className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
                 <div className="w-[1.8vw] h-[1.8vw] rounded-xl bg-white shadow-sm flex items-center justify-center">
@@ -2058,6 +2974,7 @@ export default function EditorScreen1({
               </svg>
             </button>
 
+            {!isBottleModel && (
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-gray-700">
                 Target Material
@@ -2076,14 +2993,19 @@ export default function EditorScreen1({
                 ))}
               </select>
             </div>
+            )}
 
-
-            <div className="flex flex-col gap-3">
+            {!isBottleModel && (
+            <div className={`flex flex-col gap-3 ${!selectedMaterial || selectedMaterial === "none" ? "opacity-50 pointer-events-none grayscale select-none" : "transition-opacity duration-300"}`}>
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-gray-700">
                   Apply Color
                 </label>
-                {appliedColors?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] && (
+                {appliedColors?.[
+                  selectedMaterial && selectedMaterial !== "none"
+                    ? selectedMaterial
+                    : "all"
+                ] && (
                   <button
                     onClick={() => {
                       if (onApplyColor) {
@@ -2143,46 +3065,76 @@ export default function EditorScreen1({
                   />
                 </div>
                 <div className="flex-1 grid grid-cols-6 gap-2">
-                  {["transparent", "#e6e2db", "#ffffff", "#1a1a1a", "#2c3e50", "#c05520"].map(
-                    (color) => {
-                      const isSelected = appliedColors?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] === color;
-                      const backgroundStyle = color === 'transparent'
-                        ? 'conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)'
-                        : color;
-                      const backgroundSize = color === 'transparent' ? '8px 8px' : undefined;
-                      return (
-                        <button
-                          key={color}
-                          onClick={() =>
-                            onApplyColor && onApplyColor(selectedMaterial, color)
-                          }
-                          className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
-                          style={{ background: backgroundStyle, backgroundSize: backgroundSize }}
-                        />
-                      );
-                    }
-                  )}
+                  {[
+                    "#3b82f6",
+                    "#e6e2db",
+                    "#ffffff",
+                    "#1a1a1a",
+                    "#2c3e50",
+                    "#c05520",
+                  ].map((color) => {
+                    const isSelected =
+                      appliedColors?.[
+                        selectedMaterial && selectedMaterial !== "none"
+                          ? selectedMaterial
+                          : "all"
+                      ] === color;
+                    const backgroundStyle = color;
+                    const backgroundSize = undefined;
+                    return (
+                      <button
+                        key={color}
+                        onClick={() =>
+                          onApplyColor && onApplyColor(selectedMaterial, color)
+                        }
+                        className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
+                        style={{
+                          background: backgroundStyle,
+                          backgroundSize: backgroundSize,
+                        }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             </div>
+            )}
 
             {/* Metallic & Roughness Adjustments */}
             <div className="flex flex-col gap-3.5 pt-2 border-t border-gray-100 mt-1">
-             
-              
               {/* Metallic Slider */}
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
                   <span>Metallic</span>
-                  <span>{Math.round((appliedMetallic?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.1) * 100)}%</span>
+                  <span>
+                    {Math.round(
+                      (appliedMetallic?.[
+                        selectedMaterial && selectedMaterial !== "none"
+                          ? selectedMaterial
+                          : "all"
+                      ] ?? 0.1) * 100,
+                    )}
+                    %
+                  </span>
                 </div>
                 <input
                   type="range"
                   min="0"
                   max="1"
                   step="0.01"
-                  value={appliedMetallic?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.1}
-                  onChange={(e) => onApplyMetallic(selectedMaterial, parseFloat(e.target.value))}
+                  value={
+                    appliedMetallic?.[
+                      selectedMaterial && selectedMaterial !== "none"
+                        ? selectedMaterial
+                        : "all"
+                    ] ?? 0.1
+                  }
+                  onChange={(e) =>
+                    onApplyMetallic(
+                      selectedMaterial,
+                      parseFloat(e.target.value),
+                    )
+                  }
                   className="w-full accent-[#c05520] cursor-pointer h-1 bg-gray-100 rounded-lg appearance-none"
                 />
               </div>
@@ -2191,22 +3143,45 @@ export default function EditorScreen1({
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
                   <span>Roughness</span>
-                  <span>{Math.round((appliedRoughness?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.5) * 100)}%</span>
+                  <span>
+                    {Math.round(
+                      (appliedRoughness?.[
+                        selectedMaterial && selectedMaterial !== "none"
+                          ? selectedMaterial
+                          : "all"
+                      ] ?? 0.5) * 100,
+                    )}
+                    %
+                  </span>
                 </div>
                 <input
                   type="range"
                   min="0"
                   max="1"
                   step="0.01"
-                  value={appliedRoughness?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.5}
-                  onChange={(e) => onApplyRoughness(selectedMaterial, parseFloat(e.target.value))}
+                  value={
+                    appliedRoughness?.[
+                      selectedMaterial && selectedMaterial !== "none"
+                        ? selectedMaterial
+                        : "all"
+                    ] ?? 0.5
+                  }
+                  onChange={(e) =>
+                    onApplyRoughness(
+                      selectedMaterial,
+                      parseFloat(e.target.value),
+                    )
+                  }
                   className="w-full accent-[#c05520] cursor-pointer h-1 bg-gray-100 rounded-lg appearance-none"
                 />
               </div>
             </div>
 
+
+
             {/* Texture Library */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
+            {!(modelUrl && modelUrl.toLowerCase().includes("tape")) && (
+              <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold text-gray-700">
                   Texture Library
@@ -2359,6 +3334,7 @@ export default function EditorScreen1({
                   ))}
               </div>
             </div>
+            )}
           </div>
         )}
 
@@ -2482,51 +3458,89 @@ export default function EditorScreen1({
         )}
       </div>
 
-      {/* Export & Save Action Buttons (Separate Container) */}
-      <div className="editor-right-actions absolute right-[5vw] top-[2vh] z-10 pointer-events-none bg-white rounded-[20px] p-2 shadow-lg flex flex-col gap-2 items-center justify-center">
-        <Tooltip1 label="Save Scene" side="left">
-          <button
-            onClick={() => setShowSaveModal(true)}
-            className="pointer-events-auto w-8 h-8 rounded-full bg-transparent flex items-center justify-center border-none cursor-pointer hover:bg-gray-100 text-[#c05520] transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2.2}
-              stroke="currentColor"
-              className="w-[1.1vw] h-[1.1vw]"
+      {/* Export & Save Action Buttons Column */}
+      <div className="absolute right-[5vw] top-[2vh] z-10 flex flex-col gap-3 items-center pointer-events-none">
+        {/* Save & Export Container */}
+        <div className="bg-white rounded-[20px] p-2 shadow-lg flex flex-col gap-2 items-center justify-center pointer-events-auto">
+          <Tooltip1 label="Save Scene" side="left">
+            <button
+              onClick={() => setShowSaveModal(true)}
+              className="w-8 h-8 rounded-full bg-transparent flex items-center justify-center border-none cursor-pointer hover:bg-gray-100 text-[#c05520] transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
-              />
-            </svg>
-          </button>
-        </Tooltip1>
-        <div className="w-5 h-[1px] bg-gray-100" />
-        <Tooltip1 label="Export" side="left">
-          <button
-            onClick={() => setShowExportModal(true)}
-            className="pointer-events-auto w-8 h-8 rounded-full bg-transparent flex items-center justify-center border-none cursor-pointer hover:bg-gray-100 text-[#c05520] transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2.2}
-              stroke="currentColor"
-              className="w-[1.1vw] h-[1.1vw]"
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2.2}
+                stroke="currentColor"
+                className="w-[1.1vw] h-[1.1vw]"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z"
+                />
+              </svg>
+            </button>
+          </Tooltip1>
+          <div className="w-5 h-[1px] bg-gray-100" />
+          <Tooltip1 label="Export" side="left">
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="w-8 h-8 rounded-full bg-transparent flex items-center justify-center border-none cursor-pointer hover:bg-gray-100 text-[#c05520] transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-              />
-            </svg>
-          </button>
-        </Tooltip1>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2.2}
+                stroke="currentColor"
+                className="w-[1.1vw] h-[1.1vw]"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                />
+              </svg>
+            </button>
+          </Tooltip1>
+        </div>
+
+        {/* Lid Open/Close Button Container (Placed separately below) */}
+        {modelUrl && !isLayoutModel && (
+          modelUrl.toLowerCase().includes("food container") ||
+          modelUrl.toLowerCase().includes("food%20container") ||
+          modelUrl.toLowerCase().includes("oval") ||
+          modelUrl.toLowerCase().includes("round") ||
+          modelUrl.toLowerCase().includes("tamper")
+        ) && (
+          <div className="bg-white rounded-[20px] p-2 shadow-lg flex flex-col items-center justify-center pointer-events-auto">
+            <Tooltip1 label={isLidOpen ? "Close Lid" : "Open Lid"} side="left">
+              <button
+                onClick={() => setIsLidOpen(!isLidOpen)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
+                  isLidOpen ? "bg-[#c05520] text-white hover:bg-[#a94a1c]" : "bg-transparent text-[#c05520] hover:bg-gray-100"
+                }`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.2}
+                  stroke="currentColor"
+                  className="w-[1.1vw] h-[1.1vw]"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20 7.5c0 1.933-3.582 3.5-8 3.5s-8-1.567-8-3.5M20 7.5C20 5.567 16.418 4 12 4S4 5.567 4 7.5M20 7.5V18c0 1.933-3.582 3.5-8 3.5s-8-1.567-8-3.5V7.5M12 11V4"
+                  />
+                </svg>
+              </button>
+            </Tooltip1>
+          </div>
+        )}
       </div>
 
       {/* Right Floating Pill */}
@@ -2570,8 +3584,34 @@ export default function EditorScreen1({
           <button
             onClick={() => {
               if (orbitControlsRef.current && cameraRef.current) {
-                orbitControlsRef.current.target.set(0, getModelCenterY(), 0);
-                orbitControlsRef.current.update();
+                const controls = orbitControlsRef.current;
+                const camera = cameraRef.current;
+
+                const savedConfig = modelPositionsConfig && modelPositionsConfig[modelUrl];
+
+                if (savedConfig) {
+                  const { target, azimuth, polar, distance } = savedConfig;
+                  controls.target.set(target[0], target[1], target[2]);
+                  const spherical = new THREE.Spherical(distance || (4 / 0.6), polar, azimuth);
+                  spherical.makeSafe();
+                  const offsetVec = new THREE.Vector3().setFromSpherical(spherical);
+                  camera.position.copy(controls.target).add(offsetVec);
+                  camera.lookAt(controls.target);
+                  controls.setAzimuthalAngle(azimuth);
+                  controls.setPolarAngle(polar);
+
+                  const calculatedZoom = Math.round((4 / distance) * 100);
+                  setZoomPercent(calculatedZoom || 60);
+                } else {
+                  setZoomPercent(60);
+                  const targetY = getModelCenterY();
+                  controls.target.set(0, targetY, 0);
+                  camera.position.set(0, targetY, 4 / 0.6);
+                  camera.lookAt(0, targetY, 0);
+                  controls.setAzimuthalAngle(0);
+                  controls.setPolarAngle(Math.PI / 2);
+                }
+                controls.update();
               }
               setToolMode("cursor");
             }}
@@ -2598,6 +3638,8 @@ export default function EditorScreen1({
             </svg>
           </button>
         </Tooltip1>
+
+
 
         <Tooltip1 label="Reset All Edits" side="left">
           <button
@@ -2843,8 +3885,6 @@ export default function EditorScreen1({
               : "max-h-0 opacity-0 pointer-events-none overflow-hidden"
           }`}
         >
-
-
           <Tooltip1 label="Undo" side="left">
             <button
               onClick={onUndo}
@@ -3121,14 +4161,16 @@ export default function EditorScreen1({
           className="absolute right-[7.4vw] top-[2.5vh] z-20 pointer-events-auto bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 select-none flex flex-col gap-3 transition-all duration-300"
           style={{
             transform: `translate(${capPanelPosition.x}px, ${capPanelPosition.y}px)`,
-            transition: isDraggingCapPanel ? "none" : "transform 0.1s ease, width 0.3s ease, height 0.3s ease, padding 0.3s ease",
+            transition: isDraggingCapPanel
+              ? "none"
+              : "transform 0.1s ease, width 0.3s ease, height 0.3s ease, padding 0.3s ease",
             width: isCapPanelMinimized ? "130px" : "250px",
             padding: isCapPanelMinimized ? "8px 12px" : "20px",
           }}
         >
           {isCapPanelMinimized ? (
             /* Minimized State UI */
-            <div 
+            <div
               className="flex items-center justify-between w-full cursor-grab active:cursor-grabbing gap-1"
               onPointerDown={handleCapPanelPointerDown}
               onPointerMove={handleCapPanelPointerMove}
@@ -3136,19 +4178,42 @@ export default function EditorScreen1({
             >
               <div className="flex items-center gap-1.5 min-w-0">
                 {/* Drag handle dots icon */}
-                <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                <svg
+                  className="w-3.5 h-3.5 text-gray-400 shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
-                <span className="text-xs font-bold text-gray-700 truncate">Caps</span>
+                <span className="text-xs font-bold text-gray-700 truncate">
+                  Caps
+                </span>
               </div>
               <button
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); setIsCapPanelMinimized(false); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCapPanelMinimized(false);
+                }}
                 className="w-5 h-5 rounded-md hover:bg-gray-100 flex items-center justify-center border-none text-gray-500 hover:text-gray-800 cursor-pointer shrink-0"
                 title="Maximize"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
             </div>
@@ -3177,9 +4242,23 @@ export default function EditorScreen1({
                         className="w-5 h-5 rounded-md hover:bg-gray-100 flex items-center justify-center border-none text-gray-400 hover:text-[#c05520] cursor-pointer"
                         title="Reset to Original Position"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5" />
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2.2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 2.25v1.5m0 16.5v1.5m-9.75-9.75h1.5m16.5 0h1.5"
+                          />
                         </svg>
                       </button>
                     )}
@@ -3190,14 +4269,24 @@ export default function EditorScreen1({
                       className="w-5 h-5 rounded-md hover:bg-gray-100 flex items-center justify-center border-none text-gray-500 hover:text-gray-800 cursor-pointer"
                       title="Minimize"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H6" />
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M18 12H6"
+                        />
                       </svg>
                     </button>
                   </div>
                 </div>
               </div>
-              
+
               {/* Scrollable Container with exact 3-row visible height */}
               <div className="overflow-y-auto pr-1 flex flex-col gap-2 max-h-[300px]">
                 <div className="grid grid-cols-2 gap-2">
@@ -3212,8 +4301,18 @@ export default function EditorScreen1({
                   >
                     {/* Visual Image Placeholder for Default Cap */}
                     <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-200/50 flex items-center justify-center mb-1.5 relative overflow-hidden">
-                      <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      <svg
+                        className="w-6 h-6 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                        />
                       </svg>
                     </div>
                     <span className="text-[11px] font-bold">Default</span>
@@ -3230,13 +4329,23 @@ export default function EditorScreen1({
                           : "border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100/80 hover:border-gray-200"
                       }`}
                     >
-                      {/* Visual Image Placeholder for Cap */}
+                      {/* Visual Image/Render for Cap */}
                       <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-[#fdfbf7] to-[#f5f0e6] border border-orange-100 flex items-center justify-center mb-1.5 relative overflow-hidden">
-                        {/* Visual cap illustration */}
-                        <div className="w-10 h-5 bg-[#c05520] rounded-t-md opacity-85 shadow-sm flex flex-col justify-between p-0.5">
-                          <div className="w-full h-0.5 bg-white/20 rounded" />
-                          <div className="w-full h-0.5 bg-white/20 rounded" />
-                        </div>
+                        {cap.imageUrl ? (
+                          <img
+                            src={cap.imageUrl}
+                            alt={cap.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <>
+                            {/* Visual cap illustration fallback */}
+                            <div className="w-10 h-5 bg-[#c05520] rounded-t-md opacity-85 shadow-sm flex flex-col justify-between p-0.5">
+                              <div className="w-full h-0.5 bg-white/20 rounded" />
+                              <div className="w-full h-0.5 bg-white/20 rounded" />
+                            </div>
+                          </>
+                        )}
                         <span className="absolute bottom-1 right-1 text-[8px] bg-[#c05520]/10 text-[#c05520] px-1 rounded font-black">
                           #{i + 1}
                         </span>
@@ -3691,12 +4800,17 @@ const ScreenshotHelper = forwardRef(({ filename, bgColor }, ref) => {
       gl.setPixelRatio(3); // High-res export multiplier
 
       const doExport = async (format, transparent) => {
-        if (transparent || bgColor === 'transparent') {
+        if (transparent || bgColor === "transparent") {
           gl.setClearColor(0x000000, 0); // Transparent background
           scene.background = null;
         } else {
-          gl.setClearColor(new THREE.Color(bgColor === 'transparent' ? '#ffffff' : bgColor), 1); // Solid background
-          scene.background = new THREE.Color(bgColor === 'transparent' ? '#ffffff' : bgColor);
+          gl.setClearColor(
+            new THREE.Color(bgColor === "transparent" ? "#ffffff" : bgColor),
+            1,
+          ); // Solid background
+          scene.background = new THREE.Color(
+            bgColor === "transparent" ? "#ffffff" : bgColor,
+          );
         }
 
         gl.render(scene, camera);

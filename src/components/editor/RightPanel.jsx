@@ -784,13 +784,19 @@ export default function RightPanel({
                       : "border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100/80 hover:border-gray-200"
                   }`}
                 >
-                  {/* Visual Image Placeholder for Cap */}
+                  {/* Visual Image/Render for Cap */}
                   <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-[#fdfbf7] to-[#f5f0e6] border border-orange-100 flex items-center justify-center mb-1 relative overflow-hidden">
-                    {/* Visual cap illustration */}
-                    <div className="w-8 h-4 bg-[#c05520] rounded-t opacity-85 shadow-sm flex flex-col justify-between p-0.5">
-                      <div className="w-full h-0.5 bg-white/20 rounded" />
-                      <div className="w-full h-0.5 bg-white/20 rounded" />
-                    </div>
+                    {cap.imageUrl ? (
+                      <img src={cap.imageUrl} alt={cap.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        {/* Visual cap illustration fallback */}
+                        <div className="w-8 h-4 bg-[#c05520] rounded-t opacity-85 shadow-sm flex flex-col justify-between p-0.5">
+                          <div className="w-full h-0.5 bg-white/20 rounded" />
+                          <div className="w-full h-0.5 bg-white/20 rounded" />
+                        </div>
+                      </>
+                    )}
                     <span className="absolute bottom-0.5 right-0.5 text-[7px] bg-[#c05520]/10 text-[#c05520] px-0.5 rounded font-black">
                       #{i + 1}
                     </span>
@@ -873,6 +879,14 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
     const clone = cloneSkeleton(scene);
     return clone;
   }, [scene]);
+
+  const capLocalBounds = useMemo(() => {
+    if (!clonedCap) return { minY: 0 };
+    const box = new THREE.Box3().setFromObject(clonedCap);
+    return {
+      minY: isFinite(box.min.y) ? box.min.y : 0,
+    };
+  }, [clonedCap]);
 
   useEffect(() => {
     if (!clonedCap) return;
@@ -967,7 +981,9 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
 
   return (
     <group ref={ref}>
-      <primitive object={clonedCap} dispose={null} />
+      <group position={[0, -capLocalBounds.minY, 0]}>
+        <primitive object={clonedCap} dispose={null} />
+      </group>
     </group>
   );
 }
@@ -1010,6 +1026,96 @@ function CustomCap({ url, transform, appliedColors }) {
       ))}
     </group>
   );
+}
+
+function calculateNeckDimensions(clonedScene, capMeshes) {
+  let mainBodyMesh = null;
+  let maxVolume = -1;
+
+  clonedScene.traverse((obj) => {
+    if (obj.isMesh && !obj.userData.isDecal) {
+      const nameLower = obj.name.toLowerCase();
+      const isCap = capMeshes.includes(obj) || 
+                    nameLower.includes("cap") || 
+                    nameLower.includes("lid") || 
+                    nameLower.includes("circle003");
+      if (!isCap && !isMeasurementMesh(obj, 10)) {
+        if (!obj.geometry.boundingBox) {
+          obj.geometry.computeBoundingBox();
+        }
+        const size = obj.geometry.boundingBox.getSize(new THREE.Vector3());
+        const volume = size.x * size.y * size.z;
+        if (volume > maxVolume) {
+          maxVolume = volume;
+          mainBodyMesh = obj;
+        }
+      }
+    }
+  });
+
+  if (!mainBodyMesh) {
+    return { topY: 1.0, radius: 0.025 };
+  }
+
+  const localMatrix = new THREE.Matrix4();
+  let curr = mainBodyMesh;
+  while (curr && curr !== clonedScene) {
+    curr.updateMatrix();
+    localMatrix.premultiply(curr.matrix);
+    curr = curr.parent;
+  }
+
+  const posAttr = mainBodyMesh.geometry.attributes.position;
+  if (!posAttr) {
+    return { topY: 1.0, radius: 0.025 };
+  }
+
+  let minY = Infinity;
+  let maxY = -Infinity;
+  const tempV = new THREE.Vector3();
+  for (let i = 0; i < posAttr.count; i++) {
+    tempV.fromBufferAttribute(posAttr, i);
+    tempV.applyMatrix4(localMatrix);
+    if (tempV.y < minY) minY = tempV.y;
+    if (tempV.y > maxY) maxY = tempV.y;
+  }
+
+  const totalHeight = maxY - minY;
+  const threshold = Math.max(0.01, totalHeight * 0.01); // Top 1% of the bottle height
+
+  let minX = Infinity, maxX = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  let topCount = 0;
+
+  for (let i = 0; i < posAttr.count; i++) {
+    tempV.fromBufferAttribute(posAttr, i);
+    tempV.applyMatrix4(localMatrix);
+    if (tempV.y >= maxY - threshold) {
+      if (tempV.x < minX) minX = tempV.x;
+      if (tempV.x > maxX) maxX = tempV.x;
+      if (tempV.z < minZ) minZ = tempV.z;
+      if (tempV.z > maxZ) maxZ = tempV.z;
+      topCount++;
+    }
+  }
+
+  let radius = totalHeight * 0.05;
+  if (topCount > 2) {
+    radius = (maxX - minX + (maxZ - minZ)) / 4;
+  }
+
+  // Safety boundaries relative to the overall bottle size
+  const minNeckRadius = totalHeight * 0.005;
+  const maxNeckRadius = totalHeight * 0.25;
+
+  if (radius < minNeckRadius || radius > maxNeckRadius) {
+    radius = totalHeight * 0.045;
+  }
+
+  return {
+    topY: maxY,
+    radius: radius
+  };
 }
 
 function AutoSizedModel({
@@ -1090,7 +1196,10 @@ function AutoSizedModel({
     clonedScene.traverse((obj) => {
       if (obj.isMesh) {
         const nameLower = obj.name.toLowerCase();
-        const hasCapInName = nameLower.includes("cap") || nameLower.includes("circle003") || nameLower.includes("lid");
+        const hasCapInName =
+          nameLower.includes("cap") ||
+          nameLower.includes("circle003") ||
+          nameLower.includes("lid");
         const hasCapInMaterial = obj.material && (
           Array.isArray(obj.material)
             ? obj.material.some(m => m.name && (m.name.toLowerCase().includes("cap") || m.name.toLowerCase().includes("lid")))
@@ -1108,10 +1217,36 @@ function AutoSizedModel({
           mesh.visible = false;
         });
         const anchor = capMeshes.find(m => m.name.toLowerCase().includes("circle003") || m.name.toLowerCase().includes("cap")) || capMeshes[0];
+        
+        // Compute rotation and position from anchor as starting point
+        const localMatrix = new THREE.Matrix4();
+        let curr = anchor;
+        while (curr && curr !== clonedScene) {
+          curr.updateMatrix();
+          localMatrix.premultiply(curr.matrix);
+          curr = curr.parent;
+        }
+
+        const pos = new THREE.Vector3();
+        const quart = new THREE.Quaternion();
+        const scl = new THREE.Vector3();
+        localMatrix.decompose(pos, quart, scl);
+
+        // Dynamically calculate the neck dimensions of the bottle
+        const neck = calculateNeckDimensions(clonedScene, capMeshes);
+
+        // A standard custom cap has a width/depth of approx. 0.05 units and height of 0.035 units.
+        // Scale it uniformly to maintain natural cap aspect ratios.
+        const scale = (neck.radius * 2) / 0.05;
+        scl.set(scale, scale, scale);
+
+        // Position cap's bottom flush with the top rim of the neck
+        pos.y = neck.topY - scale * 0.035;
+
         setCapTransform({
-          position: anchor.position.clone(),
-          rotation: anchor.rotation.clone(),
-          scale: anchor.scale.clone(),
+          position: pos,
+          rotation: new THREE.Euler().setFromQuaternion(quart),
+          scale: scl,
         });
       } else {
         capMeshes.forEach(mesh => {
@@ -1414,9 +1549,9 @@ function AutoSizedModel({
           mat.needsUpdate = true;
         } else {
           // Restore original model properties!
-          if ((hasArtwork && shouldApply) || materialType) {
-            mat.transparent = false;
-            mat.opacity = 1.0;
+          if (shouldApply && !materialType) {
+            mat.transparent = true;
+            mat.opacity = 0;
             if ("transmission" in mat) mat.transmission = 0;
             mat.roughness =
               mat.userData.originalRoughness !== undefined

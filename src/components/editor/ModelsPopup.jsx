@@ -15,6 +15,8 @@ import plasticWaterBottleUrl from "../../assets/models/Drinkware Bottles/Plastic
 import plasticWaterBottleImg from "../../assets/models/Drinkware Bottles/Plastic water bottles/plastic water bottle.webp";
 import softDrinksBottleUrl from "../../assets/models/Drinkware Bottles/Soft drinks/Soft drinks bottle.glb?url";
 import softDrinksBottleImg from "../../assets/models/Drinkware Bottles/Soft drinks/05.waterbottle.webp";
+import steelBottleUrl from "../../assets/models/Drinkware Bottles/Steel Bottle/Steel bottle.glb?url";
+import steelBottleImg from "../../assets/models/Drinkware Bottles/Steel Bottle/Steel bottle.webp";
 
 // Eco friendly Models
 import biodegradableBagsUrl from "../../assets/models/Eco friendly/Bio degradable/Biodegradable bags.glb?url";
@@ -60,6 +62,7 @@ export const MODELS = [
   { id: 'plastic-water-bottle', name: 'Plastic Water Bottle', modelUrl: plasticWaterBottleUrl, category: 'Drinkware Bottles', imageUrl: plasticWaterBottleImg },
   { id: 'glass-bottle', name: 'Glass Water Bottle', modelUrl: glassBottleUrl, category: 'Drinkware Bottles', imageUrl: glassBottleImg },
   { id: 'soft-drinks-bottle', name: 'Soft Drink Bottles', modelUrl: softDrinksBottleUrl, category: 'Drinkware Bottles', imageUrl: softDrinksBottleImg },
+  { id: 'steel-bottle', name: 'Steel Bottle', modelUrl: steelBottleUrl, category: 'Drinkware Bottles', imageUrl: steelBottleImg },
 
   // Carton Box
   { id: 'folding-box', name: 'Folding Carton Box', modelUrl: foldingBoxUrl, category: 'Carton box', imageUrl: foldingBoxImg },
@@ -91,7 +94,7 @@ const CATEGORIES = [
 const QUICK_TAGS = [
   'All',
   'Beverage Cup', 'Die cut', 'Folding',
-  'Glass Bottle', 'Plastic Water', 'Soft drinks',
+  'Glass Bottle', 'Plastic Water', 'Soft drinks', 'Steel Bottle',
   'Bio degradable', 'Paper Bags',
   'T-shirt', 'Hoodie',
   'Oval', 'Round', 'Tamper Evident',
@@ -130,7 +133,7 @@ export default function ModelsPopup({ onSelectModel, currentModelUrl }) {
   }
 
   return (
-    <div className="w-[280px] sm:w-[350px] h-full shrink-0 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col">
+    <div className="w-[280px] sm:w-[350px] h-full shrink-0 bg-white rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.14)] ring-1 ring-gray-100 overflow-hidden flex flex-col">
       <div className="p-5 border-b border-gray-100 flex flex-col gap-3">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-xl font-bold text-gray-900 m-0">Select Model</h2>

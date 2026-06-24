@@ -51,8 +51,10 @@ export default function Navbar({ onTogglePanel }) {
     navigate('/editor', { state: { initialModelUrl: roundContainerUrl } });
   };
 
+  const isEditorPage = location.pathname === '/editor';
+
   return (
-    <nav ref={navRef} className={`w-full bg-white z-[99] relative shrink-0 border-b border-transparent sticky top-0 transition-shadow duration-300 ${isScrolled ? 'shadow-md' : 'shadow-none'}`}>
+    <nav ref={navRef} className={`w-full bg-white z-[99] relative shrink-0 border-b sticky top-0 transition-shadow duration-300 ${isEditorPage ? 'shadow-[0_4px_20px_rgba(0,0,0,0.10)] border-gray-100' : isScrolled ? 'shadow-md border-transparent' : 'shadow-none border-transparent'}`}>
       <div className="w-full flex items-center justify-between px-6 lg:px-12 xl:px-20 py-2 lg:py-2">
         
         {/* Logo */}
