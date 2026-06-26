@@ -13,10 +13,10 @@ import tsg9  from "../../assets/images/Editor 2/t-shirtGraphics/9.webp";
 import tsg10 from "../../assets/images/Editor 2/t-shirtGraphics/10.webp";
 import tsg11 from "../../assets/images/Editor 2/t-shirtGraphics/11.webp";
 import tsg12 from "../../assets/images/Editor 2/t-shirtGraphics/12.webp";
-// import tsg13 from "../../assets/images/Editor 2/t-shirtGraphics/13.webp";
-import tsg14 from "../../assets/images/Editor 2/t-shirtGraphics/14.webp";
+import tsg13 from "../../assets/images/Editor 2/t-shirtGraphics/13.webp";
+// import  from "../../assets/images/Editor 2/t-shirtGraphics/14.webp";
 
-const tShirtGraphics = [tsg1,tsg3,tsg4,tsg5,tsg6,tsg7,tsg8,tsg9,tsg10,tsg11,tsg12,tsg14];
+const tShirtGraphics = [tsg1,tsg3,tsg4,tsg5,tsg6,tsg7,tsg8,tsg9,tsg10,tsg11,tsg12,tsg13];
 
 // ── Carry Bag Graphics (9 images) ─────────────────────────────────────────────
 import cb1 from "../../assets/images/Editor 2/carryBag/1.jpg";

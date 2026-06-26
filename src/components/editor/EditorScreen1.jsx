@@ -388,10 +388,11 @@ function calculateNeckDimensions(clonedScene, capMeshes) {
   clonedScene.traverse((obj) => {
     if (obj.isMesh && !obj.userData.isDecal) {
       const nameLower = obj.name.toLowerCase();
-      const isCap = capMeshes.includes(obj) || 
-                    nameLower.includes("cap") || 
-                    nameLower.includes("lid") || 
-                    nameLower.includes("circle003");
+      const isCap =
+        capMeshes.includes(obj) ||
+        nameLower.includes("cap") ||
+        nameLower.includes("lid") ||
+        nameLower.includes("circle003");
       if (!isCap && !isMeasurementMesh(obj, 10)) {
         if (!obj.geometry.boundingBox) {
           obj.geometry.computeBoundingBox();
@@ -436,8 +437,10 @@ function calculateNeckDimensions(clonedScene, capMeshes) {
   const totalHeight = maxY - minY;
   const threshold = Math.max(0.01, totalHeight * 0.01); // Top 1% of the bottle height
 
-  let minX = Infinity, maxX = -Infinity;
-  let minZ = Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity;
+  let minZ = Infinity,
+    maxZ = -Infinity;
   let topCount = 0;
 
   for (let i = 0; i < posAttr.count; i++) {
@@ -467,7 +470,7 @@ function calculateNeckDimensions(clonedScene, capMeshes) {
 
   return {
     topY: maxY,
-    radius: radius
+    radius: radius,
   };
 }
 
@@ -492,6 +495,7 @@ function AutoSizedModelWithDimensions({
   isLidOpen,
   onCapHover,
   onCapLeave,
+  showDefaultLabels,
 }) {
   const { scene } = useGLTF(modelUrl);
   const { gl, invalidate, camera } = useThree();
@@ -509,11 +513,88 @@ function AutoSizedModelWithDimensions({
   const clonedScene = useMemo(() => {
     if (!scene) return null;
     const clone = cloneSkeleton(scene);
+    clone.updateMatrixWorld(true);
+
+    // First pass: find all label and structural meshes and their world Y positions
+    const labelMeshes = [];
+    const structuralMeshes = [];
     clone.traverse((obj) => {
       if (!obj.isMesh || !obj.material) return;
+      const mArray = Array.isArray(obj.material)
+        ? obj.material
+        : [obj.material];
+      const isLabel = mArray.some((m) => {
+        if (!m || !m.name) return false;
+        const matLower = m.name.toLowerCase();
+        return (
+          matLower.includes("label") ||
+          matLower.includes("wrapper") ||
+          matLower.includes("design") ||
+          matLower.includes("artwork")
+        );
+      });
+
+      const box = new THREE.Box3().setFromObject(obj);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+
+      if (isLabel) {
+        labelMeshes.push({ obj, y: center.y });
+      } else {
+        structuralMeshes.push({ obj, y: center.y });
+      }
+    });
+
+    // Sort by height (highest first)
+    labelMeshes.sort((a, b) => b.y - a.y);
+    structuralMeshes.sort((a, b) => b.y - a.y);
+
+    // Second pass: clone materials and assign clean names
+    clone.traverse((obj) => {
+      if (!obj.isMesh || !obj.material) return;
+
       obj.material = Array.isArray(obj.material)
         ? obj.material.map((mat) => mat?.clone())
         : obj.material.clone();
+
+      const labelIndex = labelMeshes.findIndex((x) => x.obj === obj);
+      if (labelIndex !== -1) {
+        // This is a label mesh, give it a clean UI name based on its height
+        const mArray = Array.isArray(obj.material)
+          ? obj.material
+          : [obj.material];
+        mArray.forEach((m) => {
+          if (labelMeshes.length === 1) m.name = "Label";
+          else if (labelMeshes.length === 2)
+            m.name = labelIndex === 0 ? "Lid Label" : "Body Label";
+          else
+            m.name =
+              labelIndex === 0 ? "Lid Label" : `Body Label ${labelIndex}`;
+        });
+      } else {
+        // This is a structural mesh, separate Lid and Body materials if they share the same one!
+        const structIndex = structuralMeshes.findIndex((x) => x.obj === obj);
+        if (structIndex !== -1) {
+          const mArray = Array.isArray(obj.material)
+            ? obj.material
+            : [obj.material];
+          mArray.forEach((m) => {
+            if (structuralMeshes.length === 1) {
+              m.name = "Body";
+            } else if (structuralMeshes.length === 2) {
+              m.name = structIndex === 0 ? "Lid" : "Body";
+            } else {
+              if (structIndex === 0) m.name = "Lid";
+              else if (structIndex === structuralMeshes.length - 1)
+                m.name = "Body";
+              else {
+                const originalClean = (m.name || "Part").replace(/\.\d+$/, "");
+                m.name = `${originalClean} ${structIndex}`;
+              }
+            }
+          });
+        }
+      }
     });
     if (modelUrl && modelUrl.toLowerCase().includes("biodegradable")) {
       clone.rotation.x = Math.PI / 2;
@@ -582,7 +663,7 @@ function AutoSizedModelWithDimensions({
       z: 0,
       duration: 1.5,
       ease: "power4.out",
-      onUpdate: () => invalidate()
+      onUpdate: () => invalidate(),
     });
 
     gsap.to(group.rotation, {
@@ -591,7 +672,7 @@ function AutoSizedModelWithDimensions({
       z: 0,
       duration: 1.5,
       ease: "power4.out",
-      onUpdate: () => invalidate()
+      onUpdate: () => invalidate(),
     });
 
     gsap.to(group.scale, {
@@ -600,7 +681,7 @@ function AutoSizedModelWithDimensions({
       z: 1,
       duration: 1.5,
       ease: "power4.out",
-      onUpdate: () => invalidate()
+      onUpdate: () => invalidate(),
     });
   }, [clonedScene, invalidate]);
 
@@ -642,14 +723,23 @@ function AutoSizedModelWithDimensions({
     // 1. Compute overall bounds to find topThresholdY
     let containerMinY = Infinity;
     let containerMaxY = -Infinity;
+
+    // Temporarily detach from parent to ensure matrixWorld is calculated in local space,
+    // ignoring the transition slide-in animation which could tilt/scale the scene.
+    const originalParent = clonedScene.parent;
+    if (originalParent) clonedScene.parent = null;
     clonedScene.updateMatrixWorld(true);
+    if (originalParent) clonedScene.parent = originalParent;
+
     clonedScene.traverse((obj) => {
       if (obj.isMesh && !obj.userData.isDecal && !isMeasurementMesh(obj, 10)) {
         if (!obj.geometry.boundingBox) {
           obj.geometry.computeBoundingBox();
         }
-        
-        const tempBox = new THREE.Box3().copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
+
+        const tempBox = new THREE.Box3()
+          .copy(obj.geometry.boundingBox)
+          .applyMatrix4(obj.matrixWorld);
         if (tempBox.min.y < containerMinY) containerMinY = tempBox.min.y;
         if (tempBox.max.y > containerMaxY) containerMaxY = tempBox.max.y;
       }
@@ -699,7 +789,12 @@ function AutoSizedModelWithDimensions({
         const pushVertex = (idx) => {
           destPos.push(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx));
           if (uvAttr) destUv.push(uvAttr.getX(idx), uvAttr.getY(idx));
-          if (normalAttr) destNormal.push(normalAttr.getX(idx), normalAttr.getY(idx), normalAttr.getZ(idx));
+          if (normalAttr)
+            destNormal.push(
+              normalAttr.getX(idx),
+              normalAttr.getY(idx),
+              normalAttr.getZ(idx),
+            );
         };
 
         pushVertex(idx0);
@@ -710,15 +805,17 @@ function AutoSizedModelWithDimensions({
       const createGeom = (pos, uv, norm) => {
         if (pos.length === 0) return null;
         const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-        if (uv.length > 0) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-        if (norm.length > 0) g.setAttribute('normal', new THREE.Float32BufferAttribute(norm, 3));
+        g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        if (uv.length > 0)
+          g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+        if (norm.length > 0)
+          g.setAttribute("normal", new THREE.Float32BufferAttribute(norm, 3));
         return g;
       };
 
       return {
         top: createGeom(topPos, topUv, topNormal),
-        bottom: createGeom(botPos, botUv, botNormal)
+        bottom: createGeom(botPos, botUv, botNormal),
       };
     };
 
@@ -734,46 +831,115 @@ function AutoSizedModelWithDimensions({
     meshesToProcess.forEach((obj) => {
       const nameLower = obj.name.toLowerCase();
       const mat = obj.material;
-      const matNameLower = mat ? (Array.isArray(mat) ? mat[0].name : mat.name || "").toLowerCase() : "";
-      
-      const isLid = nameLower.includes("lid") || matNameLower.includes("lid") || nameLower.includes("cap") || matNameLower.includes("cap");
-      const isLabel = nameLower.includes("label") || matNameLower.includes("label") || nameLower.includes("wrapper") || matNameLower.includes("wrapper") || nameLower.includes("design") || matNameLower.includes("design");
-      
+      const matNameLower = mat
+        ? (Array.isArray(mat) ? mat[0].name : mat.name || "").toLowerCase()
+        : "";
+
+      const isLid =
+        nameLower.includes("lid") ||
+        matNameLower.includes("lid") ||
+        nameLower.includes("cap") ||
+        matNameLower.includes("cap") ||
+        nameLower.includes("circle003") ||
+        matNameLower.includes("circle003");
+      const isLabel =
+        nameLower.includes("label") ||
+        matNameLower.includes("label") ||
+        nameLower.includes("wrapper") ||
+        matNameLower.includes("wrapper") ||
+        nameLower.includes("design") ||
+        matNameLower.includes("design");
+
       if (isLid) {
         lidMeshes.push(obj);
       } else if (isLabel) {
         if (!obj.geometry.boundingBox) {
           obj.geometry.computeBoundingBox();
         }
-        const tempBox = new THREE.Box3().copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
-        
-        const spansHeight = (tempBox.max.y - tempBox.min.y) > 0.35 * containerHeight;
+        const tempBox = new THREE.Box3()
+          .copy(obj.geometry.boundingBox)
+          .applyMatrix4(obj.matrixWorld);
+
+        const spansHeight =
+          tempBox.max.y - tempBox.min.y > 0.35 * containerHeight;
         const hasTopPart = tempBox.max.y >= topThresholdY;
         const hasBottomPart = tempBox.min.y < topThresholdY;
 
+        const renameMaterial = (mat, newName) => {
+          if (!mat) return mat;
+          const renameSingle = (m) => {
+            const newMat = new THREE.MeshStandardMaterial({
+              color: m.color ? m.color.clone() : new THREE.Color(0xffffff),
+              roughness: m.roughness !== undefined ? m.roughness : 0.5,
+              metalness: m.metalness !== undefined ? m.metalness : 0.1,
+              transparent: m.transparent !== undefined ? m.transparent : false,
+              opacity: m.opacity !== undefined ? m.opacity : 1.0,
+              side: m.side !== undefined ? m.side : THREE.DoubleSide,
+            });
+            newMat.name = newName;
+            
+            let hasMap = false;
+            if (m.map) { newMat.map = m.map; hasMap = true; }
+            if (m.normalMap) { newMat.normalMap = m.normalMap; hasMap = true; }
+            if (m.roughnessMap) { newMat.roughnessMap = m.roughnessMap; hasMap = true; }
+            if (m.metalnessMap) { newMat.metalnessMap = m.metalnessMap; hasMap = true; }
+            if (m.aoMap) { newMat.aoMap = m.aoMap; hasMap = true; }
+            
+            if (m.userData) {
+              newMat.userData = { ...m.userData };
+            }
+            
+            if (hasMap) {
+              newMat.needsUpdate = true;
+            }
+            
+            return newMat;
+          };
+          if (Array.isArray(mat)) {
+            return mat.map(renameSingle);
+          } else {
+            return renameSingle(mat);
+          }
+        };
+
         if (spansHeight && hasTopPart && hasBottomPart) {
-          const split = splitGeometry(obj.geometry, topThresholdY, obj.matrixWorld);
+          const split = splitGeometry(
+            obj.geometry,
+            topThresholdY,
+            obj.matrixWorld,
+          );
           if (split.top && split.bottom) {
             obj.userData.originalGeometry = obj.geometry;
             obj.geometry = split.bottom;
 
-            const lidLabel = new THREE.Mesh(split.top, obj.material);
+            const bodyMat = renameMaterial(obj.material, "Body Label");
+            const lidMat = renameMaterial(obj.material, "Lid Label");
+
+            obj.material = bodyMat;
+
+            const lidLabel = new THREE.Mesh(split.top, lidMat);
             lidLabel.name = obj.name + "_lidPart";
             lidLabel.userData.isSplitLidLabel = true;
-            
+
             obj.parent.add(lidLabel);
             lidLabel.position.copy(obj.position);
             lidLabel.rotation.copy(obj.rotation);
             lidLabel.scale.copy(obj.scale);
             lidLabel.matrix.copy(obj.matrix);
             lidLabel.matrixWorld.copy(obj.matrixWorld);
-            
+
             lidMeshes.push(lidLabel);
           } else if (split.top) {
+            obj.material = renameMaterial(obj.material, "Lid Label");
             lidMeshes.push(obj);
+          } else {
+            obj.material = renameMaterial(obj.material, "Body Label");
           }
         } else if (hasTopPart && !hasBottomPart) {
+          obj.material = renameMaterial(obj.material, "Lid Label");
           lidMeshes.push(obj);
+        } else if (hasBottomPart && !hasTopPart) {
+          obj.material = renameMaterial(obj.material, "Body Label");
         }
       }
     });
@@ -835,53 +1001,77 @@ function AutoSizedModelWithDimensions({
     if (shouldOpen) {
       // Animate lid group
       timeline
-        .to(lidGroup.position, {
-          y: liftHeight,
-          x: -slideOffset,
-          z: 0,
-          duration: 1.0,
-          ease: "power2.out"
-        }, 0)
-        .to(lidGroup.rotation, {
-          z: 0.64,
-          x: 0,
-          y: 0,
-          duration: 1.0,
-          ease: "power2.out"
-        }, 0);
+        .to(
+          lidGroup.position,
+          {
+            y: liftHeight,
+            x: -slideOffset,
+            z: 0,
+            duration: 1.0,
+            ease: "power2.out",
+          },
+          0,
+        )
+        .to(
+          lidGroup.rotation,
+          {
+            z: 0.64,
+            x: 0,
+            y: 0,
+            duration: 1.0,
+            ease: "power2.out",
+          },
+          0,
+        );
 
       // Tilt container forward and turn slightly to see inside
-      timeline.to(clonedScene.rotation, {
-        x: origSceneRot.x + 0.2,
-        y: origSceneRot.y - 0.08,
-        duration: 1.0,
-        ease: "power2.out"
-      }, 0);
+      timeline.to(
+        clonedScene.rotation,
+        {
+          x: origSceneRot.x + 0.2,
+          y: origSceneRot.y - 0.08,
+          duration: 1.0,
+          ease: "power2.out",
+        },
+        0,
+      );
     } else {
       // Return lid group
       timeline
-        .to(lidGroup.position, {
-          y: 0,
-          x: 0,
-          z: 0,
-          duration: 1.0,
-          ease: "power2.inOut"
-        }, 0)
-        .to(lidGroup.rotation, {
-          z: 0,
-          x: 0,
-          y: 0,
-          duration: 1.0,
-          ease: "power2.inOut"
-        }, 0);
+        .to(
+          lidGroup.position,
+          {
+            y: 0,
+            x: 0,
+            z: 0,
+            duration: 1.0,
+            ease: "power2.inOut",
+          },
+          0,
+        )
+        .to(
+          lidGroup.rotation,
+          {
+            z: 0,
+            x: 0,
+            y: 0,
+            duration: 1.0,
+            ease: "power2.inOut",
+          },
+          0,
+        );
 
       // Return container rotation
-      timeline.to(clonedScene.rotation, {
-        x: origSceneRot.x,
-        y: origSceneRot.y,
-        duration: 1.0,
-        ease: "power2.inOut"
-      }, 0);
+      timeline.to(
+        clonedScene.rotation,
+        {
+          x: origSceneRot.x,
+          y: origSceneRot.y,
+          duration: 1.0,
+          ease: "power2.inOut",
+        },
+        0,
+      );
     }
   }, [isLidOpen, modelUrl, clonedScene, invalidate]);
 
@@ -1004,7 +1194,9 @@ function AutoSizedModelWithDimensions({
     const getCapMaterialKey = () => {
       const mesh = capMeshes[0];
       if (!mesh || !mesh.material) return "cap";
-      const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+      const mat = Array.isArray(mesh.material)
+        ? mesh.material[0]
+        : mesh.material;
       return mat.name || "cap";
     };
 
@@ -1161,7 +1353,9 @@ function AutoSizedModelWithDimensions({
     return {
       baseTransform: {
         scale,
-        offset: isLayoutModel ? [0, 0, 0] : [-center.x * scale, -box.min.y * scale, -center.z * scale],
+        offset: isLayoutModel
+          ? [0, 0, 0]
+          : [-center.x * scale, -box.min.y * scale, -center.z * scale],
       },
       baseDims: dims,
     };
@@ -1241,14 +1435,14 @@ function AutoSizedModelWithDimensions({
           ? appliedLastApplied[id] || appliedLastApplied["all"]
           : null;
 
-        const colorHex =
+        let colorHex =
           last === "material"
             ? null
             : appliedColors
               ? appliedColors[id] || appliedColors["all"]
               : null;
 
-        const materialType =
+        let materialType =
           last === "color"
             ? null
             : appliedMaterials
@@ -1256,7 +1450,11 @@ function AutoSizedModelWithDimensions({
               : null;
 
         let textureUrl = null;
-        if (appliedTextures) {
+        // When the most-recently-applied action for this material is "color",
+        // suppress the texture entirely (including the "all" fallback).
+        // Otherwise the floral/library texture decal would render ON TOP of the
+        // face color applied from Editor 2, hiding it completely.
+        if (appliedTextures && last !== "color") {
           if (typeof appliedTextures === "string") textureUrl = appliedTextures;
           else textureUrl = appliedTextures[id] || appliedTextures["all"];
         }
@@ -1317,6 +1515,69 @@ function AutoSizedModelWithDimensions({
           }
           return true;
         })();
+
+        // If it's a label mesh but has no explicit color/material, inherit from the lid/body
+        // so its background doesn't remain white when the rest of the model is colored.
+        if (
+          shouldApply &&
+          !colorHex &&
+          !materialType &&
+          (appliedColors || appliedMaterials)
+        ) {
+          const tryInherit = (appliedObj) => {
+            if (!appliedObj) return null;
+            const keys = Object.keys(appliedObj).filter((k) => k !== "all");
+            if (keys.length === 0) return null;
+
+            const labelName = (obj.name + "_" + m.name).toLowerCase();
+            const isLidLabel =
+              labelName.includes("lid") ||
+              labelName.includes("cap") ||
+              labelName.includes("circle003") ||
+              labelName.includes("top");
+            const isBodyLabel =
+              labelName.includes("body") ||
+              labelName.includes("base") ||
+              labelName.includes("bottom") ||
+              labelName.includes("circle001") ||
+              labelName.includes("cylinder");
+
+            const lidKey = keys.find(
+              (k) =>
+                k.toLowerCase().includes("lid") ||
+                k.toLowerCase().includes("cap") ||
+                k.toLowerCase().includes("circle003") ||
+                k.toLowerCase().includes("circle004"),
+            );
+            const bodyKey = keys.find(
+              (k) =>
+                k.toLowerCase().includes("body") ||
+                k.toLowerCase().includes("base") ||
+                k.toLowerCase().includes("cylinder") ||
+                k.toLowerCase().includes("circle001") ||
+                k.toLowerCase().includes("circle002"),
+            );
+
+            if (isLidLabel && !isBodyLabel && lidKey) return appliedObj[lidKey];
+            if (isBodyLabel && !isLidLabel && bodyKey)
+              return appliedObj[bodyKey];
+
+            // Fallback position check
+            if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+            const center = new THREE.Vector3();
+            obj.geometry.boundingBox.getCenter(center);
+
+            if (center.y > 0.04) {
+              return lidKey ? appliedObj[lidKey] : null;
+            } else {
+              return bodyKey ? appliedObj[bodyKey] : null;
+            }
+          };
+          if (!colorHex && last !== "material")
+            colorHex = tryInherit(appliedColors);
+          if (!materialType && last !== "color")
+            materialType = tryInherit(appliedMaterials);
+        }
 
         if (!shouldApply) {
           if (obj.userData.decalMesh) {
@@ -1428,12 +1689,10 @@ function AutoSizedModelWithDimensions({
             }
             m.color.set(colorHex);
           }
-          if (shouldApply && !textureUrl) {
-            m.map = m.userData.originalMap;
-          } else {
-            if (m.map) m.map.dispose();
-            m.map = null;
-          }
+          // If a color is applied (explicitly or inherited), REMOVE the default label map!
+          // The user explicitly stated that applying a color should wipe out the "Your Design Here" text and background!
+          if (m.map) m.map.dispose();
+          m.map = null;
           m.needsUpdate = true;
           invalidate();
         } else {
@@ -1495,7 +1754,7 @@ function AutoSizedModelWithDimensions({
               if (m.map) m.map.dispose();
               m.map = null;
             } else {
-              if (hasCustomDesign) {
+              if (hasCustomDesign || (shouldApply && !showDefaultLabels)) {
                 m.map = null;
               } else {
                 m.map = m.userData.originalMap;
@@ -1516,6 +1775,10 @@ function AutoSizedModelWithDimensions({
 
         // Apply custom materials properties
         if (typeof materialType === "string") {
+          // If a material preset is applied, remove the default label map
+          if (m.map) m.map.dispose();
+          m.map = null;
+
           // It's a legacy default material
           if (materialType === "kraft") {
             m.roughness = 0.9;
@@ -1549,6 +1812,7 @@ function AutoSizedModelWithDimensions({
             if (m.roughnessMap) m.roughnessMap.dispose();
             if (m.metalnessMap) m.metalnessMap.dispose();
             if (m.aoMap) m.aoMap.dispose();
+            if (m.bumpMap) m.bumpMap.dispose();
 
             // Initialize maps
             m.map = null;
@@ -1556,13 +1820,21 @@ function AutoSizedModelWithDimensions({
             m.roughnessMap = null;
             m.metalnessMap = null;
             m.aoMap = null;
+            m.bumpMap = null;
             m.vertexColors = false;
 
             const loadMap = (url, mapType, isColorSpace) => {
               if (!url) return;
               loader.load(url, (texture) => {
-                texture.wrapS = THREE.RepeatWrapping;
-                texture.wrapT = THREE.RepeatWrapping;
+                texture.wrapS = THREE.MirroredRepeatWrapping;
+                texture.wrapT = THREE.MirroredRepeatWrapping;
+                texture.flipY = false;
+                const imageAspect =
+                  texture.image?.width && texture.image?.height
+                    ? texture.image.width / texture.image.height
+                    : 1;
+                const repeatBase = 3;
+                texture.repeat.set(repeatBase, repeatBase * imageAspect);
                 if (isColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
                 if (m[mapType]) m[mapType].dispose();
                 m[mapType] = texture;
@@ -1582,10 +1854,14 @@ function AutoSizedModelWithDimensions({
               loadMap(materialType.maps.metallic, "metalnessMap", false);
             if (materialType.maps.ao)
               loadMap(materialType.maps.ao, "aoMap", false);
+            if (materialType.maps.height) {
+              loadMap(materialType.maps.height, "bumpMap", false);
+              m.bumpScale = 0.03;
+            }
 
             // Set physical properties to full effect to let maps dictate appearance
-            m.roughness = 1.0;
-            m.metalness = 1.0;
+            m.roughness = materialType.maps.roughness ? 1.0 : 0.65;
+            m.metalness = materialType.maps.metallic ? 1.0 : 0.0;
             m.needsUpdate = true;
           }
         } else {
@@ -1625,6 +1901,19 @@ function AutoSizedModelWithDimensions({
         if (customRoughness !== undefined) {
           m.roughness = customRoughness;
         }
+
+        if (shouldApply) {
+          m.blending = THREE.NormalBlending;
+
+          // Force the label base mesh to be fully invisible if default labels are toggled off
+          // and no custom texture (decal) is present.
+          // Otherwise, it renders as a solid colored wrapper that blocks the structural body.
+          if (!showDefaultLabels && !textureUrl) {
+            m.transparent = true;
+            m.opacity = 0;
+            if ("transmission" in m) m.transmission = 0;
+          }
+        }
       });
     });
   }, [
@@ -1635,6 +1924,7 @@ function AutoSizedModelWithDimensions({
     appliedLastApplied,
     appliedMetallic,
     appliedRoughness,
+    showDefaultLabels,
   ]);
 
   if (!clonedScene) return null;
@@ -1925,6 +2215,7 @@ export default function EditorScreen1({
     }
   };
   const [showCustomSize, setShowCustomSize] = useState(false);
+  const [showDefaultLabels, setShowDefaultLabels] = useState(true);
   const [showCameraViews, setShowCameraViews] = useState(false);
   const orbitControlsRef = useRef(null);
   const cameraRef = useRef(null);
@@ -2027,13 +2318,18 @@ export default function EditorScreen1({
       const controls = orbitControlsRef.current;
       const camera = cameraRef.current;
 
-      const savedConfig = modelPositionsConfig && modelPositionsConfig[modelUrl];
+      const savedConfig =
+        modelPositionsConfig && modelPositionsConfig[modelUrl];
 
       if (savedConfig) {
         const { target, azimuth, polar, distance } = savedConfig;
         controls.target.set(target[0], target[1], target[2]);
 
-        const spherical = new THREE.Spherical(distance || (4 / 0.6), polar, azimuth);
+        const spherical = new THREE.Spherical(
+          distance || 4 / 0.6,
+          polar,
+          azimuth,
+        );
         spherical.makeSafe();
         const offsetVec = new THREE.Vector3().setFromSpherical(spherical);
 
@@ -2133,23 +2429,40 @@ export default function EditorScreen1({
   const [exportPdfChecked, setExportPdfChecked] = useState(false);
 
   const textureLibraryRaw = useMemo(() => getTextureLibrary(), []);
-  
+
   const textureLibrary = useMemo(() => {
     const lib = [...textureLibraryRaw];
     if (modelUrl) {
       const url = modelUrl.toLowerCase();
       let firstCategory = null;
-      
-      if (url.includes("round") || url.includes("food container") || url.includes("oval") || url.includes("jar")) {
+
+      if (
+        url.includes("round") ||
+        url.includes("food container") ||
+        url.includes("oval") ||
+        url.includes("jar")
+      ) {
         firstCategory = "Floral";
-      } else if (url.includes("bottle") || url.includes("flask") || url.includes("tumbler") || url.includes("can") || url.includes("cup")) {
+      } else if (
+        url.includes("bottle") ||
+        url.includes("flask") ||
+        url.includes("tumbler") ||
+        url.includes("can") ||
+        url.includes("cup")
+      ) {
         firstCategory = "Metal";
-      } else if (url.includes("biodegradable") || url.includes("die cut") || url.includes("cart") || url.includes("box") || url.includes("mailer")) {
+      } else if (
+        url.includes("biodegradable") ||
+        url.includes("die cut") ||
+        url.includes("cart") ||
+        url.includes("box") ||
+        url.includes("mailer")
+      ) {
         firstCategory = "Paper";
       }
-      
+
       if (firstCategory) {
-        const idx = lib.findIndex(c => c.category === firstCategory);
+        const idx = lib.findIndex((c) => c.category === firstCategory);
         if (idx !== -1) {
           const item = lib.splice(idx, 1)[0];
           lib.unshift(item);
@@ -2423,14 +2736,15 @@ export default function EditorScreen1({
   const handleSetToolMode = (mode) => setToolMode(mode);
 
   return (
-    <div
-      className="flex flex-col h-full w-full relative"
-    >
+    <div className="flex flex-col h-full w-full relative">
       {/* 3D Canvas Background */}
       <div
         id="three-canvas-container"
         className="absolute inset-0 z-0 transition-colors duration-300"
-        style={{ cursor: toolMode === "hand" ? "grab" : "default", backgroundColor: bgColor }}
+        style={{
+          cursor: toolMode === "hand" ? "grab" : "default",
+          backgroundColor: bgColor,
+        }}
       >
         <R3FCanvas
           camera={{ position: [0, 0.5, 6.667], fov: 45 }}
@@ -2552,6 +2866,7 @@ export default function EditorScreen1({
                 isLidOpen={isLidOpen}
                 onCapHover={isBottleModel ? handleCapHover : undefined}
                 onCapLeave={isBottleModel ? handleCapLeave : undefined}
+                showDefaultLabels={showDefaultLabels}
               />
             )}
           </Suspense>
@@ -2578,6 +2893,60 @@ export default function EditorScreen1({
             />
           </GizmoHelper>
         </R3FCanvas>
+
+        {/* Lid Open/Close Button - Top Center */}
+        {modelUrl &&
+          !isLayoutModel &&
+          (modelUrl.toLowerCase().includes("food container") ||
+            modelUrl.toLowerCase().includes("food%20container") ||
+            modelUrl.toLowerCase().includes("oval") ||
+            modelUrl.toLowerCase().includes("round") ||
+            modelUrl.toLowerCase().includes("tamper")) && (
+            <div className="absolute top-[8vh] left-1/2 transform -translate-x-1/2 z-10 pointer-events-auto flex items-center justify-center">
+              <button
+                onClick={() => setIsLidOpen(!isLidOpen)}
+                className="flex items-center gap-2 bg-transparent text-gray-700 font-medium text-[15px] hover:text-[#c05520] transition-colors border-none cursor-pointer"
+              >
+                {isLidOpen ? (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3"
+                      />
+                    </svg>
+                    <span>Close Lid</span>
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
+                      />
+                    </svg>
+                    <span>Open Lid</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
         {/* Measurement SVG Overlay */}
         {showMeasurements && modelUrl && (
@@ -2741,7 +3110,10 @@ export default function EditorScreen1({
           onMouseLeave={() => {
             isOverPanelRef.current = false;
             // Don't close if they are actively using the OS color picker
-            if (document.activeElement && document.activeElement.type === "color") {
+            if (
+              document.activeElement &&
+              document.activeElement.type === "color"
+            ) {
               return;
             }
             capHideTimerRef.current = setTimeout(() => {
@@ -2757,11 +3129,24 @@ export default function EditorScreen1({
               <span className="text-xs font-bold text-gray-700">Cap Color</span>
               {appliedColors?.[capHoverMaterialKey] && (
                 <button
-                  onClick={() => onApplyColor && onApplyColor(capHoverMaterialKey, null)}
+                  onClick={() =>
+                    onApplyColor && onApplyColor(capHoverMaterialKey, null)
+                  }
                   className="text-[10px] text-gray-400 hover:text-red-500 cursor-pointer flex items-center gap-0.5 transition-colors font-semibold"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-2.5 h-2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                    stroke="currentColor"
+                    className="w-2.5 h-2.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                   Reset
                 </button>
@@ -2772,23 +3157,34 @@ export default function EditorScreen1({
             <div className="flex items-center gap-2">
               {/* Transparent */}
               {(() => {
-                const isSelected = appliedColors?.[capHoverMaterialKey] === "transparent";
+                const isSelected =
+                  appliedColors?.[capHoverMaterialKey] === "transparent";
                 return (
                   <button
-                    onClick={() => onApplyColor && onApplyColor(capHoverMaterialKey, "transparent")}
+                    onClick={() =>
+                      onApplyColor &&
+                      onApplyColor(capHoverMaterialKey, "transparent")
+                    }
                     className={`w-7 h-7 rounded-full border-2 flex-shrink-0 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md scale-110" : "border-gray-200"}`}
-                    style={{ background: "conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)", backgroundSize: "8px 8px" }}
+                    style={{
+                      background:
+                        "conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)",
+                      backgroundSize: "8px 8px",
+                    }}
                     title="Transparent"
                   />
                 );
               })()}
               {/* 4 preset swatches */}
               {["#e6e2db", "#1a1a1a", "#2c3e50", "#c05520"].map((color) => {
-                const isSelected = appliedColors?.[capHoverMaterialKey] === color;
+                const isSelected =
+                  appliedColors?.[capHoverMaterialKey] === color;
                 return (
                   <button
                     key={color}
-                    onClick={() => onApplyColor && onApplyColor(capHoverMaterialKey, color)}
+                    onClick={() =>
+                      onApplyColor && onApplyColor(capHoverMaterialKey, color)
+                    }
                     className={`w-7 h-7 rounded-full border-2 flex-shrink-0 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md scale-110" : "border-gray-200"}`}
                     style={{ backgroundColor: color }}
                     title={color}
@@ -2802,8 +3198,16 @@ export default function EditorScreen1({
               >
                 <input
                   type="color"
-                  value={appliedColors?.[capHoverMaterialKey] && appliedColors[capHoverMaterialKey] !== "transparent" ? appliedColors[capHoverMaterialKey] : "#ffffff"}
-                  onChange={(e) => onApplyColor && onApplyColor(capHoverMaterialKey, e.target.value)}
+                  value={
+                    appliedColors?.[capHoverMaterialKey] &&
+                    appliedColors[capHoverMaterialKey] !== "transparent"
+                      ? appliedColors[capHoverMaterialKey]
+                      : "#ffffff"
+                  }
+                  onChange={(e) =>
+                    onApplyColor &&
+                    onApplyColor(capHoverMaterialKey, e.target.value)
+                  }
                   onBlur={() => {
                     // Close panel if mouse isn't over it when picker closes
                     if (!isOverPanelRef.current) {
@@ -2813,8 +3217,19 @@ export default function EditorScreen1({
                   }}
                   className="absolute opacity-0 pointer-events-none w-0 h-0"
                 />
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3 text-gray-400">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  className="w-3 h-3 text-gray-400"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4.5v15m7.5-7.5h-15"
+                  />
                 </svg>
               </label>
             </div>
@@ -2975,129 +3390,139 @@ export default function EditorScreen1({
             </button>
 
             {!isBottleModel && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-gray-700">
-                Target Material
-              </label>
-              <select
-                value={selectedMaterial || ""}
-                onChange={(e) => setSelectedMaterial(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium outline-none focus:border-[#c05520] focus:ring-1 focus:ring-[#c05520] transition-all"
-              >
-                <option value="none">Select Material</option>
-                <option value="all">All Materials</option>
-                {modelMaterials.map((mat) => (
-                  <option key={mat.id} value={mat.id}>
-                    {mat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-gray-700">
+                  Target Material
+                </label>
+                <select
+                  value={selectedMaterial || ""}
+                  onChange={(e) => setSelectedMaterial(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium outline-none focus:border-[#c05520] focus:ring-1 focus:ring-[#c05520] transition-all"
+                >
+                  <option value="none">Select Material</option>
+                  <option value="all">All Materials</option>
+                  {modelMaterials
+                    .filter(
+                      (mat) =>
+                        showDefaultLabels ||
+                        (!mat.name.toLowerCase().includes("label") &&
+                          !mat.name.toLowerCase().includes("wrapper")),
+                    )
+                    .map((mat) => (
+                      <option key={mat.id} value={mat.id}>
+                        {mat.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
             )}
 
             {!isBottleModel && (
-            <div className={`flex flex-col gap-3 ${!selectedMaterial || selectedMaterial === "none" ? "opacity-50 pointer-events-none grayscale select-none" : "transition-opacity duration-300"}`}>
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-gray-700">
-                  Apply Color
-                </label>
-                {appliedColors?.[
-                  selectedMaterial && selectedMaterial !== "none"
-                    ? selectedMaterial
-                    : "all"
-                ] && (
-                  <button
-                    onClick={() => {
-                      if (onApplyColor) {
-                        onApplyColor(selectedMaterial, null);
-                      }
-                    }}
-                    className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
-                  >
+              <div
+                className={`flex flex-col gap-3 ${!selectedMaterial || selectedMaterial === "none" ? "opacity-50 pointer-events-none grayscale select-none" : "transition-opacity duration-300"}`}
+              >
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-gray-700">
+                    Apply Color
+                  </label>
+                  {appliedColors?.[
+                    selectedMaterial && selectedMaterial !== "none"
+                      ? selectedMaterial
+                      : "all"
+                  ] && (
+                    <button
+                      onClick={() => {
+                        if (onApplyColor) {
+                          onApplyColor(selectedMaterial, null);
+                        }
+                      }}
+                      className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2.5}
+                        stroke="currentColor"
+                        className="w-3 h-3"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 w-full">
+                  <div className="relative w-[1.8vw] h-[1.8vw] rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0 flex items-center justify-center bg-gray-50 hover:bg-gray-100 group">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      strokeWidth={2.5}
+                      strokeWidth={1.5}
                       stroke="currentColor"
-                      className="w-3 h-3"
+                      className="w-[1.1vw] h-[1.1vw] text-gray-500 absolute z-0 group-hover:scale-110 transition-transform"
                     >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
+                        d="M15 11.25l1.5 1.5.75-.75V8.758l2.276-.61a3 3 0 10-3.675-3.675l-.61 2.277H12l-.75.75 1.5 1.5M15 11.25v-2.25m0 2.25l-2.25 1.5M7.5 15l-1.5 1.5-.75-.75V12.5l2.25-1.5M7.5 15l1.5 2.25m0-2.25l-2.25-1.5M10.5 18l-1.5 1.5-.75-.75V15.5l2.25-1.5M10.5 18l1.5 2.25m0-2.25l-2.25-1.5"
                       />
                     </svg>
-                    Reset
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-3 w-full">
-                <div className="relative w-[1.8vw] h-[1.8vw] rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0 flex items-center justify-center bg-gray-50 hover:bg-gray-100 group">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-[1.1vw] h-[1.1vw] text-gray-500 absolute z-0 group-hover:scale-110 transition-transform"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15 11.25l1.5 1.5.75-.75V8.758l2.276-.61a3 3 0 10-3.675-3.675l-.61 2.277H12l-.75.75 1.5 1.5M15 11.25v-2.25m0 2.25l-2.25 1.5M7.5 15l-1.5 1.5-.75-.75V12.5l2.25-1.5M7.5 15l1.5 2.25m0-2.25l-2.25-1.5M10.5 18l-1.5 1.5-.75-.75V15.5l2.25-1.5M10.5 18l1.5 2.25m0-2.25l-2.25-1.5"
+                    <input
+                      type="color"
+                      value={
+                        appliedColors?.[
+                          selectedMaterial && selectedMaterial !== "none"
+                            ? selectedMaterial
+                            : "all"
+                        ] || "#ffffff"
+                      }
+                      onChange={(e) =>
+                        onApplyColor &&
+                        onApplyColor(selectedMaterial, e.target.value)
+                      }
+                      className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0 z-10"
                     />
-                  </svg>
-                  <input
-                    type="color"
-                    value={
-                      appliedColors?.[
-                        selectedMaterial && selectedMaterial !== "none"
-                          ? selectedMaterial
-                          : "all"
-                      ] || "#ffffff"
-                    }
-                    onChange={(e) =>
-                      onApplyColor &&
-                      onApplyColor(selectedMaterial, e.target.value)
-                    }
-                    className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0 z-10"
-                  />
-                </div>
-                <div className="flex-1 grid grid-cols-6 gap-2">
-                  {[
-                    "#3b82f6",
-                    "#e6e2db",
-                    "#ffffff",
-                    "#1a1a1a",
-                    "#2c3e50",
-                    "#c05520",
-                  ].map((color) => {
-                    const isSelected =
-                      appliedColors?.[
-                        selectedMaterial && selectedMaterial !== "none"
-                          ? selectedMaterial
-                          : "all"
-                      ] === color;
-                    const backgroundStyle = color;
-                    const backgroundSize = undefined;
-                    return (
-                      <button
-                        key={color}
-                        onClick={() =>
-                          onApplyColor && onApplyColor(selectedMaterial, color)
-                        }
-                        className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
-                        style={{
-                          background: backgroundStyle,
-                          backgroundSize: backgroundSize,
-                        }}
-                      />
-                    );
-                  })}
+                  </div>
+                  <div className="flex-1 grid grid-cols-6 gap-2">
+                    {[
+                      "#3b82f6",
+                      "#e6e2db",
+                      "#ffffff",
+                      "#1a1a1a",
+                      "#2c3e50",
+                      "#c05520",
+                    ].map((color) => {
+                      const isSelected =
+                        appliedColors?.[
+                          selectedMaterial && selectedMaterial !== "none"
+                            ? selectedMaterial
+                            : "all"
+                        ] === color;
+                      const backgroundStyle = color;
+                      const backgroundSize = undefined;
+                      return (
+                        <button
+                          key={color}
+                          onClick={() =>
+                            onApplyColor &&
+                            onApplyColor(selectedMaterial, color)
+                          }
+                          className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
+                          style={{
+                            background: backgroundStyle,
+                            backgroundSize: backgroundSize,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
             )}
 
             {/* Metallic & Roughness Adjustments */}
@@ -3177,71 +3602,24 @@ export default function EditorScreen1({
               </div>
             </div>
 
-
-
             {/* Texture Library */}
             {!(modelUrl && modelUrl.toLowerCase().includes("tape")) && (
               <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-gray-700">
-                  Texture Library
-                </label>
-                <button
-                  onClick={() => {
-                    if (textureTimeoutRef.current)
-                      clearTimeout(textureTimeoutRef.current);
-                    if (textureFallbackTimeoutRef.current)
-                      clearTimeout(textureFallbackTimeoutRef.current);
-                    setIsModelLoading(false);
-                    if (onApplyMaterial)
-                      onApplyMaterial(selectedMaterial, null);
-                  }}
-                  className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2.5}
-                    stroke="currentColor"
-                    className="w-3 h-3"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                  Clear
-                </button>
-              </div>
-
-              {/* Category Tabs */}
-              <div className="flex gap-1.5 py-1 items-center justify-between relative">
-                <div className="flex gap-1.5 overflow-hidden flex-wrap max-h-8">
-                  {textureLibrary
-                    .filter(
-                      (c, i) => i < 3 || c.category === activeTextureCategory,
-                    )
-                    .map((category) => (
-                      <button
-                        key={category.category}
-                        onClick={() =>
-                          setActiveTextureCategory(category.category)
-                        }
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTextureCategory === category.category ? "bg-[#c05520] text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-                      >
-                        {category.category}
-                      </button>
-                    ))}
-                </div>
-
-                <div className="relative shrink-0">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Texture Library
+                  </label>
                   <button
-                    onClick={() =>
-                      setIsTextureDropdownOpen(!isTextureDropdownOpen)
-                    }
-                    className={`p-1.5 rounded-full border text-gray-500 hover:text-gray-900 bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer flex items-center justify-center transition-all ${isTextureDropdownOpen ? "bg-gray-100 border-gray-300" : ""}`}
+                    onClick={() => {
+                      if (textureTimeoutRef.current)
+                        clearTimeout(textureTimeoutRef.current);
+                      if (textureFallbackTimeoutRef.current)
+                        clearTimeout(textureFallbackTimeoutRef.current);
+                      setIsModelLoading(false);
+                      if (onApplyMaterial)
+                        onApplyMaterial(selectedMaterial, null);
+                    }}
+                    className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -3249,91 +3627,136 @@ export default function EditorScreen1({
                       viewBox="0 0 24 24"
                       strokeWidth={2.5}
                       stroke="currentColor"
-                      className="w-4 h-4"
+                      className="w-3 h-3"
                     >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="m19.5 8.25-7.5 7.5-7.5-7.5"
+                        d="M6 18L18 6M6 6l12 12"
                       />
                     </svg>
+                    Clear
                   </button>
+                </div>
 
-                  {isTextureDropdownOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsTextureDropdownOpen(false)}
-                      />
-                      <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto py-1.5 flex flex-col">
-                        {textureLibrary.map((category) => (
-                          <button
-                            key={category.category}
-                            onClick={() => {
-                              setActiveTextureCategory(category.category);
-                              setIsTextureDropdownOpen(false);
-                            }}
-                            className={`px-4 py-2 text-left text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer ${activeTextureCategory === category.category ? "text-[#c05520] bg-orange-50/50" : "text-gray-700"}`}
-                          >
-                            {category.category}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                {/* Category Tabs */}
+                <div className="flex gap-1.5 py-1 items-center justify-between relative">
+                  <div className="flex gap-1.5 overflow-hidden flex-wrap max-h-8">
+                    {textureLibrary
+                      .filter(
+                        (c, i) => i < 3 || c.category === activeTextureCategory,
+                      )
+                      .map((category) => (
+                        <button
+                          key={category.category}
+                          onClick={() =>
+                            setActiveTextureCategory(category.category)
+                          }
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTextureCategory === category.category ? "bg-[#c05520] text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                        >
+                          {category.category}
+                        </button>
+                      ))}
+                  </div>
+
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={() =>
+                        setIsTextureDropdownOpen(!isTextureDropdownOpen)
+                      }
+                      className={`p-1.5 rounded-full border text-gray-500 hover:text-gray-900 bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer flex items-center justify-center transition-all ${isTextureDropdownOpen ? "bg-gray-100 border-gray-300" : ""}`}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2.5}
+                        stroke="currentColor"
+                        className="w-4 h-4"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m19.5 8.25-7.5 7.5-7.5-7.5"
+                        />
+                      </svg>
+                    </button>
+
+                    {isTextureDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setIsTextureDropdownOpen(false)}
+                        />
+                        <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto py-1.5 flex flex-col">
+                          {textureLibrary.map((category) => (
+                            <button
+                              key={category.category}
+                              onClick={() => {
+                                setActiveTextureCategory(category.category);
+                                setIsTextureDropdownOpen(false);
+                              }}
+                              className={`px-4 py-2 text-left text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer ${activeTextureCategory === category.category ? "text-[#c05520] bg-orange-50/50" : "text-gray-700"}`}
+                            >
+                              {category.category}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Texture Grid */}
+                <div className="grid grid-cols-3 gap-2 mt-1 max-h-[200px] overflow-y-auto pr-1">
+                  {textureLibrary
+                    .find((c) => c.category === activeTextureCategory)
+                    ?.textures.map((texture) => (
+                      <button
+                        key={texture.id}
+                        title={texture.name}
+                        disabled={isModelLoading}
+                        onClick={() => {
+                          if (isModelLoading || !onApplyMaterial) return;
+
+                          if (textureTimeoutRef.current)
+                            clearTimeout(textureTimeoutRef.current);
+                          if (textureFallbackTimeoutRef.current)
+                            clearTimeout(textureFallbackTimeoutRef.current);
+
+                          // Force the loading spinner to appear before blocking the main thread
+                          setIsModelLoading(true);
+                          textureTimeoutRef.current = setTimeout(() => {
+                            onApplyMaterial(selectedMaterial, texture);
+                            // Fallback to hide spinner to cover the WebGL shader compilation block
+                            textureFallbackTimeoutRef.current = setTimeout(
+                              () => setIsModelLoading(false),
+                              3000,
+                            );
+                          }, 150);
+                        }}
+                        className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center transition-all ${isModelLoading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${appliedMaterials?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
+                      >
+                        {texture.preview ? (
+                          <img
+                            src={texture.preview}
+                            alt={texture.name}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 p-1 text-center font-medium leading-tight">
+                            {texture.name}
+                          </div>
+                        )}
+                        {appliedMaterials?.[
+                          selectedMaterial && selectedMaterial !== "none"
+                            ? selectedMaterial
+                            : "all"
+                        ]?.id === texture.id && <TextureActiveOverlay />}
+                      </button>
+                    ))}
                 </div>
               </div>
-
-              {/* Texture Grid */}
-              <div className="grid grid-cols-3 gap-2 mt-1 max-h-[200px] overflow-y-auto pr-1">
-                {textureLibrary
-                  .find((c) => c.category === activeTextureCategory)
-                  ?.textures.map((texture) => (
-                    <button
-                      key={texture.id}
-                      title={texture.name}
-                      disabled={isModelLoading}
-                      onClick={() => {
-                        if (isModelLoading || !onApplyMaterial) return;
-
-                        if (textureTimeoutRef.current)
-                          clearTimeout(textureTimeoutRef.current);
-                        if (textureFallbackTimeoutRef.current)
-                          clearTimeout(textureFallbackTimeoutRef.current);
-
-                        // Force the loading spinner to appear before blocking the main thread
-                        setIsModelLoading(true);
-                        textureTimeoutRef.current = setTimeout(() => {
-                          onApplyMaterial(selectedMaterial, texture);
-                          // Fallback to hide spinner to cover the WebGL shader compilation block
-                          textureFallbackTimeoutRef.current = setTimeout(
-                            () => setIsModelLoading(false),
-                            3000,
-                          );
-                        }, 150);
-                      }}
-                      className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center transition-all ${isModelLoading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${appliedMaterials?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
-                    >
-                      {texture.preview ? (
-                        <img
-                          src={texture.preview}
-                          alt={texture.name}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 p-1 text-center font-medium leading-tight">
-                          {texture.name}
-                        </div>
-                      )}
-                      {appliedMaterials?.[
-                        selectedMaterial && selectedMaterial !== "none"
-                          ? selectedMaterial
-                          : "all"
-                      ]?.id === texture.id && <TextureActiveOverlay />}
-                    </button>
-                  ))}
-              </div>
-            </div>
             )}
           </div>
         )}
@@ -3459,7 +3882,35 @@ export default function EditorScreen1({
       </div>
 
       {/* Export & Save Action Buttons Column */}
-      <div className="absolute right-[5vw] top-[2vh] z-10 flex flex-col gap-3 items-center pointer-events-none">
+      <div className="absolute right-[5vw] top-[2vh] z-10 flex flex-row gap-4 items-start pointer-events-none">
+        {/* Toggle Default Labels */}
+        {!(
+          (appliedTextures && Object.keys(appliedTextures).length > 0) ||
+          (appliedColors && Object.keys(appliedColors).length > 0) ||
+          (appliedMaterials && Object.keys(appliedMaterials).length > 0)
+        ) && (
+          <div className="bg-white/90 backdrop-blur-sm rounded-[20px] p-3 shadow-lg flex items-center gap-3 pointer-events-auto border border-gray-100/50">
+            <span
+              className="text-sm font-bold text-gray-700 select-none cursor-pointer whitespace-nowrap"
+              onClick={() => setShowDefaultLabels(!showDefaultLabels)}
+            >
+              Show Default Labels
+            </span>
+            <div
+              onClick={() => setShowDefaultLabels(!showDefaultLabels)}
+              className={`w-11 h-6 flex flex-shrink-0 items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
+                showDefaultLabels ? "bg-[#c05520]" : "bg-gray-300"
+              }`}
+            >
+              <div
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
+                  showDefaultLabels ? "translate-x-5" : ""
+                }`}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Save & Export Container */}
         <div className="bg-white rounded-[20px] p-2 shadow-lg flex flex-col gap-2 items-center justify-center pointer-events-auto">
           <Tooltip1 label="Save Scene" side="left">
@@ -3506,41 +3957,6 @@ export default function EditorScreen1({
             </button>
           </Tooltip1>
         </div>
-
-        {/* Lid Open/Close Button Container (Placed separately below) */}
-        {modelUrl && !isLayoutModel && (
-          modelUrl.toLowerCase().includes("food container") ||
-          modelUrl.toLowerCase().includes("food%20container") ||
-          modelUrl.toLowerCase().includes("oval") ||
-          modelUrl.toLowerCase().includes("round") ||
-          modelUrl.toLowerCase().includes("tamper")
-        ) && (
-          <div className="bg-white rounded-[20px] p-2 shadow-lg flex flex-col items-center justify-center pointer-events-auto">
-            <Tooltip1 label={isLidOpen ? "Close Lid" : "Open Lid"} side="left">
-              <button
-                onClick={() => setIsLidOpen(!isLidOpen)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center border-none cursor-pointer transition-colors ${
-                  isLidOpen ? "bg-[#c05520] text-white hover:bg-[#a94a1c]" : "bg-transparent text-[#c05520] hover:bg-gray-100"
-                }`}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2.2}
-                  stroke="currentColor"
-                  className="w-[1.1vw] h-[1.1vw]"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M20 7.5c0 1.933-3.582 3.5-8 3.5s-8-1.567-8-3.5M20 7.5C20 5.567 16.418 4 12 4S4 5.567 4 7.5M20 7.5V18c0 1.933-3.582 3.5-8 3.5s-8-1.567-8-3.5V7.5M12 11V4"
-                  />
-                </svg>
-              </button>
-            </Tooltip1>
-          </div>
-        )}
       </div>
 
       {/* Right Floating Pill */}
@@ -3587,14 +4003,21 @@ export default function EditorScreen1({
                 const controls = orbitControlsRef.current;
                 const camera = cameraRef.current;
 
-                const savedConfig = modelPositionsConfig && modelPositionsConfig[modelUrl];
+                const savedConfig =
+                  modelPositionsConfig && modelPositionsConfig[modelUrl];
 
                 if (savedConfig) {
                   const { target, azimuth, polar, distance } = savedConfig;
                   controls.target.set(target[0], target[1], target[2]);
-                  const spherical = new THREE.Spherical(distance || (4 / 0.6), polar, azimuth);
+                  const spherical = new THREE.Spherical(
+                    distance || 4 / 0.6,
+                    polar,
+                    azimuth,
+                  );
                   spherical.makeSafe();
-                  const offsetVec = new THREE.Vector3().setFromSpherical(spherical);
+                  const offsetVec = new THREE.Vector3().setFromSpherical(
+                    spherical,
+                  );
                   camera.position.copy(controls.target).add(offsetVec);
                   camera.lookAt(controls.target);
                   controls.setAzimuthalAngle(azimuth);
@@ -3638,8 +4061,6 @@ export default function EditorScreen1({
             </svg>
           </button>
         </Tooltip1>
-
-
 
         <Tooltip1 label="Reset All Edits" side="left">
           <button

@@ -3789,7 +3789,10 @@ const Canvas = forwardRef(
         onSelectedLayerChangeRef.current?.(null);
       },
       hasArtwork: () => {
-        return imagesRef.current && imagesRef.current.length > 0;
+        const hasImages = imagesRef.current && imagesRef.current.length > 0;
+        const hasFaceColors = faceColorsRef.current && Object.keys(faceColorsRef.current).length > 0;
+        const hasCustomBgColor = bgColor && bgColor.toLowerCase() !== "#ffffff" && bgColor.toLowerCase() !== "transparent" && bgColor !== "none";
+        return hasImages || hasFaceColors || hasCustomBgColor;
       },
       hasSelectedFace: () => {
         return selectedFacesRef.current.size > 0;

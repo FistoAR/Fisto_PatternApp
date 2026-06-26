@@ -211,6 +211,7 @@ export default function EditorScreen2({
   sceneBgImage,
   selectedCapUrl,
   onSelectCap,
+  selectedMaterial,
 }) {
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [showTapeLayout, setShowTapeLayout] = useState(false);
@@ -260,7 +261,9 @@ export default function EditorScreen2({
     let newY = rightPanelDragStart.current.startY + dy;
 
     if (typeof window !== "undefined") {
-      const panelHeight = rightPanelRef.current ? rightPanelRef.current.offsetHeight : 500;
+      const panelHeight = rightPanelRef.current
+        ? rightPanelRef.current.offsetHeight
+        : 500;
       const maxY = window.innerHeight - panelHeight - 24;
       newY = Math.max(24, Math.min(newY, maxY));
     }
@@ -338,7 +341,10 @@ export default function EditorScreen2({
 
   useEffect(() => {
     try {
-      localStorage.setItem("fisto_uploaded_images", JSON.stringify(uploadedImages));
+      localStorage.setItem(
+        "fisto_uploaded_images",
+        JSON.stringify(uploadedImages),
+      );
     } catch (e) {
       console.error("Failed to save uploaded images to local storage:", e);
     }
@@ -516,14 +522,17 @@ export default function EditorScreen2({
 
   const handleSave = () => {
     const finalColor = selectedColor !== "none" ? bgColor : undefined;
-    if (canvasRef.current?.getCleanTexture) {
+    const hasArtwork = canvasRef.current?.hasArtwork?.() ?? false;
+    if (hasArtwork && canvasRef.current?.getCleanTexture) {
       const dataUrl = canvasRef.current.getCleanTexture();
       onBack(dataUrl, finalColor);
-    } else if (textureCanvasRef.current) {
+    } else if (hasArtwork && textureCanvasRef.current) {
       const dataUrl = textureCanvasRef.current.toDataURL("image/png");
       onBack(dataUrl, finalColor);
     } else {
-      onBack(undefined, finalColor);
+      // No artwork on canvas — pass null so EditorPage removes the texture
+      // for only this material (not all materials)
+      onBack(null, finalColor);
     }
   };
 
@@ -611,8 +620,17 @@ export default function EditorScreen2({
             {leftTab === "uploads" && (
               <UploadsPopup
                 onUpload={(file, url, fitType, uploadType, isDefault) => {
-                  if (url && !isDefault && !uploadedImages.some(i => (typeof i === 'string' ? i : i.url) === url)) {
-                    setUploadedImages((prev) => [{ url, type: uploadType || 'design' }, ...prev]);
+                  if (
+                    url &&
+                    !isDefault &&
+                    !uploadedImages.some(
+                      (i) => (typeof i === "string" ? i : i.url) === url,
+                    )
+                  ) {
+                    setUploadedImages((prev) => [
+                      { url, type: uploadType || "design" },
+                      ...prev,
+                    ]);
                   }
                   const target = file || url;
                   if (target) {
@@ -632,18 +650,27 @@ export default function EditorScreen2({
                   canvasRef.current?.updateSelectedTextureGaps(rowGap, colGap);
                 }}
                 onDeleteUploadedImage={(url) => {
-                  setUploadedImages(prev => prev.filter(item => (typeof item === 'string' ? item : item.url) !== url));
+                  setUploadedImages((prev) =>
+                    prev.filter(
+                      (item) =>
+                        (typeof item === "string" ? item : item.url) !== url,
+                    ),
+                  );
                 }}
                 onTogglePinUploadedImage={(url) => {
-                  setUploadedImages(prev => prev.map(item => {
-                    if (typeof item === 'string') {
-                      return item === url ? { url: item, type: 'design', pinned: true } : item;
-                    }
-                    if (item.url === url) {
-                      return { ...item, pinned: !item.pinned };
-                    }
-                    return item;
-                  }));
+                  setUploadedImages((prev) =>
+                    prev.map((item) => {
+                      if (typeof item === "string") {
+                        return item === url
+                          ? { url: item, type: "design", pinned: true }
+                          : item;
+                      }
+                      if (item.url === url) {
+                        return { ...item, pinned: !item.pinned };
+                      }
+                      return item;
+                    }),
+                  );
                 }}
               />
             )}
@@ -1048,7 +1075,7 @@ export default function EditorScreen2({
         <div
           className="flex-1 flex flex-col h-full min-w-0 relative transition-all duration-300"
           style={{
-            paddingRight: 0
+            paddingRight: 0,
           }}
         >
           {/* Floating Left Panel Trigger when collapsed */}
@@ -1214,7 +1241,10 @@ export default function EditorScreen2({
               : "top 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease",
           }}
         >
-          <div ref={rightPanelRef} className="h-fit rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 bg-white flex flex-col pointer-events-auto">
+          <div
+            ref={rightPanelRef}
+            className="h-fit rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 bg-white flex flex-col pointer-events-auto"
+          >
             {/* Drag Handle for Vertical Repositioning */}
             <div
               className="w-full h-5 flex items-center justify-center cursor-ns-resize hover:bg-gray-50 active:cursor-grabbing border-b border-gray-100 select-none bg-white transition-colors"
@@ -1253,6 +1283,7 @@ export default function EditorScreen2({
               setShowPreview={setShowPreview}
               selectedCapUrl={selectedCapUrl}
               onSelectCap={onSelectCap}
+              selectedMaterial={selectedMaterial}
             />
           </div>
         </div>

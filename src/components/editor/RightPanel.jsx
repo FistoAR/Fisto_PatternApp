@@ -9,7 +9,14 @@ import {
   useCallback,
 } from "react";
 import { Canvas as R3FCanvas, useThree, useLoader } from "@react-three/fiber";
-import { OrbitControls, useGLTF, useProgress, Html, GizmoHelper, GizmoViewport } from "@react-three/drei";
+import {
+  OrbitControls,
+  useGLTF,
+  useProgress,
+  Html,
+  GizmoHelper,
+  GizmoViewport,
+} from "@react-three/drei";
 import SafeEnvironment from "./SafeEnvironment";
 import * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
@@ -136,12 +143,13 @@ export default function RightPanel({
   setShowPreview,
   selectedCapUrl,
   onSelectCap,
+  selectedMaterial,
 }) {
-  const isBottleModel = modelUrl && (
-    modelUrl.toLowerCase().includes("plastic") ||
-    modelUrl.toLowerCase().includes("glass") ||
-    modelUrl.toLowerCase().includes("soft")
-  );
+  const isBottleModel =
+    modelUrl &&
+    (modelUrl.toLowerCase().includes("plastic") ||
+      modelUrl.toLowerCase().includes("glass") ||
+      modelUrl.toLowerCase().includes("soft"));
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -395,6 +403,7 @@ export default function RightPanel({
                     appliedLastApplied={appliedLastApplied}
                     bgColor={bgColor}
                     selectedColor={selectedColor}
+                    selectedMaterial={selectedMaterial}
                     isActive={isActive}
                     selectedCapUrl={selectedCapUrl}
                   />
@@ -417,7 +426,7 @@ export default function RightPanel({
                 margin={[gizmoMarginVal, gizmoMarginVal]}
               >
                 <GizmoViewport
-                  axisColors={['#ef4444', '#22c55e', '#3b82f6']}
+                  axisColors={["#ef4444", "#22c55e", "#3b82f6"]}
                   labelColor="white"
                   scale={40 * gizmoScale}
                 />
@@ -751,8 +760,6 @@ export default function RightPanel({
       {/* Cap Selector (Only for Bottle Models) */}
       {isBottleModel && (
         <div className="px-3 pb-4 pt-2 border-t border-gray-100 flex flex-col gap-2">
-         
-
           {/* Scrollable Container with exact 3-row visible height */}
           <div className="overflow-y-auto pr-0.5 flex flex-col gap-2 max-h-[220px]">
             <div className="grid grid-cols-2 gap-1.5">
@@ -767,8 +774,18 @@ export default function RightPanel({
               >
                 {/* Visual Image Placeholder for Default Cap */}
                 <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-200/50 flex items-center justify-center mb-1 relative overflow-hidden">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                    />
                   </svg>
                 </div>
               </button>
@@ -787,7 +804,11 @@ export default function RightPanel({
                   {/* Visual Image/Render for Cap */}
                   <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-[#fdfbf7] to-[#f5f0e6] border border-orange-100 flex items-center justify-center mb-1 relative overflow-hidden">
                     {cap.imageUrl ? (
-                      <img src={cap.imageUrl} alt={cap.name} className="w-full h-full object-cover" />
+                      <img
+                        src={cap.imageUrl}
+                        alt={cap.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <>
                         {/* Visual cap illustration fallback */}
@@ -871,7 +892,14 @@ function MaterialItem({ icon, title, subtitle, hasArrow }) {
   );
 }
 
-function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimationComplete }) {
+function CapInstance({
+  id,
+  url,
+  transform,
+  appliedColors,
+  isExiting,
+  onAnimationComplete,
+}) {
   const { scene } = useGLTF(url);
   const ref = useRef();
   const clonedCap = useMemo(() => {
@@ -892,10 +920,16 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
     if (!clonedCap) return;
     clonedCap.traverse((obj) => {
       if (!obj.isMesh || !obj.material) return;
-      const mArray = Array.isArray(obj.material) ? obj.material : [obj.material];
+      const mArray = Array.isArray(obj.material)
+        ? obj.material
+        : [obj.material];
       mArray.forEach((m) => {
-        const capKey = Object.keys(appliedColors || {}).find(k => k.toLowerCase().includes("cap"));
-        const color = capKey ? appliedColors[capKey] : (appliedColors?.["all"] || null);
+        const capKey = Object.keys(appliedColors || {}).find((k) =>
+          k.toLowerCase().includes("cap"),
+        );
+        const color = capKey
+          ? appliedColors[capKey]
+          : appliedColors?.["all"] || null;
         if (color && color !== "transparent") {
           m.color.setHex(parseInt(color.replace("#", "0x")));
         }
@@ -918,33 +952,46 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
       gsap.killTweensOf(group.rotation);
       gsap.killTweensOf(group.scale);
 
-      gsap.timeline({
-        onComplete: () => {
-          onAnimationComplete(id);
-        }
-      })
-      .to(group.position, {
-        y: transform.position.y + 0.35, // Rise up unscrewing slowly
-        duration: 1.2,
-        ease: "power1.inOut"
-      })
-      .to(group.rotation, {
-        y: transform.rotation.y + Math.PI * 4, // 2 full rotations slowly
-        duration: 1.2,
-        ease: "power1.inOut"
-      }, 0)
-      .to(group.position, {
-        y: transform.position.y + 1.2, // Fly straight up to hide fast
-        duration: 0.2,
-        ease: "power2.in"
-      }, 1.2)
-      .to(group.scale, {
-        x: 0,
-        y: 0,
-        z: 0,
-        duration: 0.2,
-        ease: "power2.in"
-      }, 1.2);
+      gsap
+        .timeline({
+          onComplete: () => {
+            onAnimationComplete(id);
+          },
+        })
+        .to(group.position, {
+          y: transform.position.y + 0.35, // Rise up unscrewing slowly
+          duration: 1.2,
+          ease: "power1.inOut",
+        })
+        .to(
+          group.rotation,
+          {
+            y: transform.rotation.y + Math.PI * 4, // 2 full rotations slowly
+            duration: 1.2,
+            ease: "power1.inOut",
+          },
+          0,
+        )
+        .to(
+          group.position,
+          {
+            y: transform.position.y + 1.2, // Fly straight up to hide fast
+            duration: 0.2,
+            ease: "power2.in",
+          },
+          1.2,
+        )
+        .to(
+          group.scale,
+          {
+            x: 0,
+            y: 0,
+            z: 0,
+            duration: 0.2,
+            ease: "power2.in",
+          },
+          1.2,
+        );
     } else {
       // Spawn high up, fade in fast, then screw down slowly to close
       gsap.killTweensOf(group.position);
@@ -956,24 +1003,33 @@ function CapInstance({ id, url, transform, appliedColors, isExiting, onAnimation
       group.rotation.y = transform.rotation.y - Math.PI * 4; // Rotated back 720 deg
       group.scale.set(0, 0, 0);
 
-      gsap.timeline()
-      .to(group.scale, {
-        x: transform.scale.x,
-        y: transform.scale.y,
-        z: transform.scale.z,
-        duration: 0.2, // Fade in / scale in fast
-        ease: "power1.out"
-      })
-      .to(group.position, {
-        y: transform.position.y, // Drop slowly into place
-        duration: 1.5,
-        ease: "power2.inOut"
-      }, 0.2)
-      .to(group.rotation, {
-        y: transform.rotation.y, // Screw on rotation slowly
-        duration: 1.5,
-        ease: "power2.inOut"
-      }, 0.2);
+      gsap
+        .timeline()
+        .to(group.scale, {
+          x: transform.scale.x,
+          y: transform.scale.y,
+          z: transform.scale.z,
+          duration: 0.2, // Fade in / scale in fast
+          ease: "power1.out",
+        })
+        .to(
+          group.position,
+          {
+            y: transform.position.y, // Drop slowly into place
+            duration: 1.5,
+            ease: "power2.inOut",
+          },
+          0.2,
+        )
+        .to(
+          group.rotation,
+          {
+            y: transform.rotation.y, // Screw on rotation slowly
+            duration: 1.5,
+            ease: "power2.inOut",
+          },
+          0.2,
+        );
     }
   }, [clonedCap, isExiting, transform]);
 
@@ -1035,10 +1091,11 @@ function calculateNeckDimensions(clonedScene, capMeshes) {
   clonedScene.traverse((obj) => {
     if (obj.isMesh && !obj.userData.isDecal) {
       const nameLower = obj.name.toLowerCase();
-      const isCap = capMeshes.includes(obj) || 
-                    nameLower.includes("cap") || 
-                    nameLower.includes("lid") || 
-                    nameLower.includes("circle003");
+      const isCap =
+        capMeshes.includes(obj) ||
+        nameLower.includes("cap") ||
+        nameLower.includes("lid") ||
+        nameLower.includes("circle003");
       if (!isCap && !isMeasurementMesh(obj, 10)) {
         if (!obj.geometry.boundingBox) {
           obj.geometry.computeBoundingBox();
@@ -1083,8 +1140,10 @@ function calculateNeckDimensions(clonedScene, capMeshes) {
   const totalHeight = maxY - minY;
   const threshold = Math.max(0.01, totalHeight * 0.01); // Top 1% of the bottle height
 
-  let minX = Infinity, maxX = -Infinity;
-  let minZ = Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity;
+  let minZ = Infinity,
+    maxZ = -Infinity;
   let topCount = 0;
 
   for (let i = 0; i < posAttr.count; i++) {
@@ -1114,7 +1173,7 @@ function calculateNeckDimensions(clonedScene, capMeshes) {
 
   return {
     topY: maxY,
-    radius: radius
+    radius: radius,
   };
 }
 
@@ -1129,6 +1188,7 @@ function AutoSizedModel({
   appliedColors,
   bgColor,
   selectedColor,
+  selectedMaterial,
   isActive,
   appliedLastApplied,
   selectedCapUrl,
@@ -1137,8 +1197,11 @@ function AutoSizedModel({
   const { gl, invalidate } = useThree();
 
   useEffect(() => {
-    const isGlassBottle = modelUrl && modelUrl.toLowerCase().includes("glass_bottle");
-    gl.toneMapping = isGlassBottle ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+    const isGlassBottle =
+      modelUrl && modelUrl.toLowerCase().includes("glass_bottle");
+    gl.toneMapping = isGlassBottle
+      ? THREE.NeutralToneMapping
+      : THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = isGlassBottle ? 1.0 : 0.9;
     invalidate();
   }, [modelUrl, gl, invalidate]);
@@ -1152,6 +1215,202 @@ function AutoSizedModel({
     });
 
     const clone = cloneSkeleton(scene);
+    clone.updateMatrixWorld(true);
+
+    // Compute overall bounds to find topThresholdY for splitting
+    let containerMinY = Infinity;
+    let containerMaxY = -Infinity;
+
+    clone.traverse((obj) => {
+      if (obj.isMesh && !obj.userData.isDecal && !isMeasurementMesh(obj, 10)) {
+        if (!obj.geometry.boundingBox) {
+          obj.geometry.computeBoundingBox();
+        }
+        const tempBox = new THREE.Box3()
+          .copy(obj.geometry.boundingBox)
+          .applyMatrix4(obj.matrixWorld);
+        if (tempBox.min.y < containerMinY) containerMinY = tempBox.min.y;
+        if (tempBox.max.y > containerMaxY) containerMaxY = tempBox.max.y;
+      }
+    });
+
+    const containerHeight = containerMaxY - containerMinY;
+    const topThresholdY = containerMaxY - 0.15 * containerHeight;
+
+    // Helper to split geometry based on height threshold
+    const splitGeometry = (geometry, thresholdY, matrixWorld) => {
+      const posAttr = geometry.attributes.position;
+      const uvAttr = geometry.attributes.uv;
+      const normalAttr = geometry.attributes.normal;
+      const indexAttr = geometry.index;
+
+      const topPos = [];
+      const topUv = [];
+      const topNormal = [];
+
+      const botPos = [];
+      const botUv = [];
+      const botNormal = [];
+
+      const tempV = new THREE.Vector3();
+      const count = indexAttr ? indexAttr.count : posAttr.count;
+
+      for (let i = 0; i < count; i += 3) {
+        const idx0 = indexAttr ? indexAttr.getX(i) : i;
+        const idx1 = indexAttr ? indexAttr.getX(i + 1) : i + 1;
+        const idx2 = indexAttr ? indexAttr.getX(i + 2) : i + 2;
+
+        tempV.fromBufferAttribute(posAttr, idx0).applyMatrix4(matrixWorld);
+        const y0 = tempV.y;
+        tempV.fromBufferAttribute(posAttr, idx1).applyMatrix4(matrixWorld);
+        const y1 = tempV.y;
+        tempV.fromBufferAttribute(posAttr, idx2).applyMatrix4(matrixWorld);
+        const y2 = tempV.y;
+
+        const avgY = (y0 + y1 + y2) / 3;
+        const isTop = avgY >= thresholdY;
+
+        const destPos = isTop ? topPos : botPos;
+        const destUv = isTop ? topUv : botUv;
+        const destNormal = isTop ? topNormal : botNormal;
+
+        const pushVertex = (idx) => {
+          destPos.push(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx));
+          if (uvAttr) destUv.push(uvAttr.getX(idx), uvAttr.getY(idx));
+          if (normalAttr)
+            destNormal.push(
+              normalAttr.getX(idx),
+              normalAttr.getY(idx),
+              normalAttr.getZ(idx),
+            );
+        };
+
+        pushVertex(idx0);
+        pushVertex(idx1);
+        pushVertex(idx2);
+      }
+
+      const createGeom = (pos, uv, norm) => {
+        if (pos.length === 0) return null;
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        if (uv.length > 0)
+          g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+        if (norm.length > 0)
+          g.setAttribute("normal", new THREE.Float32BufferAttribute(norm, 3));
+        return g;
+      };
+
+      return {
+        top: createGeom(topPos, topUv, topNormal),
+        bottom: createGeom(botPos, botUv, botNormal),
+      };
+    };
+
+    const meshesToProcess = [];
+    clone.traverse((obj) => {
+      if (obj.isMesh && !obj.userData.isDecal) {
+        meshesToProcess.push(obj);
+      }
+    });
+
+    meshesToProcess.forEach((obj) => {
+      const nameLower = obj.name.toLowerCase();
+      const mat = obj.material;
+      const matNameLower = mat
+        ? (Array.isArray(mat) ? mat[0].name : mat.name || "").toLowerCase()
+        : "";
+
+      const isLid =
+        nameLower.includes("lid") ||
+        matNameLower.includes("lid") ||
+        nameLower.includes("cap") ||
+        matNameLower.includes("cap") ||
+        nameLower.includes("circle003") ||
+        matNameLower.includes("circle003");
+      const isLabel =
+        nameLower.includes("label") ||
+        matNameLower.includes("label") ||
+        nameLower.includes("wrapper") ||
+        matNameLower.includes("wrapper") ||
+        nameLower.includes("design") ||
+        matNameLower.includes("design");
+
+      if (isLabel && !isLid) {
+        if (!obj.geometry.boundingBox) {
+          obj.geometry.computeBoundingBox();
+        }
+        const tempBox = new THREE.Box3()
+          .copy(obj.geometry.boundingBox)
+          .applyMatrix4(obj.matrixWorld);
+
+        const spansHeight =
+          tempBox.max.y - tempBox.min.y > 0.35 * containerHeight;
+        const hasTopPart = tempBox.max.y >= topThresholdY;
+        const hasBottomPart = tempBox.min.y < topThresholdY;
+
+        if (spansHeight && hasTopPart && hasBottomPart) {
+          const split = splitGeometry(
+            obj.geometry,
+            topThresholdY,
+            obj.matrixWorld,
+          );
+          if (split.top && split.bottom) {
+            obj.userData.originalGeometry = obj.geometry;
+            obj.geometry = split.bottom;
+
+            const lidLabel = new THREE.Mesh(split.top, Array.isArray(obj.material) ? obj.material.map(m => m.clone()) : obj.material.clone());
+            lidLabel.name = obj.name + "_lidPart";
+            lidLabel.userData.isSplitLidLabel = true;
+
+            obj.parent.add(lidLabel);
+            lidLabel.position.copy(obj.position);
+            lidLabel.rotation.copy(obj.rotation);
+            lidLabel.scale.copy(obj.scale);
+            lidLabel.matrix.copy(obj.matrix);
+            lidLabel.matrixWorld.copy(obj.matrixWorld);
+          }
+        }
+      }
+    });
+
+    // First pass: identify label vs structural meshes and sort by height.
+    const labelMeshes = [];
+    const structuralMeshes = [];
+    clone.traverse((obj) => {
+      if (!obj.isMesh || !obj.material) return;
+      if (isMeasurementMesh(obj, meshCount)) return;
+
+      const mArray = Array.isArray(obj.material)
+        ? obj.material
+        : [obj.material];
+      const isLabel = mArray.some((m) => {
+        if (!m || !m.name) return false;
+        const matLower = m.name.toLowerCase();
+        return (
+          matLower.includes("label") ||
+          matLower.includes("wrapper") ||
+          matLower.includes("design") ||
+          matLower.includes("artwork")
+        );
+      });
+
+      const box = new THREE.Box3().setFromObject(obj);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+
+      if (isLabel) {
+        labelMeshes.push({ obj, y: center.y });
+      } else {
+        structuralMeshes.push({ obj, y: center.y });
+      }
+    });
+
+    // Sort by height (highest first) — same ordering as EditorScreen1
+    labelMeshes.sort((a, b) => b.y - a.y);
+    structuralMeshes.sort((a, b) => b.y - a.y);
+
+    // Second pass: clone materials, save originals, and rename to Editor1 convention
     clone.traverse((obj) => {
       // Hide measurement meshes entirely in Editor 2
       if (isMeasurementMesh(obj, meshCount)) {
@@ -1180,7 +1439,46 @@ function AutoSizedModel({
       obj.material = Array.isArray(obj.material)
         ? obj.material.map(processMat)
         : processMat(obj.material);
+
+      // Rename materials to match Editor 1 naming convention
+      const labelIndex = labelMeshes.findIndex((x) => x.obj === obj);
+      if (labelIndex !== -1) {
+        const mArray = Array.isArray(obj.material)
+          ? obj.material
+          : [obj.material];
+        mArray.forEach((m) => {
+          if (labelMeshes.length === 1) m.name = "Label";
+          else if (labelMeshes.length === 2)
+            m.name = labelIndex === 0 ? "Lid Label" : "Body Label";
+          else
+            m.name =
+              labelIndex === 0 ? "Lid Label" : `Body Label ${labelIndex}`;
+        });
+      } else {
+        const structIndex = structuralMeshes.findIndex((x) => x.obj === obj);
+        if (structIndex !== -1) {
+          const mArray = Array.isArray(obj.material)
+            ? obj.material
+            : [obj.material];
+          mArray.forEach((m) => {
+            if (structuralMeshes.length === 1) {
+              m.name = "Body";
+            } else if (structuralMeshes.length === 2) {
+              m.name = structIndex === 0 ? "Lid" : "Body";
+            } else {
+              if (structIndex === 0) m.name = "Lid";
+              else if (structIndex === structuralMeshes.length - 1)
+                m.name = "Body";
+              else {
+                const originalClean = (m.name || "Part").replace(/\.\d+$/, "");
+                m.name = `${originalClean} ${structIndex}`;
+              }
+            }
+          });
+        }
+      }
     });
+
     if (modelUrl && modelUrl.toLowerCase().includes("biodegradable")) {
       clone.rotation.x = Math.PI / 2;
       clone.updateMatrixWorld(true);
@@ -1200,11 +1498,18 @@ function AutoSizedModel({
           nameLower.includes("cap") ||
           nameLower.includes("circle003") ||
           nameLower.includes("lid");
-        const hasCapInMaterial = obj.material && (
-          Array.isArray(obj.material)
-            ? obj.material.some(m => m.name && (m.name.toLowerCase().includes("cap") || m.name.toLowerCase().includes("lid")))
-            : (obj.material.name && (obj.material.name.toLowerCase().includes("cap") || obj.material.name.toLowerCase().includes("lid")))
-        );
+        const hasCapInMaterial =
+          obj.material &&
+          (Array.isArray(obj.material)
+            ? obj.material.some(
+                (m) =>
+                  m.name &&
+                  (m.name.toLowerCase().includes("cap") ||
+                    m.name.toLowerCase().includes("lid")),
+              )
+            : obj.material.name &&
+              (obj.material.name.toLowerCase().includes("cap") ||
+                obj.material.name.toLowerCase().includes("lid")));
         if (hasCapInName || hasCapInMaterial) {
           capMeshes.push(obj);
         }
@@ -1213,11 +1518,16 @@ function AutoSizedModel({
 
     if (capMeshes.length > 0) {
       if (selectedCapUrl && selectedCapUrl !== "none") {
-        capMeshes.forEach(mesh => {
+        capMeshes.forEach((mesh) => {
           mesh.visible = false;
         });
-        const anchor = capMeshes.find(m => m.name.toLowerCase().includes("circle003") || m.name.toLowerCase().includes("cap")) || capMeshes[0];
-        
+        const anchor =
+          capMeshes.find(
+            (m) =>
+              m.name.toLowerCase().includes("circle003") ||
+              m.name.toLowerCase().includes("cap"),
+          ) || capMeshes[0];
+
         // Compute rotation and position from anchor as starting point
         const localMatrix = new THREE.Matrix4();
         let curr = anchor;
@@ -1249,7 +1559,7 @@ function AutoSizedModel({
           scale: scl,
         });
       } else {
-        capMeshes.forEach(mesh => {
+        capMeshes.forEach((mesh) => {
           mesh.visible = true;
         });
         setCapTransform(null);
@@ -1346,12 +1656,23 @@ function AutoSizedModel({
           if (o.isMesh && !o.userData.isDecal) {
             const n = (o.name || "").toLowerCase();
             const mats = Array.isArray(o.material) ? o.material : [o.material];
-            const hasLabelMat = mats.some(m => {
+            const hasLabelMat = mats.some((m) => {
               if (!m) return false;
               const matName = (m.name || "").toLowerCase();
-              return matName.includes("label") || matName.includes("wrapper") || matName.includes("design") || matName.includes("artwork");
+              return (
+                matName.includes("label") ||
+                matName.includes("wrapper") ||
+                matName.includes("design") ||
+                matName.includes("artwork")
+              );
             });
-            if (n.includes("label") || n.includes("wrapper") || n.includes("design") || n.includes("artwork") || hasLabelMat) {
+            if (
+              n.includes("label") ||
+              n.includes("wrapper") ||
+              n.includes("design") ||
+              n.includes("artwork") ||
+              hasLabelMat
+            ) {
               hasLabelMesh = true;
             }
           }
@@ -1359,13 +1680,26 @@ function AutoSizedModel({
 
         if (hasLabelMesh) {
           const n = (obj.name || "").toLowerCase();
-          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-          const hasLabelMat = mats.some(m => {
+          const mats = Array.isArray(obj.material)
+            ? obj.material
+            : [obj.material];
+          const hasLabelMat = mats.some((m) => {
             if (!m) return false;
             const matName = (m.name || "").toLowerCase();
-            return matName.includes("label") || matName.includes("wrapper") || matName.includes("design") || matName.includes("artwork");
+            return (
+              matName.includes("label") ||
+              matName.includes("wrapper") ||
+              matName.includes("design") ||
+              matName.includes("artwork")
+            );
           });
-          return n.includes("label") || n.includes("wrapper") || n.includes("design") || n.includes("artwork") || hasLabelMat;
+          return (
+            n.includes("label") ||
+            n.includes("wrapper") ||
+            n.includes("design") ||
+            n.includes("artwork") ||
+            hasLabelMat
+          );
         }
         return true;
       })();
@@ -1402,36 +1736,53 @@ function AutoSizedModel({
             obj.userData.decalMesh = decal;
           }
 
-          const decalMat = obj.userData.decalMesh.material;
+            const decalMat = obj.userData.decalMesh.material;
           decalMat.map = canvasTextureRef.current;
           decalMat.color.set(0xffffff);
           decalMat.needsUpdate = true;
         }
 
         const hasArtwork = canvasRef?.current?.hasArtwork?.();
+        // Only apply the live selectedColor/bgColor to the currently-selected material.
+        // This prevents the Editor 2 color picker from repainting all parts at once.
+        const isTargetMaterial =
+          !selectedMaterial ||
+          selectedMaterial === "all" ||
+          selectedMaterial === "none" ||
+          mat.name === selectedMaterial;
+
+        // When a live face color is active for this material, hide the decal so the
+        // base mesh color shows through (mirrors the EditorScreen1 textureUrl suppression).
+        if (shouldApply && obj.userData.decalMesh) {
+          obj.userData.decalMesh.visible = true;
+        }
+
         // --- CALCULATE PRIORITY OF ACTIONS ---
+        const lookup = (stateObj) => {
+          if (!stateObj) return null;
+          if (stateObj[mat.name] !== undefined) return stateObj[mat.name];
+          if (mat.name === "Label" || mat.name === "all" || mat.name === "none") {
+            return stateObj["Body Label"] !== undefined ? stateObj["Body Label"] : stateObj["Lid Label"] !== undefined ? stateObj["Lid Label"] : stateObj["all"];
+          }
+          return null;
+        };
+
         const last =
-          selectedColor && selectedColor !== "none"
+          selectedColor && selectedColor !== "none" && isTargetMaterial
             ? "color"
-            : appliedLastApplied
-              ? appliedLastApplied[mat.name] || appliedLastApplied["all"]
-              : null;
+            : lookup(appliedLastApplied);
 
         const colorHex =
           last === "material"
             ? null
-            : selectedColor && selectedColor !== "none"
+            : selectedColor && selectedColor !== "none" && isTargetMaterial
               ? bgColor
-              : appliedColors
-                ? appliedColors[mat.name] || appliedColors["all"]
-                : null;
+              : lookup(appliedColors);
 
         const materialType =
           last === "color"
             ? null
-            : appliedMaterials
-              ? appliedMaterials[mat.name] || appliedMaterials["all"]
-              : null;
+            : lookup(appliedMaterials);
 
         // --- APPLY PBR MATERIALS TO BASE MESH ---
         if (typeof materialType === "object" && materialType !== null) {
@@ -1444,12 +1795,20 @@ function AutoSizedModel({
             mat.roughnessMap = null;
             mat.metalnessMap = null;
             mat.aoMap = null;
+            mat.bumpMap = null;
 
             const loadMap = (url, mapType, isColorSpace) => {
               if (!url) return;
               new THREE.TextureLoader().load(url, (texture) => {
-                texture.wrapS = THREE.RepeatWrapping;
-                texture.wrapT = THREE.RepeatWrapping;
+                texture.wrapS = THREE.MirroredRepeatWrapping;
+                texture.wrapT = THREE.MirroredRepeatWrapping;
+                texture.flipY = false;
+                const imageAspect =
+                  texture.image?.width && texture.image?.height
+                    ? texture.image.width / texture.image.height
+                    : 1;
+                const repeatBase = 3;
+                texture.repeat.set(repeatBase, repeatBase * imageAspect);
                 if (isColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
                 mat[mapType] = texture;
                 mat.needsUpdate = true;
@@ -1466,9 +1825,13 @@ function AutoSizedModel({
               loadMap(materialType.maps.metallic, "metalnessMap", false);
             if (materialType.maps.ao)
               loadMap(materialType.maps.ao, "aoMap", false);
+            if (materialType.maps.height) {
+              loadMap(materialType.maps.height, "bumpMap", false);
+              mat.bumpScale = 0.03;
+            }
 
-            mat.roughness = 1.0;
-            mat.metalness = 1.0;
+            mat.roughness = materialType.maps.roughness ? 1.0 : 0.65;
+            mat.metalness = materialType.maps.metallic ? 1.0 : 0.0;
             mat.needsUpdate = true;
           }
         } else {
@@ -1527,14 +1890,29 @@ function AutoSizedModel({
           mat.aoMap = null;
 
           // A custom color is applied, override properties to look opaque
-          const wasOriginallyTransparent = mat.userData.originalTransparent || (mat.userData.originalTransmission && mat.userData.originalTransmission > 0);
+          const wasOriginallyTransparent =
+            mat.userData.originalTransparent ||
+            (mat.userData.originalTransmission &&
+              mat.userData.originalTransmission > 0);
           if (wasOriginallyTransparent) {
             mat.transparent = true;
-            mat.opacity = mat.userData.originalOpacity !== undefined ? mat.userData.originalOpacity : 0.35;
-            mat.roughness = mat.userData.originalRoughness !== undefined ? mat.userData.originalRoughness : 0.1;
-            mat.metalness = mat.userData.originalMetalness !== undefined ? mat.userData.originalMetalness : 0.1;
+            mat.opacity =
+              mat.userData.originalOpacity !== undefined
+                ? mat.userData.originalOpacity
+                : 0.35;
+            mat.roughness =
+              mat.userData.originalRoughness !== undefined
+                ? mat.userData.originalRoughness
+                : 0.1;
+            mat.metalness =
+              mat.userData.originalMetalness !== undefined
+                ? mat.userData.originalMetalness
+                : 0.1;
             if ("transmission" in mat) {
-              mat.transmission = mat.userData.originalTransmission !== undefined ? mat.userData.originalTransmission : 0.9;
+              mat.transmission =
+                mat.userData.originalTransmission !== undefined
+                  ? mat.userData.originalTransmission
+                  : 0.9;
             }
           } else {
             mat.transparent = false;
@@ -1679,7 +2057,11 @@ function AutoSizedModel({
       <group scale={customScale}>
         <primitive object={clonedScene} dispose={null} />
         {selectedCapUrl && selectedCapUrl !== "none" && capTransform && (
-          <CustomCap url={selectedCapUrl} transform={capTransform} appliedColors={appliedColors} />
+          <CustomCap
+            url={selectedCapUrl}
+            transform={capTransform}
+            appliedColors={appliedColors}
+          />
         )}
       </group>
     </group>

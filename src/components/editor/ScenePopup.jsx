@@ -7,8 +7,11 @@ import bg4 from '../../assets/images/Editor 1/Bg Images/bg4.webp';
 import bg5 from '../../assets/images/Editor 1/Bg Images/bg5.webp';
 import bg6 from '../../assets/images/Editor 1/Bg Images/bg6.webp';
 import bg7 from '../../assets/images/Editor 1/Bg Images/bg7.webp';
+import bg8 from '../../assets/images/Editor 1/Bg Images/bg8.webp';
+import bg9 from '../../assets/images/Editor 1/Bg Images/bg9.webp';
+import bg10 from '../../assets/images/Editor 1/Bg Images/bg10.webp';
 
-const defaultBgImages = [bg1, bg2, bg3, bg4, bg5, bg6, bg7];
+const defaultBgImages = [bg1, bg2, bg3, bg4, bg5, bg6, bg7, bg8, bg9, bg10];
 
 const hdriPresets = [
   "studio",

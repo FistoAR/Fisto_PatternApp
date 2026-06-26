@@ -203,28 +203,104 @@ export default function EditorPage() {
     let newLastApplied = { ...editorState.lastApplied };
     let updated = false;
 
-    if (typeof textureDataUrl === "string") {
-      newTextures[targetMat] = textureDataUrl;
-      newLastApplied[targetMat] = "texture";
-      updated = true;
+    // DYNAMIC SPLIT: If targetMat is "all", split the global state into individual keys
+    if (targetMat === "all") {
+      const subMats = ["Lid Label", "Body Label"];
+      subMats.forEach((name) => {
+        if (newTextures["all"] !== undefined && newTextures[name] === undefined) {
+          newTextures[name] = newTextures["all"];
+        }
+        if (newColors["all"] !== undefined && newColors[name] === undefined) {
+          newColors[name] = newColors["all"];
+        }
+        if (newMaterials["all"] !== undefined && newMaterials[name] === undefined) {
+          newMaterials[name] = newMaterials["all"];
+        }
+        if (newLastApplied["all"] !== undefined && newLastApplied[name] === undefined) {
+          newLastApplied[name] = newLastApplied["all"];
+        }
+      });
+      
+      // Clean up the global "all" keys
+      delete newTextures["all"];
+      delete newColors["all"];
+      delete newMaterials["all"];
+      delete newLastApplied["all"];
+    }
+
+    if (typeof textureDataUrl === "string" || textureDataUrl === null) {
+      if (textureDataUrl === null) {
+        if (targetMat === "all") {
+          newTextures = {};
+          updated = true;
+        } else if (newTextures[targetMat] !== undefined) {
+          delete newTextures[targetMat];
+          updated = true;
+        }
+      } else {
+        updated = true;
+        if (targetMat === "all") {
+          // Preserve PBR on whichever part already has one; only canvas-texture the other part
+          if (newMaterials["Body Label"]) {
+            // Body has PBR → only apply canvas texture to Lid
+            newTextures["Lid Label"] = textureDataUrl;
+            newLastApplied["Lid Label"] = "texture";
+            delete newMaterials["Lid Label"];
+            delete newTextures["Body Label"]; // keep body PBR, no canvas override
+          } else if (newMaterials["Lid Label"]) {
+            // Lid has PBR → only apply canvas texture to Body
+            newTextures["Body Label"] = textureDataUrl;
+            newLastApplied["Body Label"] = "texture";
+            delete newMaterials["Body Label"];
+            delete newTextures["Lid Label"]; // keep lid PBR, no canvas override
+          } else {
+            // Neither has PBR → apply canvas texture to both
+            newTextures["Lid Label"] = textureDataUrl;
+            newTextures["Body Label"] = textureDataUrl;
+            newLastApplied["Lid Label"] = "texture";
+            newLastApplied["Body Label"] = "texture";
+          }
+        } else {
+          newTextures[targetMat] = textureDataUrl;
+          delete newMaterials[targetMat];
+          newLastApplied[targetMat] = "texture";
+        }
+      }
     }
     
-    if (typeof colorHex === "string") {
-      if (colorHex === "none") {
-        if (newColors[targetMat] !== undefined) {
+    if (typeof colorHex === "string" || colorHex === null) {
+      if (colorHex === "none" || colorHex === null) {
+        if (targetMat === "all") {
+          newColors = {};
+          updated = true;
+        } else if (newColors[targetMat] !== undefined) {
           delete newColors[targetMat];
           updated = true;
         }
       } else {
-        newColors[targetMat] = colorHex;
-        newLastApplied[targetMat] = "color";
         updated = true;
-
         if (targetMat === "all") {
-          newMaterials = {};
+          // If Body Label has a PBR material active, keep it and do not color the body red.
+          // Only color the Lid Label red.
+          if (newMaterials["Body Label"]) {
+            newColors["Lid Label"] = colorHex;
+            newLastApplied["Lid Label"] = "color";
+            delete newMaterials["Lid Label"];
+          } else if (newMaterials["Lid Label"]) {
+            newColors["Body Label"] = colorHex;
+            newLastApplied["Body Label"] = "color";
+            delete newMaterials["Body Label"];
+          } else {
+            // If neither has PBR, color both
+            newColors["Lid Label"] = colorHex;
+            newColors["Body Label"] = colorHex;
+            newLastApplied["Lid Label"] = "color";
+            newLastApplied["Body Label"] = "color";
+          }
         } else {
+          newColors[targetMat] = colorHex;
           delete newMaterials[targetMat];
-          delete newMaterials["all"];
+          newLastApplied[targetMat] = "color";
         }
       }
     }
@@ -241,6 +317,7 @@ export default function EditorPage() {
     setSelectedMaterial(null);
     setCurrentScreen(1);
   };
+
 
   const colorDebounceRef = useRef(null);
 
@@ -260,11 +337,15 @@ export default function EditorPage() {
       }
 
       const nextMaterials = { ...prevState.materials };
+      const nextTextures = { ...prevState.textures };
+      
       if (colorHex !== null) {
         if (targetMat === "all") {
           Object.keys(nextMaterials).forEach((k) => delete nextMaterials[k]);
+          Object.keys(nextTextures).forEach((k) => delete nextTextures[k]);
         } else {
           delete nextMaterials[targetMat];
+          delete nextTextures[targetMat];
         }
       }
 
@@ -272,6 +353,7 @@ export default function EditorPage() {
         ...prevState,
         colors: nextColors,
         materials: nextMaterials,
+        textures: nextTextures,
         lastApplied: nextLastApplied,
       };
 
@@ -308,14 +390,19 @@ export default function EditorPage() {
       }
     } else {
       const nextColors = { ...editorState.colors };
+      const nextTextures = { ...editorState.textures };
+      
       if (targetMat === "all") {
         Object.keys(nextColors).forEach((k) => delete nextColors[k]);
+        Object.keys(nextTextures).forEach((k) => delete nextTextures[k]);
       } else {
         delete nextColors[targetMat];
+        delete nextTextures[targetMat];
       }
 
       pushHistory({
         colors: nextColors,
+        textures: nextTextures,
         materials: { ...editorState.materials, [targetMat]: materialType },
         lastApplied: { ...editorState.lastApplied, [targetMat]: "material" },
       });
@@ -386,7 +473,9 @@ export default function EditorPage() {
           setModelUrl={setModelUrl}
           appliedMaterials={editorState.materials}
           appliedColors={editorState.colors}
+          appliedTextures={editorState.textures}
           appliedLastApplied={editorState.lastApplied}
+          activeTab={activeTab}
           onBack={handleBackToModelViewer}
           isActive={currentScreen === 2}
           canvasResetKey={canvasResetKey}
@@ -394,6 +483,7 @@ export default function EditorPage() {
           sceneBgImage={sceneBgImage}
           selectedCapUrl={selectedCapUrl}
           onSelectCap={setSelectedCapUrl}
+          selectedMaterial={selectedMaterial}
         />
       </div>
     </div>
