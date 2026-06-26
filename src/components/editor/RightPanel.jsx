@@ -291,8 +291,24 @@ export default function RightPanel({
         width: showPreview ? panelWidth : 200,
         minWidth: showPreview ? "160px" : "unset",
       }}
-      className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-fit overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px] transition-all duration-300"
+      className="bg-white border-l border-gray-100 flex flex-col shrink-0 h-fit overflow-y-auto relative z-10 max-[1024px]:!w-[230px] max-[640px]:!w-[270px] animate-slide-in"
     >
+      <style>{`
+        @keyframes slide-in-panel {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        .animate-slide-in {
+          animation: slide-in-panel 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0; /* Start hidden for animation */
+        }
+      `}</style>
       <div className="flex gap-2 px-3 pb-2 pt-1"></div>
 
       <div className="px-3 pb-2" style={{ display: "none" }}>
@@ -1761,10 +1777,7 @@ function AutoSizedModel({
         const lookup = (stateObj) => {
           if (!stateObj) return null;
           if (stateObj[mat.name] !== undefined) return stateObj[mat.name];
-          if (mat.name === "Label" || mat.name === "all" || mat.name === "none") {
-            return stateObj["Body Label"] !== undefined ? stateObj["Body Label"] : stateObj["Lid Label"] !== undefined ? stateObj["Lid Label"] : stateObj["all"];
-          }
-          return null;
+          return stateObj["all"] !== undefined ? stateObj["all"] : null;
         };
 
         const last =
@@ -1772,17 +1785,87 @@ function AutoSizedModel({
             ? "color"
             : lookup(appliedLastApplied);
 
-        const colorHex =
+        let colorHex =
           last === "material"
             ? null
             : selectedColor && selectedColor !== "none" && isTargetMaterial
               ? bgColor
               : lookup(appliedColors);
 
-        const materialType =
+        let materialType =
           last === "color"
             ? null
             : lookup(appliedMaterials);
+
+        // If it's a label mesh but has no explicit color/material, inherit from the lid/body
+        // so its background doesn't remain white when the rest of the model is colored.
+        if (
+          shouldApply &&
+          !colorHex &&
+          !materialType &&
+          (appliedColors || appliedMaterials)
+        ) {
+          const tryInherit = (appliedObj) => {
+            if (!appliedObj) return null;
+            const keys = Object.keys(appliedObj).filter((k) => k !== "all");
+            if (keys.length === 0) return null;
+
+            const labelName = (obj.name + "_" + mat.name).toLowerCase();
+            const isLidLabel =
+              labelName.includes("lid") ||
+              labelName.includes("cap") ||
+              labelName.includes("circle003") ||
+              labelName.includes("top");
+            const isBodyLabel =
+              labelName.includes("body") ||
+              labelName.includes("base") ||
+              labelName.includes("bottom") ||
+              labelName.includes("circle001") ||
+              labelName.includes("cylinder");
+
+            const lidKey = keys.find(
+              (k) =>
+                k.toLowerCase().includes("lid") ||
+                k.toLowerCase().includes("cap") ||
+                k.toLowerCase().includes("circle003") ||
+                k.toLowerCase().includes("circle004"),
+            );
+            const bodyKey = keys.find(
+              (k) =>
+                k.toLowerCase().includes("body") ||
+                k.toLowerCase().includes("base") ||
+                k.toLowerCase().includes("cylinder") ||
+                k.toLowerCase().includes("circle001") ||
+                k.toLowerCase().includes("circle002"),
+            );
+
+            if (isLidLabel && !isBodyLabel && lidKey) {
+              const val = appliedObj[lidKey];
+              return val === "transparent" ? null : val;
+            }
+            if (isBodyLabel && !isLidLabel && bodyKey) {
+              const val = appliedObj[bodyKey];
+              return val === "transparent" ? null : val;
+            }
+
+            // Fallback position check
+            if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+            const center = new THREE.Vector3();
+            obj.geometry.boundingBox.getCenter(center);
+
+            if (center.y > 0.04) {
+              const val = lidKey ? appliedObj[lidKey] : null;
+              return val === "transparent" ? null : val;
+            } else {
+              const val = bodyKey ? appliedObj[bodyKey] : null;
+              return val === "transparent" ? null : val;
+            }
+          };
+          if (!colorHex && last !== "material")
+            colorHex = tryInherit(appliedColors);
+          if (!materialType && last !== "color")
+            materialType = tryInherit(appliedMaterials);
+        }
 
         // --- APPLY PBR MATERIALS TO BASE MESH ---
         if (typeof materialType === "object" && materialType !== null) {
@@ -1812,6 +1895,7 @@ function AutoSizedModel({
                 if (isColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
                 mat[mapType] = texture;
                 mat.needsUpdate = true;
+                invalidate();
               });
             };
 
@@ -1927,41 +2011,27 @@ function AutoSizedModel({
           mat.needsUpdate = true;
         } else {
           // Restore original model properties!
-          if (shouldApply && !materialType) {
-            mat.transparent = true;
-            mat.opacity = 0;
-            if ("transmission" in mat) mat.transmission = 0;
-            mat.roughness =
-              mat.userData.originalRoughness !== undefined
-                ? mat.userData.originalRoughness
-                : 0.5;
-            mat.metalness =
-              mat.userData.originalMetalness !== undefined
-                ? mat.userData.originalMetalness
-                : 0.1;
-          } else {
-            mat.transparent =
-              mat.userData.originalTransparent !== undefined
-                ? mat.userData.originalTransparent
-                : false;
-            mat.opacity =
-              mat.userData.originalOpacity !== undefined
-                ? mat.userData.originalOpacity
-                : 1.0;
-            mat.roughness =
-              mat.userData.originalRoughness !== undefined
-                ? mat.userData.originalRoughness
-                : 0.5;
-            mat.metalness =
-              mat.userData.originalMetalness !== undefined
-                ? mat.userData.originalMetalness
-                : 0.1;
-            if (
-              mat.userData.originalTransmission !== undefined &&
-              "transmission" in mat
-            ) {
-              mat.transmission = mat.userData.originalTransmission;
-            }
+          mat.transparent =
+            mat.userData.originalTransparent !== undefined
+              ? mat.userData.originalTransparent
+              : false;
+          mat.opacity =
+            mat.userData.originalOpacity !== undefined
+              ? mat.userData.originalOpacity
+              : 1.0;
+          mat.roughness =
+            mat.userData.originalRoughness !== undefined
+              ? mat.userData.originalRoughness
+              : 0.5;
+          mat.metalness =
+            mat.userData.originalMetalness !== undefined
+              ? mat.userData.originalMetalness
+              : 0.1;
+          if (
+            mat.userData.originalTransmission !== undefined &&
+            "transmission" in mat
+          ) {
+            mat.transmission = mat.userData.originalTransmission;
           }
 
           if (!materialType) {

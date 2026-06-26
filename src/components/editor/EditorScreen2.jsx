@@ -72,6 +72,627 @@ const GOOGLE_FONTS = [
   "Outfit",
 ].sort();
 
+const BASE_TYPO_PRESETS = [
+  {
+    name: "bold",
+    label: "Classic Bold",
+    props: {
+      bold: true,
+      color: "#1a1a1a",
+      shadow: true,
+      shadowColor: "rgba(0,0,0,0.15)",
+      shadowBlur: 8,
+      shadowOffsetX: 4,
+      shadowOffsetY: 4,
+      stroke: false,
+      style3d: false,
+      textStyleName: "bold"
+    }
+  },
+  {
+    name: "outline",
+    label: "Minimal Outline",
+    props: {
+      bold: true,
+      color: "#ffffff",
+      stroke: true,
+      strokeColor: "#1a1a1a",
+      strokeWidth: 6,
+      shadow: false,
+      style3d: false,
+      textStyleName: "outline"
+    }
+  },
+  {
+    name: "script",
+    label: "Chic Script",
+    props: {
+      fontFamily: '"Pacifico", cursive',
+      bold: false,
+      italic: false,
+      color: "#c0623a",
+      shadow: true,
+      shadowColor: "rgba(192,98,58,0.2)",
+      shadowBlur: 6,
+      shadowOffsetX: 2,
+      shadowOffsetY: 2,
+      stroke: false,
+      style3d: false,
+      textStyleName: "script"
+    }
+  },
+  {
+    name: "brush",
+    label: "Creative Brush",
+    props: {
+      fontFamily: '"Permanent Marker", sans-serif',
+      bold: false,
+      color: "#27272a",
+      shadow: false,
+      stroke: false,
+      style3d: false,
+      textStyleName: "brush"
+    }
+  },
+  {
+    name: "college",
+    label: "College Varsity",
+    props: {
+      fontFamily: '"Alfa Slab One", serif',
+      bold: false,
+      color: "#ffffff",
+      stroke: true,
+      strokeColor: "#c0623a",
+      strokeWidth: 8,
+      letterSpacing: 4,
+      shadow: true,
+      shadowColor: "rgba(0,0,0,0.15)",
+      shadowBlur: 4,
+      shadowOffsetX: 4,
+      shadowOffsetY: 4,
+      style3d: false,
+      textStyleName: "college"
+    }
+  },
+  {
+    name: "neon",
+    label: "Neon Glow",
+    props: {
+      fontFamily: '"Orbitron", sans-serif',
+      bold: true,
+      color: "#ffffff",
+      stroke: true,
+      strokeColor: "#f43f5e",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "#f43f5e",
+      shadowBlur: 20,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+      style3d: false,
+      textStyleName: "neon"
+    }
+  },
+  {
+    name: "3d",
+    label: "Retro 3D Shadow",
+    props: {
+      fontFamily: '"Bungee", sans-serif',
+      bold: false,
+      color: "#f59e0b",
+      stroke: true,
+      strokeColor: "#1e293b",
+      strokeWidth: 5,
+      style3d: true,
+      style3dColor: "#1e293b",
+      style3dDepth: 8,
+      shadow: false,
+      textStyleName: "3d"
+    }
+  },
+  {
+    name: "retro",
+    label: "70s Retro Offset",
+    props: {
+      fontFamily: '"Dancing Script", cursive',
+      bold: true,
+      color: "#0d9488",
+      shadow: true,
+      shadowColor: "#f43f5e",
+      shadowBlur: 0,
+      shadowOffsetX: 6,
+      shadowOffsetY: 6,
+      stroke: true,
+      strokeColor: "#ffffff",
+      strokeWidth: 3,
+      style3d: false,
+      textStyleName: "retro"
+    }
+  },
+  {
+    name: "creepy",
+    label: "Spooky Halloween",
+    props: {
+      fontFamily: '"Creepster", cursive',
+      bold: false,
+      color: "#eab308",
+      stroke: true,
+      strokeColor: "#1a1a1a",
+      strokeWidth: 6,
+      shadow: true,
+      shadowColor: "#22c55e",
+      shadowBlur: 15,
+      style3d: false,
+      textStyleName: "creepy"
+    }
+  },
+  {
+    name: "bubblegum",
+    label: "Bubblegum Pop",
+    props: {
+      fontFamily: '"Outfit", sans-serif',
+      bold: true,
+      color: "#ec4899",
+      stroke: true,
+      strokeColor: "#ffffff",
+      strokeWidth: 5,
+      shadow: true,
+      shadowColor: "#db2777",
+      shadowBlur: 0,
+      shadowOffsetX: 5,
+      shadowOffsetY: 5,
+      style3d: false,
+      textStyleName: "bubblegum"
+    }
+  },
+  {
+    name: "glitch",
+    label: "Vaporwave Glitch",
+    props: {
+      fontFamily: '"Orbitron", sans-serif',
+      bold: true,
+      color: "#06b6d4",
+      shadow: true,
+      shadowColor: "#ec4899",
+      shadowBlur: 0,
+      shadowOffsetX: -4,
+      shadowOffsetY: 4,
+      stroke: false,
+      style3d: false,
+      textStyleName: "glitch"
+    }
+  },
+  {
+    name: "editorial",
+    label: "Elegant Editorial",
+    props: {
+      fontFamily: '"Playfair Display", serif',
+      italic: true,
+      bold: true,
+      color: "#1e293b",
+      stroke: true,
+      strokeColor: "#f8fafc",
+      strokeWidth: 3,
+      shadow: true,
+      shadowColor: "rgba(0,0,0,0.1)",
+      shadowBlur: 4,
+      style3d: false,
+      textStyleName: "editorial"
+    }
+  },
+  {
+    name: "gold_rush",
+    label: "Embose Gold Rush",
+    props: {
+      fontFamily: '"Alfa Slab One", serif',
+      color: "#eab308",
+      stroke: true,
+      strokeColor: "#78350f",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "#ca8a04",
+      shadowBlur: 6,
+      shadowOffsetX: 2,
+      shadowOffsetY: 2,
+      style3d: false,
+      textStyleName: "gold_rush"
+    }
+  },
+  {
+    name: "sunset",
+    label: "Sunset Silhouette",
+    props: {
+      fontFamily: '"Anton", sans-serif',
+      color: "#f97316",
+      stroke: true,
+      strokeColor: "#7c2d12",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "#facc15",
+      shadowBlur: 10,
+      style3d: false,
+      textStyleName: "sunset"
+    }
+  },
+  {
+    name: "gothic",
+    label: "Midnight Gothic",
+    props: {
+      fontFamily: '"EB Garamond", serif',
+      bold: true,
+      color: "#ffffff",
+      stroke: true,
+      strokeColor: "#111827",
+      strokeWidth: 5,
+      shadow: true,
+      shadowColor: "rgba(0,0,0,0.5)",
+      shadowBlur: 8,
+      shadowOffsetX: 3,
+      shadowOffsetY: 5,
+      style3d: false,
+      textStyleName: "gothic"
+    }
+  },
+  {
+    name: "comic",
+    label: "Cartoon Comic",
+    props: {
+      fontFamily: '"Outfit", sans-serif',
+      bold: true,
+      color: "#facc15",
+      stroke: true,
+      strokeColor: "#000000",
+      strokeWidth: 8,
+      shadow: true,
+      shadowColor: "#000000",
+      shadowBlur: 0,
+      shadowOffsetX: 6,
+      shadowOffsetY: 6,
+      style3d: false,
+      textStyleName: "comic"
+    }
+  },
+  {
+    name: "cyber_green",
+    label: "Cyberpunk Glow",
+    props: {
+      fontFamily: '"Orbitron", sans-serif',
+      bold: true,
+      color: "#10b981",
+      stroke: true,
+      strokeColor: "#064e3b",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "#10b981",
+      shadowBlur: 12,
+      letterSpacing: 4,
+      style3d: false,
+      textStyleName: "cyber_green"
+    }
+  },
+  {
+    name: "coffee",
+    label: "Chunky Coffee",
+    props: {
+      fontFamily: '"Alfa Slab One", serif',
+      color: "#fed7aa",
+      stroke: true,
+      strokeColor: "#451a03",
+      strokeWidth: 6,
+      shadow: true,
+      shadowColor: "#451a03",
+      shadowBlur: 0,
+      shadowOffsetX: 4,
+      shadowOffsetY: 4,
+      style3d: false,
+      textStyleName: "coffee"
+    }
+  },
+  {
+    name: "candy",
+    label: "Cotton Candy",
+    props: {
+      fontFamily: '"Dancing Script", cursive',
+      bold: true,
+      color: "#a855f7",
+      stroke: true,
+      strokeColor: "#fdf2f8",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "#f472b6",
+      shadowBlur: 10,
+      shadowOffsetX: 2,
+      shadowOffsetY: 2,
+      style3d: false,
+      textStyleName: "candy"
+    }
+  },
+  {
+    name: "eclipse",
+    label: "Midnight Eclipse",
+    props: {
+      fontFamily: '"Orbitron", sans-serif',
+      bold: true,
+      color: "#1e1b4b",
+      stroke: true,
+      strokeColor: "#818cf8",
+      strokeWidth: 3,
+      shadow: true,
+      shadowColor: "#312e81",
+      shadowBlur: 12,
+      style3d: false,
+      textStyleName: "eclipse"
+    }
+  },
+  {
+    name: "sage",
+    label: "Forest Sage",
+    props: {
+      fontFamily: '"Lora", serif',
+      italic: true,
+      color: "#14532d",
+      stroke: true,
+      strokeColor: "#dcfce7",
+      strokeWidth: 3,
+      shadow: true,
+      shadowColor: "rgba(20,83,45,0.15)",
+      shadowBlur: 6,
+      shadowOffsetX: 3,
+      shadowOffsetY: 3,
+      style3d: false,
+      textStyleName: "sage"
+    }
+  },
+  {
+    name: "arcade",
+    label: "Retro Arcade",
+    props: {
+      fontFamily: '"Bungee", sans-serif',
+      color: "#ec4899",
+      stroke: true,
+      strokeColor: "#000000",
+      strokeWidth: 6,
+      style3d: true,
+      style3dColor: "#06b6d4",
+      style3dDepth: 6,
+      shadow: false,
+      textStyleName: "arcade"
+    }
+  },
+  {
+    name: "rose_gold",
+    label: "Rose Gold Glam",
+    props: {
+      fontFamily: '"Playfair Display", serif',
+      bold: true,
+      color: "#fda4af",
+      stroke: true,
+      strokeColor: "#881337",
+      strokeWidth: 2.5,
+      shadow: true,
+      shadowColor: "#ffe4e6",
+      shadowBlur: 8,
+      shadowOffsetX: 1,
+      shadowOffsetY: 1,
+      style3d: false,
+      textStyleName: "rose_gold"
+    }
+  },
+  {
+    name: "western",
+    label: "Sheriff Western",
+    props: {
+      fontFamily: '"Alfa Slab One", serif',
+      color: "#b45309",
+      stroke: true,
+      strokeColor: "#fef3c7",
+      strokeWidth: 5,
+      shadow: true,
+      shadowColor: "#451a03",
+      shadowBlur: 0,
+      shadowOffsetX: 5,
+      shadowOffsetY: 5,
+      style3d: false,
+      textStyleName: "western"
+    }
+  },
+  {
+    name: "frozen",
+    label: "Frozen Icicle",
+    props: {
+      fontFamily: '"Montserrat", sans-serif',
+      bold: true,
+      color: "#e0f2fe",
+      stroke: true,
+      strokeColor: "#0284c7",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "#38bdf8",
+      shadowBlur: 14,
+      style3d: false,
+      textStyleName: "frozen"
+    }
+  },
+  {
+    name: "tattoo",
+    label: "Classic Tattoo",
+    props: {
+      fontFamily: '"Playfair Display", serif',
+      bold: true,
+      italic: true,
+      color: "#111827",
+      stroke: true,
+      strokeColor: "#dc2626",
+      strokeWidth: 3.5,
+      shadow: true,
+      shadowColor: "rgba(0,0,0,0.3)",
+      shadowBlur: 4,
+      shadowOffsetX: 2,
+      shadowOffsetY: 2,
+      style3d: false,
+      textStyleName: "tattoo"
+    }
+  },
+  {
+    name: "graffiti",
+    label: "Graffiti Spray",
+    props: {
+      fontFamily: '"Permanent Marker", sans-serif',
+      color: "#eab308",
+      stroke: true,
+      strokeColor: "#7c2d12",
+      strokeWidth: 5,
+      shadow: true,
+      shadowColor: "#000000",
+      shadowBlur: 0,
+      shadowOffsetX: 4,
+      shadowOffsetY: 4,
+      style3d: false,
+      textStyleName: "graffiti"
+    }
+  },
+  {
+    name: "cyber_purple",
+    label: "Cyber Violet Glow",
+    props: {
+      fontFamily: '"Orbitron", sans-serif',
+      bold: true,
+      color: "#ffffff",
+      stroke: true,
+      strokeColor: "#c084fc",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "#a855f7",
+      shadowBlur: 20,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+      style3d: false,
+      textStyleName: "cyber_purple"
+    }
+  },
+  {
+    name: "caramel",
+    label: "Warm Caramel",
+    props: {
+      fontFamily: '"Dancing Script", cursive',
+      bold: true,
+      color: "#78350f",
+      stroke: true,
+      strokeColor: "#fef3c7",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "rgba(120,53,15,0.15)",
+      shadowBlur: 6,
+      shadowOffsetX: 2,
+      shadowOffsetY: 2,
+      style3d: false,
+      textStyleName: "caramel"
+    }
+  },
+  {
+    name: "platinum",
+    label: "Luxury Platinum",
+    props: {
+      fontFamily: '"Playfair Display", serif',
+      italic: true,
+      bold: true,
+      color: "#f8fafc",
+      stroke: true,
+      strokeColor: "#334155",
+      strokeWidth: 4,
+      shadow: true,
+      shadowColor: "rgba(148,163,184,0.3)",
+      shadowBlur: 10,
+      shadowOffsetX: 3,
+      shadowOffsetY: 3,
+      style3d: false,
+      textStyleName: "platinum"
+    }
+  }
+];
+
+const EXTRA_DESIGNS_RAW = [
+  { name: "ocean_breeze", label: "Ocean Breeze", font: "Pacifico", color: "#06b6d4", stroke: true, strokeColor: "#e0f7fa", strokeWidth: 4, shadow: true, shadowColor: "#0891b2", shadowBlur: 8 },
+  { name: "electric_lemon", label: "Electric Lemon", font: "Orbitron", color: "#fef08a", stroke: true, strokeColor: "#ca8a04", strokeWidth: 4, shadow: true, shadowColor: "#facc15", shadowBlur: 15 },
+  { name: "lava_flow", label: "Lava Flow", font: "Anton", color: "#ef4444", stroke: true, strokeColor: "#7f1d1d", strokeWidth: 5, shadow: true, shadowColor: "#f97316", shadowBlur: 10 },
+  { name: "mint_fresh", label: "Mint Fresh", font: "Dancing Script", color: "#10b981", stroke: true, strokeColor: "#d1fae5", strokeWidth: 4, shadow: true, shadowColor: "#047857", shadowBlur: 8 },
+  { name: "strawberry_cream", label: "Strawberry Cream", font: "Pacifico", color: "#f472b6", stroke: true, strokeColor: "#fff1f2", strokeWidth: 3, shadow: true, shadowColor: "#db2777", shadowBlur: 6 },
+  { name: "royal_sapphire", label: "Royal Sapphire", font: "Playfair Display", color: "#1d4ed8", stroke: true, strokeColor: "#dbeafe", strokeWidth: 4, shadow: true, shadowColor: "#1e3a8a", shadowBlur: 10 },
+  { name: "vintage_denim", label: "Vintage Denim", font: "Alfa Slab One", color: "#2563eb", stroke: true, strokeColor: "#ffffff", strokeWidth: 5, shadow: true, shadowColor: "#1e3a8a", shadowBlur: 0, shadowOffsetX: 4, shadowOffsetY: 4 },
+  { name: "desert_sand", label: "Desert Sand", font: "Lora", color: "#d97706", stroke: true, strokeColor: "#fef3c7", strokeWidth: 3, shadow: true, shadowColor: "#78350f", shadowBlur: 6 },
+  { name: "orchid_mist", label: "Orchid Mist", font: "Dancing Script", color: "#d8b4fe", stroke: true, strokeColor: "#581c87", strokeWidth: 3, shadow: true, shadowColor: "#a855f7", shadowBlur: 10 },
+  { name: "toxic_waste", label: "Toxic Waste", font: "Creepster", color: "#22c55e", stroke: true, strokeColor: "#052e16", strokeWidth: 6, shadow: true, shadowColor: "#a3e635", shadowBlur: 12 },
+  { name: "space_cadet", label: "Space Cadet", font: "Orbitron", color: "#e0e7ff", stroke: true, strokeColor: "#312e81", strokeWidth: 4, shadow: true, shadowColor: "#4f46e5", shadowBlur: 12 },
+  { name: "peachy_keen", label: "Peachy Keen", font: "Pacifico", color: "#f97316", stroke: true, strokeColor: "#fff7ed", strokeWidth: 4, shadow: true, shadowColor: "#ea580c", shadowBlur: 6 },
+  { name: "velvet_rose", label: "Velvet Rose", font: "Playfair Display", color: "#991b1b", stroke: true, strokeColor: "#ffe4e6", strokeWidth: 3, shadow: true, shadowColor: "#991b1b", shadowBlur: 8 },
+  { name: "neon_toxic", label: "Neon Toxic", font: "Orbitron", color: "#ffffff", stroke: true, strokeColor: "#22c55e", strokeWidth: 4, shadow: true, shadowColor: "#22c55e", shadowBlur: 20 },
+  { name: "retro_sunset", label: "Retro Sunset", font: "Anton", color: "#fdba74", stroke: true, strokeColor: "#7c2d12", strokeWidth: 4, shadow: true, shadowColor: "#ea580c", shadowBlur: 10 },
+  { name: "luxury_ruby", label: "Luxury Ruby", font: "Playfair Display", color: "#be123c", stroke: true, strokeColor: "#f1f5f9", strokeWidth: 4, shadow: true, shadowColor: "rgba(190,18,60,0.3)", shadowBlur: 10 },
+  { name: "sage_garden", label: "Sage Garden", font: "Lora", color: "#166534", stroke: true, strokeColor: "#f0fdf4", strokeWidth: 3, shadow: true, shadowColor: "#14532d", shadowBlur: 6 },
+  { name: "cherry_blossom", label: "Cherry Blossom", font: "Dancing Script", color: "#fbcfe8", stroke: true, strokeColor: "#be185d", strokeWidth: 3, shadow: true, shadowColor: "#f472b6", shadowBlur: 8 },
+  { name: "electric_violet", label: "Electric Violet", font: "Orbitron", color: "#8b5cf6", stroke: true, strokeColor: "#1e1b4b", strokeWidth: 4, shadow: true, shadowColor: "#c084fc", shadowBlur: 15 },
+  { name: "cream_soda", label: "Cream Soda", font: "Pacifico", color: "#fef08a", stroke: true, strokeColor: "#854d0e", strokeWidth: 3, shadow: true, shadowColor: "#fef08a", shadowBlur: 8 },
+  { name: "chocolate_fudge", label: "Chocolate Fudge", font: "Alfa Slab One", color: "#3f2f2f", stroke: true, strokeColor: "#ffedd5", strokeWidth: 4, shadow: true, shadowColor: "#3f2f2f", shadowBlur: 6 },
+  { name: "skyline", label: "Midnight Skyline", font: "Orbitron", color: "#3b82f6", stroke: true, strokeColor: "#1e1b4b", strokeWidth: 4, shadow: true, shadowColor: "#60a5fa", shadowBlur: 12 },
+  { name: "banana_split", label: "Banana Split", font: "Bungee", color: "#fef08a", stroke: true, strokeColor: "#78350f", strokeWidth: 6, shadow: true, shadowColor: "#ea580c", shadowBlur: 0, shadowOffsetX: 4, shadowOffsetY: 4 },
+  { name: "forest_moss", label: "Forest Moss", font: "Permanent Marker", color: "#14532d", stroke: true, strokeColor: "#dcfce7", strokeWidth: 4, shadow: false },
+  { name: "candy_apple", label: "Candy Apple", font: "Anton", color: "#dc2626", stroke: true, strokeColor: "#ffffff", strokeWidth: 4, shadow: true, shadowColor: "#7f1d1d", shadowBlur: 8 },
+  { name: "silver_bullet", label: "Silver Bullet", font: "Orbitron", color: "#f1f5f9", stroke: true, strokeColor: "#475569", strokeWidth: 4, shadow: true, shadowColor: "#94a3b8", shadowBlur: 10 },
+  { name: "copper_canyon", label: "Copper Canyon", font: "Alfa Slab One", color: "#c2410c", stroke: true, strokeColor: "#ffedd5", strokeWidth: 5, shadow: true, shadowColor: "#7c2d12", shadowBlur: 8 },
+  { name: "amethyst", label: "Amethyst Aura", font: "Playfair Display", color: "#a855f7", stroke: true, strokeColor: "#faf5ff", strokeWidth: 3, shadow: true, shadowColor: "#7e22ce", shadowBlur: 12 },
+  { name: "tangerine", label: "Tangerine Dream", font: "Pacifico", color: "#f97316", stroke: true, strokeColor: "#fff7ed", strokeWidth: 3.5, shadow: true, shadowColor: "#ea580c", shadowBlur: 8 },
+  { name: "pistachio", label: "Sweet Pistachio", font: "Dancing Script", color: "#86efac", stroke: true, strokeColor: "#14532d", strokeWidth: 3.5, shadow: true, shadowColor: "#22c55e", shadowBlur: 8 },
+  { name: "coral_reef", label: "Coral Reef", font: "Montserrat", color: "#ff7a59", stroke: true, strokeColor: "#ffffff", strokeWidth: 4, shadow: true, shadowColor: "#ff7a59", shadowBlur: 10 },
+  { name: "blueberry", label: "Blueberry Jam", font: "Pacifico", color: "#2563eb", stroke: true, strokeColor: "#ffffff", strokeWidth: 4, shadow: true, shadowColor: "#1d4ed8", shadowBlur: 8 },
+  { name: "dusty_rose", label: "Dusty Rose", font: "Lora", color: "#fda4af", stroke: true, strokeColor: "#4c0519", strokeWidth: 3, shadow: true, shadowColor: "#fda4af", shadowBlur: 6 },
+  { name: "limelight", label: "Lime Light", font: "Orbitron", color: "#84cc16", stroke: true, strokeColor: "#065f46", strokeWidth: 4, shadow: true, shadowColor: "#84cc16", shadowBlur: 12 },
+  { name: "gold_dust", label: "Gold Dust", font: "Playfair Display", color: "#fbbf24", stroke: true, strokeColor: "#78350f", strokeWidth: 3, shadow: true, shadowColor: "#fbbf24", shadowBlur: 10 },
+  { name: "charcoal", label: "Charcoal Sketch", font: "Permanent Marker", color: "#18181b", stroke: true, strokeColor: "#f4f4f5", strokeWidth: 3, shadow: false },
+  { name: "glacier", label: "Glacier Ice", font: "Outfit", color: "#e0f2fe", stroke: true, strokeColor: "#0284c7", strokeWidth: 4, shadow: true, shadowColor: "#38bdf8", shadowBlur: 10 },
+  { name: "sunflower", label: "Bright Sunflower", font: "Anton", color: "#eab308", stroke: true, strokeColor: "#451a03", strokeWidth: 4, shadow: true, shadowColor: "#ca8a04", shadowBlur: 8 },
+  { name: "bubble_tea", label: "Bubble Tea", font: "Pacifico", color: "#d97706", stroke: true, strokeColor: "#ffedd5", strokeWidth: 4, shadow: true, shadowColor: "#b45309", shadowBlur: 6 },
+  { name: "hot_chili", label: "Hot Chili", font: "Permanent Marker", color: "#ef4444", stroke: true, strokeColor: "#7f1d1d", strokeWidth: 4, shadow: true, shadowColor: "#ef4444", shadowBlur: 8 },
+  { name: "cotton_candy_alt", label: "Sweet Fluff", font: "Dancing Script", color: "#f472b6", stroke: true, strokeColor: "#faf5ff", strokeWidth: 4, shadow: true, shadowColor: "#c084fc", shadowBlur: 8 },
+  { name: "galaxy", label: "Galaxy Star", font: "Orbitron", color: "#ffffff", stroke: true, strokeColor: "#3b82f6", strokeWidth: 4, shadow: true, shadowColor: "#8b5cf6", shadowBlur: 20 },
+  { name: "espresso", label: "Espresso Bold", font: "Alfa Slab One", color: "#451a03", stroke: true, strokeColor: "#fef3c7", strokeWidth: 4, shadow: true, shadowColor: "#451a03", shadowBlur: 6 },
+  { name: "pumpkin", label: "Pumpkin Spice", font: "Pacifico", color: "#ea580c", stroke: true, strokeColor: "#ffedd5", strokeWidth: 4, shadow: true, shadowColor: "#c2410c", shadowBlur: 8 },
+  { name: "matcha", label: "Matcha Green", font: "Lora", color: "#65a30d", stroke: true, strokeColor: "#f7fee7", strokeWidth: 3, shadow: true, shadowColor: "#4d7c0f", shadowBlur: 6 },
+  { name: "teal_glow", label: "Teal Glow", font: "Orbitron", color: "#ffffff", stroke: true, strokeColor: "#0d9488", strokeWidth: 4, shadow: true, shadowColor: "#0d9488", shadowBlur: 20 },
+  { name: "mustard", label: "Vintage Mustard", font: "Alfa Slab One", color: "#eab308", stroke: true, strokeColor: "#ffffff", strokeWidth: 5, shadow: true, shadowColor: "#854d0e", shadowBlur: 0, shadowOffsetX: 4, shadowOffsetY: 4 },
+  { name: "neon_orange", label: "Radioactive", font: "Orbitron", color: "#ffffff", stroke: true, strokeColor: "#f97316", strokeWidth: 4, shadow: true, shadowColor: "#f97316", shadowBlur: 20 },
+  { name: "plum", label: "Sugar Plum", font: "Dancing Script", color: "#86198f", stroke: true, strokeColor: "#fdf4ff", strokeWidth: 4, shadow: true, shadowColor: "#a21caf", shadowBlur: 8 },
+  { name: "pearl", label: "Ocean Pearl", font: "Playfair Display", color: "#f8fafc", stroke: true, strokeColor: "#94a3b8", strokeWidth: 3, shadow: true, shadowColor: "#cbd5e1", shadowBlur: 10 }
+];
+
+const EXTRA_PRESETS = EXTRA_DESIGNS_RAW.map((raw) => ({
+  name: raw.name,
+  label: raw.label,
+  props: {
+    fontFamily: `"${raw.font}", sans-serif`,
+    bold: raw.bold || false,
+    italic: raw.italic || false,
+    underline: false,
+    color: raw.color,
+    stroke: raw.stroke || false,
+    strokeColor: raw.strokeColor || "#000000",
+    strokeWidth: raw.strokeWidth || 4,
+    shadow: raw.shadow !== undefined ? raw.shadow : true,
+    shadowColor: raw.shadowColor || "#000000",
+    shadowBlur: raw.shadowBlur || 0,
+    shadowOffsetX: raw.shadowOffsetX || 0,
+    shadowOffsetY: raw.shadowOffsetY || 0,
+    style3d: false,
+    style3dColor: "#000000",
+    style3dDepth: 0,
+    textStyleName: raw.name
+  }
+}));
+
+const TYPO_PRESETS = [
+  ...BASE_TYPO_PRESETS,
+  ...EXTRA_PRESETS
+];
+
 const loadFont = (fontFamily) => {
   if (!fontFamily) return;
   const family = fontFamily.split(",")[0].replace(/['"]/g, "").trim();
@@ -376,12 +997,15 @@ export default function EditorScreen2({
   // ── Currently selected layer (for text formatting panel) ─────────────────
   const [selectedLayer, setSelectedLayer] = useState(null);
 
-  // Reset local color override whenever we re-enter Editor 2
   useEffect(() => {
     if (isActive) {
       setSelectedColor("none");
     }
   }, [isActive]);
+
+  useEffect(() => {
+    GOOGLE_FONTS.forEach((font) => loadFont(`"${font}", sans-serif`));
+  }, []);
 
   // Text formatting controls state (mirrors selected layer)
   const [textProps, setTextProps] = useState({
@@ -393,6 +1017,18 @@ export default function EditorScreen2({
     underline: false,
     bend: 0,
     letterSpacing: 0,
+    stroke: false,
+    strokeColor: "#000000",
+    strokeWidth: 4,
+    shadow: false,
+    shadowColor: "#000000",
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    style3d: false,
+    style3dColor: "#000000",
+    style3dDepth: 0,
+    textStyleName: "none",
   });
 
   // ── Export Modal State ───────────────────────────────────────────────────
@@ -507,6 +1143,18 @@ export default function EditorScreen2({
         underline: layer.underline || false,
         bend: layer.bend || 0,
         letterSpacing: layer.letterSpacing || 0,
+        stroke: layer.stroke || false,
+        strokeColor: layer.strokeColor || "#000000",
+        strokeWidth: layer.strokeWidth || 4,
+        shadow: layer.shadow || false,
+        shadowColor: layer.shadowColor || "#000000",
+        shadowBlur: layer.shadowBlur || 0,
+        shadowOffsetX: layer.shadowOffsetX || 0,
+        shadowOffsetY: layer.shadowOffsetY || 0,
+        style3d: layer.style3d || false,
+        style3dColor: layer.style3dColor || "#000000",
+        style3dDepth: layer.style3dDepth || 0,
+        textStyleName: layer.textStyleName || "none",
       });
     }
   }, []);
@@ -516,6 +1164,15 @@ export default function EditorScreen2({
       const next = { ...textProps, [key]: value };
       setTextProps(next);
       canvasRef.current?.updateSelectedTextProps({ [key]: value });
+    },
+    [textProps],
+  );
+
+  const applyTextPropsMulti = useCallback(
+    (propsObj) => {
+      const next = { ...textProps, ...propsObj };
+      setTextProps(next);
+      canvasRef.current?.updateSelectedTextProps(propsObj);
     },
     [textProps],
   );
@@ -672,6 +1329,7 @@ export default function EditorScreen2({
                     }),
                   );
                 }}
+                modelUrl={modelUrl}
               />
             )}
 
@@ -710,6 +1368,61 @@ export default function EditorScreen2({
                 {/* Formatting panel — only shows when text layer selected */}
                 {isTextLayer ? (
                   <div className="flex flex-col gap-4">
+                    {/* Typography Style Presets */}
+                    <div className="border-b border-gray-100 pb-4">
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-2.5 uppercase tracking-wide">
+                        Typography Style Presets
+                      </label>
+                      <div className="flex flex-col gap-2 max-h-[280px] overflow-y-auto pr-1">
+                        {TYPO_PRESETS.map((preset) => {
+                          const isSelected = textProps.textStyleName === preset.name;
+                          return (
+                            <button
+                              key={preset.name}
+                              onClick={() => applyTextPropsMulti(preset.props)}
+                              className={`flex items-center justify-between px-4 py-2.5 rounded-xl border-2 transition-all cursor-pointer outline-none bg-gray-50 hover:bg-gray-100/80 ${
+                                isSelected
+                                  ? "border-[#c0623a] bg-orange-50/20 shadow-sm"
+                                  : "border-gray-200"
+                              }`}
+                            >
+                              <div
+                                className="font-bold text-base select-none text-left truncate max-w-[65%]"
+                                style={{
+                                  fontFamily: preset.props.fontFamily ? preset.props.fontFamily.replace(/['"]/g, "") : "Outfit, sans-serif",
+                                  fontWeight: preset.props.bold ? "bold" : "normal",
+                                  fontStyle: preset.props.italic ? "italic" : "normal",
+                                  textDecoration: preset.props.underline ? "underline" : "none",
+                                  color: preset.props.color || "#000000",
+                                  letterSpacing: (preset.props.letterSpacing || 0) / 10 + "px",
+                                  // Outline styles
+                                  WebkitTextStroke: preset.props.stroke
+                                    ? `0.5px ${preset.props.strokeColor}`
+                                    : "none",
+                                  // Shadow and 3D styles
+                                  textShadow: preset.props.style3d
+                                    ? `0.5px 0.5px ${preset.props.style3dColor}, 1px 1px ${preset.props.style3dColor}, 1.5px 1.5px ${preset.props.style3dColor}`
+                                    : preset.props.shadow && preset.props.shadowBlur > 10 && preset.props.shadowOffsetX === 0
+                                    ? `0 0 5px ${preset.props.shadowColor}`
+                                    : preset.props.shadow && preset.props.shadowBlur === 0 && preset.props.shadowOffsetX !== 0
+                                    ? `${preset.props.shadowOffsetX / 2}px ${preset.props.shadowOffsetY / 2}px 0px ${preset.props.shadowColor}`
+                                    : preset.name === "glitch"
+                                    ? `-2px 2px 0px ${preset.props.shadowColor}`
+                                    : preset.props.shadow
+                                    ? `${preset.props.shadowOffsetX / 15}px ${preset.props.shadowOffsetY / 15}px ${preset.props.shadowBlur / 15}px ${preset.props.shadowColor}`
+                                    : "none",
+                                }}
+                              >
+                                {selectedLayer.text ? (selectedLayer.text.length > 15 ? selectedLayer.text.substring(0, 15) + "..." : selectedLayer.text) : "Text"}
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-400 capitalize text-right ml-2 shrink-0">
+                                {preset.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                     {/* <h3 className="text-[13px] font-bold text-gray-800">Format Text</h3> */}
 
                     {/* Font Family */}
@@ -987,7 +1700,7 @@ export default function EditorScreen2({
                     {/* Color */}
                     <div>
                       <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
-                        Color
+                        Text Color
                       </label>
                       <div className="flex items-center gap-3">
                         <div className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-gray-200 shrink-0 shadow-sm cursor-pointer hover:scale-105 transition-transform">
@@ -1005,6 +1718,78 @@ export default function EditorScreen2({
                         </span>
                       </div>
                     </div>
+
+                    {/* Stroke Color */}
+                    {textProps.stroke && (
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                          Stroke Color
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-gray-200 shrink-0 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+                            <input
+                              type="color"
+                              value={textProps.strokeColor || "#000000"}
+                              onInput={(e) =>
+                                applyTextProp("strokeColor", e.target.value)
+                              }
+                              className="absolute -inset-2 w-[200%] h-[200%] p-0 border-none cursor-pointer outline-none"
+                            />
+                          </div>
+                          <span className="text-sm font-mono text-gray-700 bg-gray-100 rounded-lg px-3 py-1.5 uppercase tracking-wider">
+                            {textProps.strokeColor || "#000000"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Shadow / Glow Color */}
+                    {textProps.shadow && (
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                          Shadow / Glow Color
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-gray-200 shrink-0 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+                            <input
+                              type="color"
+                              value={textProps.shadowColor || "#000000"}
+                              onInput={(e) =>
+                                applyTextProp("shadowColor", e.target.value)
+                              }
+                              className="absolute -inset-2 w-[200%] h-[200%] p-0 border-none cursor-pointer outline-none"
+                            />
+                          </div>
+                          <span className="text-sm font-mono text-gray-700 bg-gray-100 rounded-lg px-3 py-1.5 uppercase tracking-wider">
+                            {textProps.shadowColor || "#000000"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3D Extrusion Color */}
+                    {textProps.style3d && (
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                          3D Extrusion Color
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-gray-200 shrink-0 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+                            <input
+                              type="color"
+                              value={textProps.style3dColor || "#000000"}
+                              onInput={(e) =>
+                                applyTextProp("style3dColor", e.target.value)
+                              }
+                              className="absolute -inset-2 w-[200%] h-[200%] p-0 border-none cursor-pointer outline-none"
+                            />
+                          </div>
+                          <span className="text-sm font-mono text-gray-700 bg-gray-100 rounded-lg px-3 py-1.5 uppercase tracking-wider">
+                            {textProps.style3dColor || "#000000"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Preset Colors */}
                     <div>

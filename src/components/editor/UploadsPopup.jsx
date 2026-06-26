@@ -74,7 +74,7 @@ const UPLOAD_TYPES = [
 const USER_CATEGORIES = ['All', 'Design', 'Logo', 'Pattern'];
 
 // ── Default asset sub-tabs ────────────────────────────────────────────────────
-const DEFAULT_TABS = ['T-Shirt', 'Patterns', 'Carry Bag', 'Floral', 'Damask'];
+const DEFAULT_TABS = ['T-Shirt', 'Carry Bag', 'Floral', 'Damask'];
 
 // ── Small pill tab ────────────────────────────────────────────────────────────
 function PillTab({ label, active, onClick, count }) {
@@ -87,7 +87,7 @@ function PillTab({ label, active, onClick, count }) {
         fontSize: '11px',
         fontWeight: active ? 700 : 500,
         background: active ? '#c0623a' : 'transparent',
-        color: active ? '#fff' : '#6b7280',
+        color: active ? '#fff' : '#000000',
         border: active ? 'none' : '1.5px solid #e5e7eb',
         cursor: 'pointer',
         transition: 'all 0.18s',
@@ -176,15 +176,66 @@ function EmptyState({ label }) {
   );
 }
 
+const getDefaultTabForModel = (modelUrl) => {
+  if (!modelUrl) return 'T-Shirt';
+  const urlLower = modelUrl.toLowerCase();
+  
+  if (urlLower.includes('tape')) {
+    return 'Floral';
+  }
+  if (urlLower.includes('drinkware') || urlLower.includes('bottle') || urlLower.includes('soft drink')) {
+    return 'T-Shirt';
+  }
+  if (urlLower.includes('t-shirt') || urlLower.includes('tshirt') || urlLower.includes('hoodie') || urlLower.includes('fashion')) {
+    return 'T-Shirt';
+  }
+  if (urlLower.includes('container') || urlLower.includes('round') || urlLower.includes('oval') || urlLower.includes('te ') || urlLower.includes('tamper')) {
+    return 'Floral';
+  }
+  if (
+    urlLower.includes('bag') || 
+    urlLower.includes('box') || 
+    urlLower.includes('die') || 
+    urlLower.includes('folding') || 
+    urlLower.includes('kraft') || 
+    urlLower.includes('pouch') || 
+    urlLower.includes('zip')
+  ) {
+    return 'Carry Bag';
+  }
+  return 'T-Shirt';
+};
+
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSelected, onApplyFit, selectedLayer, onUpdateTextureGaps, onDeleteUploadedImage, onTogglePinUploadedImage }) {
+export default function UploadsPopup({
+  onUpload,
+  uploadedImages = [],
+  isImageSelected,
+  onApplyFit,
+  selectedLayer,
+  onUpdateTextureGaps,
+  onDeleteUploadedImage,
+  onTogglePinUploadedImage,
+  modelUrl
+}) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [selectedType, setSelectedType] = useState(null);
+  const [selectedType, setSelectedType] = useState(() => {
+    if (modelUrl && modelUrl.toLowerCase().includes('tape')) {
+      return 'pattern';
+    }
+    return null;
+  });
   const [mainTab, setMainTab] = useState('your'); // 'your' | 'default'
   const [userCategory, setUserCategory] = useState('All');
   const [defaultTab, setDefaultTab] = useState('T-Shirt');
   const [visibleCount, setVisibleCount] = useState(9);
+
+  useEffect(() => {
+    if (modelUrl) {
+      setDefaultTab(getDefaultTabForModel(modelUrl));
+    }
+  }, [modelUrl]);
 
   useEffect(() => {
     setVisibleCount(9);
@@ -270,15 +321,16 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
   const patternUploads = sortedAllUploads.filter(i => i.type === 'pattern');
   const designUploads = sortedAllUploads.filter(i => i.type === 'design');
 
-  const visibleDefaultTabs = defaultTab === 'T-Shirt'
-    ? ['T-Shirt', 'Patterns']
-    : ['T-Shirt', defaultTab];
+  const visibleDefaultTabs = (defaultTab === 'Floral' || defaultTab === 'Damask')
+    ? ['Floral', 'Damask']
+    : defaultTab === 'Carry Bag'
+    ? ['Carry Bag', 'T-Shirt']
+    : ['T-Shirt', 'Carry Bag'];
   const dropdownDefaultTabs = DEFAULT_TABS.filter(c => !visibleDefaultTabs.includes(c));
 
   // ── Default assets by sub-tab ──────────────────────────────────────────────
   const defaultAssets = {
     'T-Shirt': tShirtGraphics,
-    'Patterns': [],      // add pattern imports here when available
     'Material': [],      // add material imports here when available
     'Carry Bag': carryBagGraphics,
     'Floral': floralGraphics,
@@ -330,7 +382,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
 
         {/* ── 1. Upload Type Selector ── */}
         <div style={{ flexShrink: 0 }} className='mb-5'>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Upload as</p>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#000000', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Upload as</p>
           <div style={{ display: 'grid', gridTemplateColumns: selectedType ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: 8 }}>
             {UPLOAD_TYPES.map(t => {
               const active = selectedType === t.id;
@@ -344,7 +396,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                     borderRadius: 10,
                     border: active ? `2px solid ${accentBg}` : `1.5px solid ${borderClr}`,
                     background: active ? accentLight : '#f9fafb',
-                    color: active ? accentBg : '#6b7280',
+                    color: active ? accentBg : '#000000',
                     cursor: 'pointer',
                     fontWeight: active ? 700 : 500,
                     fontSize: 10,
@@ -453,7 +505,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
         {/* ── Image Formatting ── */}
         <div style={{ flexShrink: 0, borderBottom: `1px solid ${borderClr}`, paddingBottom: 13 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Image Formatting</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#000000', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>Image Formatting</p>
           </div>
           <div style={{ background: '#f3f4f6', padding: 4, borderRadius: 10, display: 'flex', gap: 4 }}>
             {['contain', 'cover', 'texture'].map(fit => {
@@ -462,7 +514,7 @@ export default function UploadsPopup({ onUpload, uploadedImages = [], isImageSel
                 <button key={fit} onClick={() => handleApplyFit(fit)} style={{
                   flex: 1, padding: '7px 6px', borderRadius: 8, border: 'none', cursor: 'pointer',
                   background: active ? '#fff' : 'transparent',
-                  color: active ? accentBg : '#6b7280',
+                  color: active ? accentBg : '#000000',
                   fontSize: 11, fontWeight: active ? 700 : 500,
                   boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
                   transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, textTransform: 'capitalize',

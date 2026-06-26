@@ -93,6 +93,7 @@ export default function EditorPage() {
   const history = useRef([editorState]);
   const historyIndex = useRef(0);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const colorDebounceRef = useRef(null);
 
   const pushHistory = (newStateUpdates) => {
     setEditorState((prevState) => {
@@ -136,16 +137,52 @@ export default function EditorPage() {
   const canUndo = historyIndex.current > 0;
   const canRedo = historyIndex.current < history.current.length - 1;
 
+  const splitState = (state) => {
+    const subMats = ["Lid Label", "Body Label"];
+    const newState = {
+      ...state,
+      textures: { ...state.textures },
+      colors: { ...state.colors },
+      materials: { ...state.materials },
+      lastApplied: { ...state.lastApplied },
+      metallic: { ...state.metallic },
+      roughness: { ...state.roughness },
+    };
+
+    const keys = ["textures", "colors", "materials", "lastApplied", "metallic", "roughness"];
+    keys.forEach((key) => {
+      if (newState[key]["all"] !== undefined) {
+        const val = newState[key]["all"];
+        subMats.forEach((name) => {
+          if (newState[key][name] === undefined) {
+            newState[key][name] = val;
+          }
+        });
+        delete newState[key]["all"];
+      }
+    });
+
+    return newState;
+  };
+
   const handleApplyMetallic = (materialId, value) => {
     const targetMat = (materialId && materialId !== "none") ? materialId : "all";
-    const nextMetallic = { ...editorState.metallic, [targetMat]: value };
-    pushHistory({ metallic: nextMetallic });
+    const nextState = splitState(editorState);
+    const targets = targetMat === "all" ? ["Lid Label", "Body Label"] : [targetMat];
+    targets.forEach((t) => {
+      nextState.metallic[t] = value;
+    });
+    pushHistory({ metallic: nextState.metallic });
   };
 
   const handleApplyRoughness = (materialId, value) => {
     const targetMat = (materialId && materialId !== "none") ? materialId : "all";
-    const nextRoughness = { ...editorState.roughness, [targetMat]: value };
-    pushHistory({ roughness: nextRoughness });
+    const nextState = splitState(editorState);
+    const targets = targetMat === "all" ? ["Lid Label", "Body Label"] : [targetMat];
+    targets.forEach((t) => {
+      nextState.roughness[t] = value;
+    });
+    pushHistory({ roughness: nextState.roughness });
   };
 
   const handleResetAll = () => {
@@ -240,26 +277,12 @@ export default function EditorPage() {
       } else {
         updated = true;
         if (targetMat === "all") {
-          // Preserve PBR on whichever part already has one; only canvas-texture the other part
-          if (newMaterials["Body Label"]) {
-            // Body has PBR → only apply canvas texture to Lid
-            newTextures["Lid Label"] = textureDataUrl;
-            newLastApplied["Lid Label"] = "texture";
-            delete newMaterials["Lid Label"];
-            delete newTextures["Body Label"]; // keep body PBR, no canvas override
-          } else if (newMaterials["Lid Label"]) {
-            // Lid has PBR → only apply canvas texture to Body
-            newTextures["Body Label"] = textureDataUrl;
-            newLastApplied["Body Label"] = "texture";
-            delete newMaterials["Body Label"];
-            delete newTextures["Lid Label"]; // keep lid PBR, no canvas override
-          } else {
-            // Neither has PBR → apply canvas texture to both
-            newTextures["Lid Label"] = textureDataUrl;
-            newTextures["Body Label"] = textureDataUrl;
-            newLastApplied["Lid Label"] = "texture";
-            newLastApplied["Body Label"] = "texture";
-          }
+          newTextures["Lid Label"] = textureDataUrl;
+          newTextures["Body Label"] = textureDataUrl;
+          newLastApplied["Lid Label"] = "texture";
+          newLastApplied["Body Label"] = "texture";
+          delete newMaterials["Lid Label"];
+          delete newMaterials["Body Label"];
         } else {
           newTextures[targetMat] = textureDataUrl;
           delete newMaterials[targetMat];
@@ -280,23 +303,14 @@ export default function EditorPage() {
       } else {
         updated = true;
         if (targetMat === "all") {
-          // If Body Label has a PBR material active, keep it and do not color the body red.
-          // Only color the Lid Label red.
-          if (newMaterials["Body Label"]) {
-            newColors["Lid Label"] = colorHex;
-            newLastApplied["Lid Label"] = "color";
-            delete newMaterials["Lid Label"];
-          } else if (newMaterials["Lid Label"]) {
-            newColors["Body Label"] = colorHex;
-            newLastApplied["Body Label"] = "color";
-            delete newMaterials["Body Label"];
-          } else {
-            // If neither has PBR, color both
-            newColors["Lid Label"] = colorHex;
-            newColors["Body Label"] = colorHex;
-            newLastApplied["Lid Label"] = "color";
-            newLastApplied["Body Label"] = "color";
-          }
+          // If the user specified a background color for "all", apply it to both Lid and Body labels
+          // and clear their PBR materials so the color shows cleanly.
+          newColors["Lid Label"] = colorHex;
+          newColors["Body Label"] = colorHex;
+          newLastApplied["Lid Label"] = "color";
+          newLastApplied["Body Label"] = "color";
+          delete newMaterials["Lid Label"];
+          delete newMaterials["Body Label"];
         } else {
           newColors[targetMat] = colorHex;
           delete newMaterials[targetMat];
@@ -318,39 +332,54 @@ export default function EditorPage() {
     setCurrentScreen(1);
   };
 
-
-  const colorDebounceRef = useRef(null);
-
   const handleApplyColor = (materialId, colorHex) => {
     const targetMat = (materialId && materialId !== "none") ? materialId : "all";
     
     setEditorState((prevState) => {
-      const nextColors = { ...prevState.colors };
-      const nextLastApplied = { ...prevState.lastApplied };
-      
-      if (colorHex === null) {
-        delete nextColors[targetMat];
-        delete nextLastApplied[targetMat];
-      } else {
-        nextColors[targetMat] = colorHex;
-        nextLastApplied[targetMat] = "color";
-      }
+      const splitPrev = splitState(prevState);
+      const nextColors = { ...splitPrev.colors };
+      const nextLastApplied = { ...splitPrev.lastApplied };
+      const nextMaterials = { ...splitPrev.materials };
+      const nextTextures = { ...splitPrev.textures };
 
-      const nextMaterials = { ...prevState.materials };
-      const nextTextures = { ...prevState.textures };
-      
-      if (colorHex !== null) {
-        if (targetMat === "all") {
-          Object.keys(nextMaterials).forEach((k) => delete nextMaterials[k]);
-          Object.keys(nextTextures).forEach((k) => delete nextTextures[k]);
+      if (targetMat === "all") {
+        // Write to the "all" key so every mesh in the traversal picks it up
+        if (colorHex === null) {
+          delete nextColors["all"];
+          delete nextLastApplied["all"];
+          // Also clear any per-label overrides so they don't block
+          delete nextColors["Lid Label"];
+          delete nextLastApplied["Lid Label"];
+          delete nextColors["Body Label"];
+          delete nextLastApplied["Body Label"];
         } else {
+          nextColors["all"] = colorHex;
+          nextLastApplied["all"] = "color";
+          delete nextMaterials["all"];
+          // Clear all per-material color/material overrides so they don't block the new global color
+          Object.keys(nextColors).forEach((key) => {
+            if (key !== "all") delete nextColors[key];
+          });
+          Object.keys(nextMaterials).forEach((key) => {
+            if (key !== "all") delete nextMaterials[key];
+          });
+          Object.keys(nextLastApplied).forEach((key) => {
+            if (key !== "all") delete nextLastApplied[key];
+          });
+        }
+      } else {
+        if (colorHex === null) {
+          delete nextColors[targetMat];
+          delete nextLastApplied[targetMat];
+        } else {
+          nextColors[targetMat] = colorHex;
+          nextLastApplied[targetMat] = "color";
           delete nextMaterials[targetMat];
-          delete nextTextures[targetMat];
         }
       }
 
       const nextState = {
-        ...prevState,
+        ...splitPrev,
         colors: nextColors,
         materials: nextMaterials,
         textures: nextTextures,
@@ -371,42 +400,64 @@ export default function EditorPage() {
 
   const handleApplyMaterial = (materialId, materialType) => {
     const targetMat = (materialId && materialId !== "none") ? materialId : "all";
-    if (materialType === null) {
+    
+    setEditorState((prevState) => {
+      const splitPrev = splitState(prevState);
+      const nextColors = { ...splitPrev.colors };
+      const nextTextures = { ...splitPrev.textures };
+      const nextMaterials = { ...splitPrev.materials };
+      const nextLastApplied = { ...splitPrev.lastApplied };
+
       if (targetMat === "all") {
-        pushHistory({
-          materials: {},
-          lastApplied: {},
-        });
+        // Write to the "all" key so every mesh in the traversal picks it up
+        if (materialType === null) {
+          delete nextMaterials["all"];
+          delete nextLastApplied["all"];
+          delete nextMaterials["Lid Label"];
+          delete nextLastApplied["Lid Label"];
+          delete nextMaterials["Body Label"];
+          delete nextLastApplied["Body Label"];
+        } else {
+          nextMaterials["all"] = materialType;
+          nextLastApplied["all"] = "material";
+          delete nextColors["all"];
+          // Clear all per-material color/material overrides so they don't block the new global material
+          Object.keys(nextColors).forEach((key) => {
+            if (key !== "all") delete nextColors[key];
+          });
+          Object.keys(nextMaterials).forEach((key) => {
+            if (key !== "all") delete nextMaterials[key];
+          });
+          Object.keys(nextLastApplied).forEach((key) => {
+            if (key !== "all") delete nextLastApplied[key];
+          });
+        }
       } else {
-        const newMaterials = { ...editorState.materials };
-        delete newMaterials[targetMat];
-        const newLastApplied = { ...editorState.lastApplied };
-        delete newLastApplied[targetMat];
-        
-        pushHistory({
-          materials: newMaterials,
-          lastApplied: newLastApplied,
-        });
-      }
-    } else {
-      const nextColors = { ...editorState.colors };
-      const nextTextures = { ...editorState.textures };
-      
-      if (targetMat === "all") {
-        Object.keys(nextColors).forEach((k) => delete nextColors[k]);
-        Object.keys(nextTextures).forEach((k) => delete nextTextures[k]);
-      } else {
-        delete nextColors[targetMat];
-        delete nextTextures[targetMat];
+        if (materialType === null) {
+          delete nextMaterials[targetMat];
+          delete nextLastApplied[targetMat];
+        } else {
+          nextMaterials[targetMat] = materialType;
+          nextLastApplied[targetMat] = "material";
+          delete nextColors[targetMat];
+        }
       }
 
-      pushHistory({
+      const nextState = {
+        ...splitPrev,
         colors: nextColors,
         textures: nextTextures,
-        materials: { ...editorState.materials, [targetMat]: materialType },
-        lastApplied: { ...editorState.lastApplied, [targetMat]: "material" },
-      });
-    }
+        materials: nextMaterials,
+        lastApplied: nextLastApplied,
+      };
+
+      history.current = history.current.slice(0, historyIndex.current + 1);
+      history.current.push(nextState);
+      historyIndex.current = history.current.length - 1;
+      setHistoryVersion((v) => v + 1);
+
+      return nextState;
+    });
   };
 
   const handleApplyCustomSize = (size) => {

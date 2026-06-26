@@ -67,6 +67,7 @@ import modelPositionsConfig from "./modelPositions.json";
 import ScenePopup from "./ScenePopup";
 import GalleryPopup from "./GalleryPopup";
 import { getTextureLibrary } from "../../utils/TextureLibrary";
+import blockIcon from "../../assets/images/Editor 1/Icons/block.webp";
 
 import cursorIcon from "../../assets/images/Icons/cursor.webp";
 import handIcon from "../../assets/images/Icons/hand.webp";
@@ -499,6 +500,22 @@ function AutoSizedModelWithDimensions({
 }) {
   const { scene } = useGLTF(modelUrl);
   const { gl, invalidate, camera } = useThree();
+
+  const isWearableModel = useMemo(() => {
+    return (
+      modelUrl &&
+      (modelUrl.toLowerCase().includes("t s1") ||
+        modelUrl.toLowerCase().includes("hoodie") ||
+        MODELS.some(
+          (m) =>
+            m.modelUrl === modelUrl && m.category === "Fashion Wear",
+        ))
+    );
+  }, [modelUrl]);
+
+  const isTapeModel = useMemo(() => {
+    return modelUrl && modelUrl.toLowerCase().includes("tape");
+  }, [modelUrl]);
 
   useEffect(() => {
     const isGlassBottle =
@@ -1450,13 +1467,17 @@ function AutoSizedModelWithDimensions({
               : null;
 
         let textureUrl = null;
-        // When the most-recently-applied action for this material is "color",
-        // suppress the texture entirely (including the "all" fallback).
-        // Otherwise the floral/library texture decal would render ON TOP of the
-        // face color applied from Editor 2, hiding it completely.
-        if (appliedTextures && last !== "color") {
-          if (typeof appliedTextures === "string") textureUrl = appliedTextures;
-          else textureUrl = appliedTextures[id] || appliedTextures["all"];
+        if (appliedTextures) {
+          let potentialUrl = null;
+          if (typeof appliedTextures === "string") potentialUrl = appliedTextures;
+          else potentialUrl = appliedTextures[id] || appliedTextures["all"];
+
+          if (potentialUrl) {
+            const isCustomDesign = potentialUrl.startsWith("data:image");
+            if (isCustomDesign || last !== "color") {
+              textureUrl = potentialUrl;
+            }
+          }
         }
 
         const shouldApply = (() => {
@@ -1698,42 +1719,27 @@ function AutoSizedModelWithDimensions({
         } else {
           // Restore original transparency settings
           const hasCustomDesign = !!textureUrl;
-
-          if (shouldApply && !materialType && hasCustomDesign) {
-            m.transparent = true;
-            m.opacity = 0;
-            if ("transmission" in m) m.transmission = 0;
-            m.roughness =
-              m.userData.originalRoughness !== undefined
-                ? m.userData.originalRoughness
-                : 0.5;
-            m.metalness =
-              m.userData.originalMetalness !== undefined
-                ? m.userData.originalMetalness
-                : 0.1;
-          } else {
-            m.transparent =
-              m.userData.originalTransparent !== undefined
-                ? m.userData.originalTransparent
-                : false;
-            m.opacity =
-              m.userData.originalOpacity !== undefined
-                ? m.userData.originalOpacity
-                : 1.0;
-            m.roughness =
-              m.userData.originalRoughness !== undefined
-                ? m.userData.originalRoughness
-                : 0.5;
-            m.metalness =
-              m.userData.originalMetalness !== undefined
-                ? m.userData.originalMetalness
-                : 0.1;
-            if (
-              m.userData.originalTransmission !== undefined &&
-              "transmission" in m
-            ) {
-              m.transmission = m.userData.originalTransmission;
-            }
+          m.transparent =
+            m.userData.originalTransparent !== undefined
+              ? m.userData.originalTransparent
+              : false;
+          m.opacity =
+            m.userData.originalOpacity !== undefined
+              ? m.userData.originalOpacity
+              : 1.0;
+          m.roughness =
+            m.userData.originalRoughness !== undefined
+              ? m.userData.originalRoughness
+              : 0.5;
+          m.metalness =
+            m.userData.originalMetalness !== undefined
+              ? m.userData.originalMetalness
+              : 0.1;
+          if (
+            m.userData.originalTransmission !== undefined &&
+            "transmission" in m
+          ) {
+            m.transmission = m.userData.originalTransmission;
           }
 
           // Reset color if no custom color is specified
@@ -1925,6 +1931,7 @@ function AutoSizedModelWithDimensions({
     appliedMetallic,
     appliedRoughness,
     showDefaultLabels,
+    isWearableModel,
   ]);
 
   if (!clonedScene) return null;
@@ -2159,6 +2166,20 @@ export default function EditorScreen1({
     (modelUrl.toLowerCase().includes("plastic") ||
       modelUrl.toLowerCase().includes("glass") ||
       modelUrl.toLowerCase().includes("soft"));
+  const isWearableModel = useMemo(() => {
+    return (
+      modelUrl &&
+      (modelUrl.toLowerCase().includes("t s1") ||
+        modelUrl.toLowerCase().includes("hoodie") ||
+        MODELS.some(
+          (m) =>
+            m.modelUrl === modelUrl && m.category === "Fashion Wear",
+        ))
+    );
+  }, [modelUrl]);
+  const isTapeModel = useMemo(() => {
+    return modelUrl && modelUrl.toLowerCase().includes("tape");
+  }, [modelUrl]);
   const isLayoutModel = useMemo(() => {
     return !MODELS.some((m) => m.modelUrl === modelUrl);
   }, [modelUrl]);
@@ -2440,7 +2461,8 @@ export default function EditorScreen1({
         url.includes("round") ||
         url.includes("food container") ||
         url.includes("oval") ||
-        url.includes("jar")
+        url.includes("jar") ||
+        url.includes("tape")
       ) {
         firstCategory = "Floral";
       } else if (
@@ -3389,7 +3411,8 @@ export default function EditorScreen1({
               </svg>
             </button>
 
-            {!isBottleModel && (
+            {/* Hide Target Material selection for wearable models and tape models */}
+            {!isBottleModel && !isWearableModel && !(modelUrl && modelUrl.toLowerCase().includes("tape")) && (
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-bold text-gray-700">
                   Target Material
@@ -3417,44 +3440,15 @@ export default function EditorScreen1({
               </div>
             )}
 
-            {!isBottleModel && (
+            {/* Color Swatch Picker */}
+            {(!isBottleModel || isWearableModel || isTapeModel) && (
               <div
-                className={`flex flex-col gap-3 ${!selectedMaterial || selectedMaterial === "none" ? "opacity-50 pointer-events-none grayscale select-none" : "transition-opacity duration-300"}`}
+                className={`flex flex-col gap-3 ${!isWearableModel && !isTapeModel && (!selectedMaterial || selectedMaterial === "none") ? "opacity-50 pointer-events-none grayscale select-none" : "transition-opacity duration-300"}`}
               >
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-gray-700">
                     Apply Color
                   </label>
-                  {appliedColors?.[
-                    selectedMaterial && selectedMaterial !== "none"
-                      ? selectedMaterial
-                      : "all"
-                  ] && (
-                    <button
-                      onClick={() => {
-                        if (onApplyColor) {
-                          onApplyColor(selectedMaterial, null);
-                        }
-                      }}
-                      className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2.5}
-                        stroke="currentColor"
-                        className="w-3 h-3"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                      Reset
-                    </button>
-                  )}
                 </div>
                 <div className="flex items-center gap-3 w-full">
                   <div className="relative w-[1.8vw] h-[1.8vw] rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer flex-shrink-0 flex items-center justify-center bg-gray-50 hover:bg-gray-100 group">
@@ -3476,47 +3470,71 @@ export default function EditorScreen1({
                       type="color"
                       value={
                         appliedColors?.[
-                          selectedMaterial && selectedMaterial !== "none"
-                            ? selectedMaterial
-                            : "all"
+                          (isWearableModel || isTapeModel)
+                            ? "all"
+                            : selectedMaterial && selectedMaterial !== "none"
+                              ? selectedMaterial
+                              : "all"
                         ] || "#ffffff"
                       }
                       onChange={(e) =>
                         onApplyColor &&
-                        onApplyColor(selectedMaterial, e.target.value)
+                        onApplyColor((isWearableModel || isTapeModel) ? "all" : selectedMaterial, e.target.value)
                       }
                       className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0 z-10"
                     />
                   </div>
-                  <div className="flex-1 grid grid-cols-6 gap-2">
+                  <div className="flex-1 grid grid-cols-7 gap-2">
+                    {/* Reset Color Block/Action */}
+                    <button
+                      onClick={() =>
+                        onApplyColor && onApplyColor((isWearableModel || isTapeModel) ? "all" : selectedMaterial, null)
+                      }
+                      className="w-full aspect-square rounded-md border-2 border-gray-200 transition-transform hover:scale-110 cursor-pointer bg-white"
+                      style={{
+                        backgroundImage: `url(${blockIcon})`,
+                        backgroundSize: "85%",
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "center",
+                      }}
+                      title="Reset color"
+                    />
                     {[
+                      ...((isWearableModel || isTapeModel) ? [] : ["transparent"]),
                       "#3b82f6",
                       "#e6e2db",
                       "#ffffff",
                       "#1a1a1a",
-                      "#2c3e50",
+                      ...((isWearableModel || isTapeModel) ? ["#2c3e50"] : []),
                       "#c05520",
                     ].map((color) => {
                       const isSelected =
                         appliedColors?.[
-                          selectedMaterial && selectedMaterial !== "none"
-                            ? selectedMaterial
-                            : "all"
+                          (isWearableModel || isTapeModel)
+                            ? "all"
+                            : selectedMaterial && selectedMaterial !== "none"
+                              ? selectedMaterial
+                              : "all"
                         ] === color;
-                      const backgroundStyle = color;
-                      const backgroundSize = undefined;
+                      const backgroundStyle =
+                        color === "transparent"
+                           ? "conic-gradient(#cbd5e1 25%, white 0 50%, #cbd5e1 0 75%, white 0)"
+                          : color;
+                      const backgroundSize =
+                        color === "transparent" ? "8px 8px" : undefined;
                       return (
                         <button
                           key={color}
                           onClick={() =>
                             onApplyColor &&
-                            onApplyColor(selectedMaterial, color)
+                            onApplyColor((isWearableModel || isTapeModel) ? "all" : selectedMaterial, color)
                           }
                           className={`w-full aspect-square rounded-md border-2 transition-transform hover:scale-110 cursor-pointer ${isSelected ? "border-[#c05520] shadow-md" : "border-gray-200"}`}
                           style={{
                             background: backgroundStyle,
                             backgroundSize: backgroundSize,
                           }}
+                          title={color === "transparent" ? "Transparent" : color}
                         />
                       );
                     })}
@@ -3525,29 +3543,30 @@ export default function EditorScreen1({
               </div>
             )}
 
-            {/* Metallic & Roughness Adjustments */}
-            <div className="flex flex-col gap-3.5 pt-2 border-t border-gray-100 mt-1">
-              {/* Metallic Slider */}
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
-                  <span>Metallic</span>
-                  <span>
-                    {Math.round(
-                      (appliedMetallic?.[
-                        selectedMaterial && selectedMaterial !== "none"
-                          ? selectedMaterial
-                          : "all"
-                      ] ?? 0.1) * 100,
-                    )}
-                    %
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={
+            {/* Metallic & Roughness Adjustments (Hidden for Wearable models and tape models) */}
+            {!isWearableModel && !(modelUrl && modelUrl.toLowerCase().includes("tape")) && (
+              <div className="flex flex-col gap-3.5 pt-2 border-t border-gray-100 mt-1">
+                {/* Metallic Slider */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+                    <span>Metallic</span>
+                    <span>
+                      {Math.round(
+                        (appliedMetallic?.[
+                          selectedMaterial && selectedMaterial !== "none"
+                            ? selectedMaterial
+                            : "all"
+                        ] ?? 0.1) * 100,
+                      )}
+                      %
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={
                     appliedMetallic?.[
                       selectedMaterial && selectedMaterial !== "none"
                         ? selectedMaterial
@@ -3601,42 +3620,52 @@ export default function EditorScreen1({
                 />
               </div>
             </div>
+          )}
 
             {/* Texture Library */}
-            {!(modelUrl && modelUrl.toLowerCase().includes("tape")) && (
+            {true && (
               <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-gray-700">
                     Texture Library
                   </label>
-                  <button
-                    onClick={() => {
-                      if (textureTimeoutRef.current)
-                        clearTimeout(textureTimeoutRef.current);
-                      if (textureFallbackTimeoutRef.current)
-                        clearTimeout(textureFallbackTimeoutRef.current);
-                      setIsModelLoading(false);
-                      if (onApplyMaterial)
-                        onApplyMaterial(selectedMaterial, null);
-                    }}
-                    className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2.5}
-                      stroke="currentColor"
-                      className="w-3 h-3"
+                  {!!(appliedMaterials?.[
+                    (isWearableModel || isTapeModel)
+                      ? "all"
+                      : selectedMaterial && selectedMaterial !== "none"
+                        ? selectedMaterial
+                        : "all"
+                  ] || appliedMaterials?.["all"]) && (
+                    <button
+                      onClick={() => {
+                        if (textureTimeoutRef.current)
+                          clearTimeout(textureTimeoutRef.current);
+                        if (textureFallbackTimeoutRef.current)
+                          clearTimeout(textureFallbackTimeoutRef.current);
+                        setIsModelLoading(false);
+                        if (onApplyMaterial)
+                          onApplyMaterial((isWearableModel || isTapeModel) ? "all" : selectedMaterial, null);
+                      }}
+                      className="text-[10px] text-gray-500 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1 font-semibold"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                    Clear
-                  </button>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2.5}
+                        stroke="currentColor"
+                        className="w-3 h-3"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      Clear
+                    </button>
+                  )}
+                  
                 </div>
 
                 {/* Category Tabs */}
@@ -3727,7 +3756,7 @@ export default function EditorScreen1({
                           // Force the loading spinner to appear before blocking the main thread
                           setIsModelLoading(true);
                           textureTimeoutRef.current = setTimeout(() => {
-                            onApplyMaterial(selectedMaterial, texture);
+                            onApplyMaterial((isWearableModel || isTapeModel) ? "all" : selectedMaterial, texture);
                             // Fallback to hide spinner to cover the WebGL shader compilation block
                             textureFallbackTimeoutRef.current = setTimeout(
                               () => setIsModelLoading(false),
@@ -3735,7 +3764,7 @@ export default function EditorScreen1({
                             );
                           }, 150);
                         }}
-                        className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center transition-all ${isModelLoading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${appliedMaterials?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
+                        className={`relative rounded-xl border-2 overflow-hidden aspect-square flex flex-col items-center justify-center transition-all ${isModelLoading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${appliedMaterials?.[(isWearableModel || isTapeModel) ? "all" : (selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all")]?.id === texture.id ? "border-[#c05520] shadow-md" : "border-transparent hover:border-gray-200"}`}
                       >
                         {texture.preview ? (
                           <img
@@ -3749,9 +3778,11 @@ export default function EditorScreen1({
                           </div>
                         )}
                         {appliedMaterials?.[
-                          selectedMaterial && selectedMaterial !== "none"
-                            ? selectedMaterial
-                            : "all"
+                          (isWearableModel || isTapeModel)
+                            ? "all"
+                            : selectedMaterial && selectedMaterial !== "none"
+                              ? selectedMaterial
+                              : "all"
                         ]?.id === texture.id && <TextureActiveOverlay />}
                       </button>
                     ))}
