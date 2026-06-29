@@ -1375,7 +1375,12 @@ function AutoSizedModel({
             obj.userData.originalGeometry = obj.geometry;
             obj.geometry = split.bottom;
 
-            const lidLabel = new THREE.Mesh(split.top, Array.isArray(obj.material) ? obj.material.map(m => m.clone()) : obj.material.clone());
+            const lidLabel = new THREE.Mesh(
+              split.top,
+              Array.isArray(obj.material)
+                ? obj.material.map((m) => m.clone())
+                : obj.material.clone(),
+            );
             lidLabel.name = obj.name + "_lidPart";
             lidLabel.userData.isSplitLidLabel = true;
 
@@ -1752,7 +1757,7 @@ function AutoSizedModel({
             obj.userData.decalMesh = decal;
           }
 
-            const decalMat = obj.userData.decalMesh.material;
+          const decalMat = obj.userData.decalMesh.material;
           decalMat.map = canvasTextureRef.current;
           decalMat.color.set(0xffffff);
           decalMat.needsUpdate = true;
@@ -1792,10 +1797,7 @@ function AutoSizedModel({
               ? bgColor
               : lookup(appliedColors);
 
-        let materialType =
-          last === "color"
-            ? null
-            : lookup(appliedMaterials);
+        let materialType = last === "color" ? null : lookup(appliedMaterials);
 
         // If it's a label mesh but has no explicit color/material, inherit from the lid/body
         // so its background doesn't remain white when the rest of the model is colored.

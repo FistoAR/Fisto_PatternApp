@@ -814,7 +814,7 @@ class DraggableText {
           ctx.save();
           ctx.rotate(theta);
           ctx.translate(0, -R);
-          
+
           drawTextSegment(char, 0, 0);
 
           if (this.underline) {

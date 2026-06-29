@@ -38,14 +38,23 @@ export default function EditorPage() {
   const [currentScreen, setCurrentScreen] = useState(1);
   const [modelUrl, setModelUrlState] = useState(() => {
     const initial = location.state?.initialModelUrl || roundContainerUrl;
-    return typeof initial === 'string' ? initial.replace("Biodegradable%20%20bags.glb", "Biodegradable%20bags.glb").replace("Biodegradable  bags.glb", "Biodegradable bags.glb") : initial;
+    return typeof initial === "string"
+      ? initial
+          .replace("Biodegradable%20%20bags.glb", "Biodegradable%20bags.glb")
+          .replace("Biodegradable  bags.glb", "Biodegradable bags.glb")
+      : initial;
   });
 
   const setModelUrl = (url) => {
-    const cleaned = typeof url === 'string' ? url.replace("Biodegradable%20%20bags.glb", "Biodegradable%20bags.glb").replace("Biodegradable  bags.glb", "Biodegradable bags.glb") : url;
+    const cleaned =
+      typeof url === "string"
+        ? url
+            .replace("Biodegradable%20%20bags.glb", "Biodegradable%20bags.glb")
+            .replace("Biodegradable  bags.glb", "Biodegradable bags.glb")
+        : url;
     setModelUrlState(cleaned);
   };
-  const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [selectedMaterial, setSelectedMaterial] = useState("all");
   const [selectedCapUrl, setSelectedCapUrl] = useState("none");
 
   // Global scene background state (from Screen 1)
@@ -76,7 +85,7 @@ export default function EditorPage() {
   const [canvasResetKey, setCanvasResetKey] = useState(0);
 
   // Lift activeTab state here to preserve it when switching screens
-  const [activeTab, setActiveTab] = useState("models");
+  const [activeTab, setActiveTab] = useState("edit");
 
   // Unified state for size, textures, colors, and physical materials
   const [editorState, setEditorState] = useState({
@@ -87,6 +96,7 @@ export default function EditorPage() {
     lastApplied: {},
     metallic: {},
     roughness: {},
+    uvEditsApplied: false,
   });
 
   // History stack
@@ -138,7 +148,7 @@ export default function EditorPage() {
   const canRedo = historyIndex.current < history.current.length - 1;
 
   const splitState = (state) => {
-    const subMats = ["Lid Label", "Body Label"];
+    const subMats = ["Lid Label", "Body Label", "Lid", "Body"];
     const newState = {
       ...state,
       textures: { ...state.textures },
@@ -149,7 +159,14 @@ export default function EditorPage() {
       roughness: { ...state.roughness },
     };
 
-    const keys = ["textures", "colors", "materials", "lastApplied", "metallic", "roughness"];
+    const keys = [
+      "textures",
+      "colors",
+      "materials",
+      "lastApplied",
+      "metallic",
+      "roughness",
+    ];
     keys.forEach((key) => {
       if (newState[key]["all"] !== undefined) {
         const val = newState[key]["all"];
@@ -166,23 +183,37 @@ export default function EditorPage() {
   };
 
   const handleApplyMetallic = (materialId, value) => {
-    const targetMat = (materialId && materialId !== "none") ? materialId : "all";
-    const nextState = splitState(editorState);
-    const targets = targetMat === "all" ? ["Lid Label", "Body Label"] : [targetMat];
-    targets.forEach((t) => {
-      nextState.metallic[t] = value;
+    const targetMat = materialId && materialId !== "none" ? materialId : "all";
+    setEditorState((prevState) => {
+      const splitPrev = splitState(prevState);
+      const nextMetallic = { ...splitPrev.metallic };
+      const targets = targetMat === "all" ? ["Lid Label", "Body Label", "Lid", "Body"] : [targetMat];
+      targets.forEach((t) => {
+        nextMetallic[t] = value;
+      });
+
+      return {
+        ...splitPrev,
+        metallic: nextMetallic,
+      };
     });
-    pushHistory({ metallic: nextState.metallic });
   };
 
   const handleApplyRoughness = (materialId, value) => {
-    const targetMat = (materialId && materialId !== "none") ? materialId : "all";
-    const nextState = splitState(editorState);
-    const targets = targetMat === "all" ? ["Lid Label", "Body Label"] : [targetMat];
-    targets.forEach((t) => {
-      nextState.roughness[t] = value;
+    const targetMat = materialId && materialId !== "none" ? materialId : "all";
+    setEditorState((prevState) => {
+      const splitPrev = splitState(prevState);
+      const nextRoughness = { ...splitPrev.roughness };
+      const targets = targetMat === "all" ? ["Lid Label", "Body Label", "Lid", "Body"] : [targetMat];
+      targets.forEach((t) => {
+        nextRoughness[t] = value;
+      });
+
+      return {
+        ...splitPrev,
+        roughness: nextRoughness,
+      };
     });
-    pushHistory({ roughness: nextState.roughness });
   };
 
   const handleResetAll = () => {
@@ -194,12 +225,43 @@ export default function EditorPage() {
       lastApplied: {},
       metallic: {},
       roughness: {},
+      uvEditsApplied: false,
     };
     setEditorState(defaultState);
     history.current = [defaultState];
     historyIndex.current = 0;
     setCanvasResetKey((k) => k + 1);
     setHistoryVersion((v) => v + 1);
+  };
+
+  const handleClearUvEdits = () => {
+    setEditorState((prevState) => {
+      // Clear textures (decals/designs) and reset uvEditsApplied flag
+      const nextTextures = {};
+      const nextLastApplied = { ...prevState.lastApplied };
+
+      // Wipe texture application records
+      Object.keys(nextLastApplied).forEach((key) => {
+        if (nextLastApplied[key] === "texture") {
+          delete nextLastApplied[key];
+        }
+      });
+
+      const nextState = {
+        ...prevState,
+        textures: nextTextures,
+        lastApplied: nextLastApplied,
+        uvEditsApplied: false,
+      };
+
+      history.current = history.current.slice(0, historyIndex.current + 1);
+      history.current.push(nextState);
+      historyIndex.current = history.current.length - 1;
+      setHistoryVersion((v) => v + 1);
+      setCanvasResetKey((k) => k + 1);
+
+      return nextState;
+    });
   };
 
   const onLoadScene = (scene) => {
@@ -216,7 +278,8 @@ export default function EditorPage() {
     if (scene.envIntensity !== undefined) setEnvIntensity(scene.envIntensity);
     if (scene.ambLight !== undefined) setAmbLight(scene.ambLight);
     if (scene.dirLight !== undefined) setDirLight(scene.dirLight);
-    if (scene.shadowOpacity !== undefined) setShadowOpacity(scene.shadowOpacity);
+    if (scene.shadowOpacity !== undefined)
+      setShadowOpacity(scene.shadowOpacity);
     if (scene.customHdri !== undefined) setCustomHdri(scene.customHdri);
     setCanvasResetKey((k) => k + 1);
   };
@@ -233,31 +296,46 @@ export default function EditorPage() {
     if (targetMat === "none") {
       targetMat = "all";
     }
-    
+
+    const isBottleModel =
+      modelUrl &&
+      (modelUrl.toLowerCase().includes("plastic") ||
+        modelUrl.toLowerCase().includes("glass") ||
+        modelUrl.toLowerCase().includes("soft"));
+
     let newTextures = { ...editorState.textures };
     let newColors = { ...editorState.colors };
     let newMaterials = { ...editorState.materials };
     let newLastApplied = { ...editorState.lastApplied };
     let updated = false;
 
-    // DYNAMIC SPLIT: If targetMat is "all", split the global state into individual keys
-    if (targetMat === "all") {
-      const subMats = ["Lid Label", "Body Label"];
+    // DYNAMIC SPLIT: Only if it's a bottle/container model and targetMat is "all"
+    if (isBottleModel && targetMat === "all") {
+      const subMats = ["Lid Label", "Body Label", "Lid", "Body"];
       subMats.forEach((name) => {
-        if (newTextures["all"] !== undefined && newTextures[name] === undefined) {
+        if (
+          newTextures["all"] !== undefined &&
+          newTextures[name] === undefined
+        ) {
           newTextures[name] = newTextures["all"];
         }
         if (newColors["all"] !== undefined && newColors[name] === undefined) {
           newColors[name] = newColors["all"];
         }
-        if (newMaterials["all"] !== undefined && newMaterials[name] === undefined) {
+        if (
+          newMaterials["all"] !== undefined &&
+          newMaterials[name] === undefined
+        ) {
           newMaterials[name] = newMaterials["all"];
         }
-        if (newLastApplied["all"] !== undefined && newLastApplied[name] === undefined) {
+        if (
+          newLastApplied["all"] !== undefined &&
+          newLastApplied[name] === undefined
+        ) {
           newLastApplied[name] = newLastApplied["all"];
         }
       });
-      
+
       // Clean up the global "all" keys
       delete newTextures["all"];
       delete newColors["all"];
@@ -267,16 +345,17 @@ export default function EditorPage() {
 
     if (typeof textureDataUrl === "string" || textureDataUrl === null) {
       if (textureDataUrl === null) {
-        if (targetMat === "all") {
-          newTextures = {};
+        if (isBottleModel && targetMat === "all") {
+          delete newTextures["Lid Label"];
+          delete newTextures["Body Label"];
           updated = true;
-        } else if (newTextures[targetMat] !== undefined) {
+        } else {
           delete newTextures[targetMat];
           updated = true;
         }
       } else {
         updated = true;
-        if (targetMat === "all") {
+        if (isBottleModel && targetMat === "all") {
           newTextures["Lid Label"] = textureDataUrl;
           newTextures["Body Label"] = textureDataUrl;
           newLastApplied["Lid Label"] = "texture";
@@ -290,21 +369,20 @@ export default function EditorPage() {
         }
       }
     }
-    
+
     if (typeof colorHex === "string" || colorHex === null) {
       if (colorHex === "none" || colorHex === null) {
-        if (targetMat === "all") {
-          newColors = {};
+        if (isBottleModel && targetMat === "all") {
+          delete newColors["Lid Label"];
+          delete newColors["Body Label"];
           updated = true;
-        } else if (newColors[targetMat] !== undefined) {
+        } else {
           delete newColors[targetMat];
           updated = true;
         }
       } else {
         updated = true;
-        if (targetMat === "all") {
-          // If the user specified a background color for "all", apply it to both Lid and Body labels
-          // and clear their PBR materials so the color shows cleanly.
+        if (isBottleModel && targetMat === "all") {
           newColors["Lid Label"] = colorHex;
           newColors["Body Label"] = colorHex;
           newLastApplied["Lid Label"] = "color";
@@ -313,6 +391,9 @@ export default function EditorPage() {
           delete newMaterials["Body Label"];
         } else {
           newColors[targetMat] = colorHex;
+          // IMPORTANT: Only clear the texture for targetMat!
+          // Keep other label textures unchanged!
+          delete newTextures[targetMat];
           delete newMaterials[targetMat];
           newLastApplied[targetMat] = "color";
         }
@@ -325,16 +406,17 @@ export default function EditorPage() {
         colors: newColors,
         materials: newMaterials,
         lastApplied: newLastApplied,
+        uvEditsApplied: true,
       });
     }
 
-    setSelectedMaterial(null);
+    setSelectedMaterial("all");
     setCurrentScreen(1);
   };
 
   const handleApplyColor = (materialId, colorHex) => {
-    const targetMat = (materialId && materialId !== "none") ? materialId : "all";
-    
+    const targetMat = materialId && materialId !== "none" ? materialId : "all";
+
     setEditorState((prevState) => {
       const splitPrev = splitState(prevState);
       const nextColors = { ...splitPrev.colors };
@@ -343,15 +425,11 @@ export default function EditorPage() {
       const nextTextures = { ...splitPrev.textures };
 
       if (targetMat === "all") {
-        // Write to the "all" key so every mesh in the traversal picks it up
         if (colorHex === null) {
-          delete nextColors["all"];
-          delete nextLastApplied["all"];
-          // Also clear any per-label overrides so they don't block
-          delete nextColors["Lid Label"];
-          delete nextLastApplied["Lid Label"];
-          delete nextColors["Body Label"];
-          delete nextLastApplied["Body Label"];
+          // Complete reset of colors/materials overrides so model returns to pure original textures/colors
+          Object.keys(nextColors).forEach((key) => delete nextColors[key]);
+          Object.keys(nextLastApplied).forEach((key) => delete nextLastApplied[key]);
+          Object.keys(nextMaterials).forEach((key) => delete nextMaterials[key]);
         } else {
           nextColors["all"] = colorHex;
           nextLastApplied["all"] = "color";
@@ -399,8 +477,8 @@ export default function EditorPage() {
   };
 
   const handleApplyMaterial = (materialId, materialType) => {
-    const targetMat = (materialId && materialId !== "none") ? materialId : "all";
-    
+    const targetMat = materialId && materialId !== "none" ? materialId : "all";
+
     setEditorState((prevState) => {
       const splitPrev = splitState(prevState);
       const nextColors = { ...splitPrev.colors };
@@ -514,6 +592,8 @@ export default function EditorPage() {
           setActiveTab={setActiveTab}
           selectedCapUrl={selectedCapUrl}
           onSelectCap={setSelectedCapUrl}
+          uvEditsApplied={editorState.uvEditsApplied}
+          onClearUvEdits={handleClearUvEdits}
         />
       </div>
       <div
