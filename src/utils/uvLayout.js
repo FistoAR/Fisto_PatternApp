@@ -115,8 +115,4 @@ export function applyUvLayoutToTexture(texture, layout, frame = UV_CANVAS_FRAME)
   texture.repeat.set(repeatX, repeatY);
   texture.needsUpdate = true;
 }
-    }
-
-    clonedUvAttr.needsUpdate = true;
-  });
-}
+  
