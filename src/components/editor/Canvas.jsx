@@ -2176,12 +2176,12 @@ const Canvas = forwardRef(
       let foundSize = null;
 
       gltf.scene.traverse((child) => {
-        if (foundSize || !child.isMesh) return;
 
         const materials = Array.isArray(child.material)
           ? child.material
           : [child.material];
         for (const material of materials) {
+          if (!material) continue;
           const image = material?.map?.image;
           const width =
             image?.naturalWidth || image?.videoWidth || image?.width;
@@ -2834,6 +2834,7 @@ const Canvas = forwardRef(
             maxV = Math.max(maxV, v);
           }
           const uvArea = (maxU - minU) * (maxV - minV);
+
 
           // Score: UV spread area is most important, bonus for having a texture map
           const materials = Array.isArray(child.material)
@@ -5206,20 +5207,6 @@ const Canvas = forwardRef(
                 </button>
               </Tooltip>
 
-              {/* Tape Layout button — only shows for tape models, inline with toolbar */}
-              {onOpenTapeLayout && modelUrl?.includes("Tape") && (
-                <>
-                  <div className="w-px h-6 bg-gray-200 mx-1" />
-                  <Tooltip label="Tape Layout">
-                    <button
-                      onClick={onOpenTapeLayout}
-                      className="px-4 h-11 rounded-full cursor-pointer bg-yellow-400 border-[2px] border-[#c0623a] text-black hover:bg-yellow-500 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center font-bold text-[14px] leading-tight text-center whitespace-nowrap"
-                    >
-                      Tape Layout
-                    </button>
-                  </Tooltip>
-                </>
-              )}
             </div>
           </div>
 

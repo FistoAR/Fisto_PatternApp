@@ -16,7 +16,7 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
   // Canvas pixel resolution
   const PPI = 300;
   const mmToPx = (mm) => (mm * PPI) / 25.4;
-  
+
   // Auto-update canvas width when dimensions or copies change
   useEffect(() => {
     const minRequiredWidth = layoutWidth * copies + repeatGap * (copies + 1);
@@ -66,14 +66,14 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
 
     for (let i = 0; i < copies; i++) {
       const x = startX + i * (layoutWidthPx + repeatGapPx);
-      
+
       // Preserve aspect ratio (object-fit: contain)
       const imgW = image.naturalWidth || image.width;
       const imgH = image.naturalHeight || image.height;
       const imgAspect = imgW && imgH ? imgW / imgH : 1;
       const boxAspect = layoutWidthPx / layoutHeightPx;
       let drawW, drawH, drawX, drawY;
-      
+
       if (imgAspect > boxAspect) {
         drawW = layoutWidthPx;
         drawH = layoutWidthPx / imgAspect;
@@ -81,7 +81,7 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
         drawH = layoutHeightPx;
         drawW = layoutHeightPx * imgAspect;
       }
-      
+
       drawX = x + (layoutWidthPx - drawW) / 2;
       drawY = startY + (layoutHeightPx - drawH) / 2;
 
@@ -94,23 +94,89 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
   }, [image, canvasWidth, layoutWidth, layoutHeight, repeatGap, copies]);
 
   const handleSave = () => {
-    drawCanvas(false); // Ensure transparent background for applied texture
-    if (canvasRef.current) {
-      const dataUrl = canvasRef.current.toDataURL("image/png");
-      onSave(dataUrl);
+    if (!image) return;
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = canvasResWidth;
+    tempCanvas.height = canvasResHeight;
+    const ctx = tempCanvas.getContext("2d");
+
+    const layoutWidthPx = mmToPx(layoutWidth);
+    const layoutHeightPx = mmToPx(layoutHeight);
+    const repeatGapPx = mmToPx(repeatGap);
+    const printSpanPx = mmToPx(printSpan);
+    const startX = (canvasResWidth - printSpanPx) / 2;
+    const startY = (canvasResHeight - layoutHeightPx) / 2;
+
+    for (let i = 0; i < copies; i++) {
+      const x = startX + i * (layoutWidthPx + repeatGapPx);
+      const imgW = image.naturalWidth || image.width;
+      const imgH = image.naturalHeight || image.height;
+      const imgAspect = imgW && imgH ? imgW / imgH : 1;
+      const boxAspect = layoutWidthPx / layoutHeightPx;
+      let drawW, drawH, drawX, drawY;
+
+      if (imgAspect > boxAspect) {
+        drawW = layoutWidthPx;
+        drawH = layoutWidthPx / imgAspect;
+      } else {
+        drawH = layoutHeightPx;
+        drawW = layoutHeightPx * imgAspect;
+      }
+
+      drawX = x + (layoutWidthPx - drawW) / 2;
+      drawY = startY + (layoutHeightPx - drawH) / 2;
+
+      ctx.drawImage(image, drawX, drawY, drawW, drawH);
     }
+
+    const dataUrl = tempCanvas.toDataURL("image/png");
+    onSave(dataUrl);
   };
 
   const handleExport = () => {
-    drawCanvas(true); // Ensure white background for export
-    if (canvasRef.current) {
-      const dataUrl = canvasRef.current.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = "tape-layout.png";
-      a.click();
+    if (!image) return;
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = canvasResWidth;
+    tempCanvas.height = canvasResHeight;
+    const ctx = tempCanvas.getContext("2d");
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvasResWidth, canvasResHeight);
+
+    const layoutWidthPx = mmToPx(layoutWidth);
+    const layoutHeightPx = mmToPx(layoutHeight);
+    const repeatGapPx = mmToPx(repeatGap);
+    const printSpanPx = mmToPx(printSpan);
+    const startX = (canvasResWidth - printSpanPx) / 2;
+    const startY = (canvasResHeight - layoutHeightPx) / 2;
+
+    for (let i = 0; i < copies; i++) {
+      const x = startX + i * (layoutWidthPx + repeatGapPx);
+      const imgW = image.naturalWidth || image.width;
+      const imgH = image.naturalHeight || image.height;
+      const imgAspect = imgW && imgH ? imgW / imgH : 1;
+      const boxAspect = layoutWidthPx / layoutHeightPx;
+      let drawW, drawH, drawX, drawY;
+
+      if (imgAspect > boxAspect) {
+        drawW = layoutWidthPx;
+        drawH = layoutWidthPx / imgAspect;
+      } else {
+        drawH = layoutHeightPx;
+        drawW = layoutHeightPx * imgAspect;
+      }
+
+      drawX = x + (layoutWidthPx - drawW) / 2;
+      drawY = startY + (layoutHeightPx - drawH) / 2;
+
+      ctx.drawImage(image, drawX, drawY, drawW, drawH);
     }
-    drawCanvas(false); // Restore transparent preview
+
+    const dataUrl = tempCanvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "tape-layout.png";
+    a.click();
   };
 
   const handleReset = () => {
@@ -244,9 +310,7 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
 
           {/* Right Preview Area */}
           <div className="flex-1 flex flex-col gap-4 min-w-0">
-            <div
-              className="flex-1 bg-[#f1f1f1] rounded-2xl border border-slate-200 shadow-inner flex items-center justify-start p-8 overflow-auto"
-            >
+            <div className="flex-1 bg-[#f1f1f1] rounded-2xl border border-slate-200 shadow-inner flex items-center justify-start p-8 overflow-auto">
               {/* Visual representation of the layout */}
               <div
                 className="relative shadow-md bg-white shrink-0"
@@ -264,7 +328,7 @@ export default function TapeLayoutScreen({ onSave, onCancel }) {
                   ref={canvasRef}
                   width={canvasResWidth}
                   height={canvasResHeight}
-                  className="hidden"
+                  style={{ position: "absolute", opacity: 0, pointerEvents: "none", zIndex: -1 }}
                 />
 
                 {/* Visual preview elements (red lines, etc.) */}

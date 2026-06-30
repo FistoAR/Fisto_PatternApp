@@ -1330,6 +1330,7 @@ export default function EditorScreen2({
                   );
                 }}
                 modelUrl={modelUrl}
+                onOpenTapeLayout={() => setShowTapeLayout(true)}
               />
             )}
 

@@ -61,6 +61,42 @@ function BackgroundImage({ url }) {
   return null;
 }
 
+function DebouncedSlider({ label, value, onChange }) {
+  const [localVal, setLocalVal] = useState(value);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    setLocalVal(value);
+  }, [value]);
+
+  const handleChange = (e) => {
+    const newVal = parseFloat(e.target.value);
+    setLocalVal(newVal);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      onChange(newVal);
+    }, 50); // 50ms throttle/debounce allows smoother UI
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
+        <span>{label}</span>
+        <span>{Math.round(localVal * 100)}%</span>
+      </div>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.01"
+        value={localVal}
+        onChange={handleChange}
+        className="w-full accent-[#c05520] cursor-pointer h-1 bg-gray-100 rounded-lg appearance-none"
+      />
+    </div>
+  );
+}
+
 import LeftSidebar from "./LeftSidebar";
 import ModelsPopup, { MODELS } from "./ModelsPopup";
 import LayoutPopup, { getSingleModelUrl } from "./LayoutPopup";
@@ -1292,13 +1328,38 @@ function AutoSizedModelWithDimensions({
       if (!brushPreviewRef.current) return;
       const { meshes, origColors } = brushPreviewRef.current;
       meshes.forEach((m, i) => {
-        const mArr = Array.isArray(m.material) ? m.material : [m.material];
-        mArr.forEach((mat, j) => {
-          if (origColors[i] && origColors[i][j] !== undefined) {
-            mat.color.copy(origColors[i][j]);
-            mat.needsUpdate = true;
-          }
+        const ms = Array.isArray(m.material) ? m.material : [m.material];
+        const { base, decal } = origColors[i];
+        
+        ms.forEach((mat, j) => {
+          mat.color.copy(base[j].color);
+          mat.opacity = base[j].opacity;
+          mat.transparent = base[j].transparent;
+          mat.map = base[j].map;
+          mat.normalMap = base[j].normalMap;
+          mat.roughnessMap = base[j].roughnessMap;
+          mat.metalnessMap = base[j].metalnessMap;
+          mat.aoMap = base[j].aoMap;
+          mat.bumpMap = base[j].bumpMap;
+          mat.roughness = base[j].roughness;
+          mat.metalness = base[j].metalness;
+          mat.needsUpdate = true;
         });
+
+        if (decal && m.userData.decalMesh) {
+          m.userData.decalMesh.visible = decal.visible;
+          const dMat = m.userData.decalMesh.material;
+          dMat.color.copy(decal.color);
+          dMat.map = decal.map;
+          dMat.normalMap = decal.normalMap;
+          dMat.roughnessMap = decal.roughnessMap;
+          dMat.metalnessMap = decal.metalnessMap;
+          dMat.aoMap = decal.aoMap;
+          dMat.bumpMap = decal.bumpMap;
+          dMat.roughness = decal.roughness;
+          dMat.metalness = decal.metalness;
+          dMat.needsUpdate = true;
+        }
       });
       brushPreviewRef.current = null;
       invalidate();
@@ -1313,11 +1374,7 @@ function AutoSizedModelWithDimensions({
 
     const handleBrushMove = (e) => {
       if (!colorBrushActive || !brushColor) return;
-      // Skip visual preview for remove/none modes — nothing to tint
-      if (brushColor === "__remove__" || brushColor === "__none__") {
-        restorePreview();
-        return;
-      }
+      
       const rect = canvas.getBoundingClientRect();
       const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1333,7 +1390,10 @@ function AutoSizedModelWithDimensions({
       const mArr = Array.isArray(hitMesh.material)
         ? hitMesh.material
         : [hitMesh.material];
-      const matId = mArr[0]?.name || mArr[0]?.uuid || "all";
+      
+      const matIndex = hits[0].face && hits[0].face.materialIndex !== undefined ? hits[0].face.materialIndex : 0;
+      const hitMat = mArr[matIndex];
+      const matId = hitMat?.name || hitMat?.uuid || "all";
 
       // Skip re-preview if same material
       if (brushPreviewRef.current?.materialId === matId) return;
@@ -1347,19 +1407,93 @@ function AutoSizedModelWithDimensions({
         return ms.some((m) => (m.name || m.uuid) === matId);
       });
 
-      // Determine preview color — transparent shows as half-opacity white tint
+      const isRemove = brushColor === "__remove__" || brushColor === "__none__";
       const previewHex = brushColor === "transparent" ? "#ffffff" : brushColor;
 
       // Save original colors and apply preview tint
       const origColors = sharedMeshes.map((obj) => {
         const ms = Array.isArray(obj.material) ? obj.material : [obj.material];
-        const saved = ms.map((m) => m.color.clone());
-        const previewColor = new THREE.Color(previewHex);
+        const saved = ms.map((m) => ({
+          color: m.color.clone(),
+          opacity: m.opacity,
+          transparent: m.transparent,
+          map: m.map,
+          normalMap: m.normalMap,
+          roughnessMap: m.roughnessMap,
+          metalnessMap: m.metalnessMap,
+          aoMap: m.aoMap,
+          bumpMap: m.bumpMap,
+          roughness: m.roughness,
+          metalness: m.metalness,
+        }));
+        
+        let savedDecal = null;
+        if (obj.userData.decalMesh && obj.userData.decalMesh.visible) {
+          const dMat = obj.userData.decalMesh.material;
+          savedDecal = { 
+            color: dMat.color.clone(), 
+            map: dMat.map, 
+            normalMap: dMat.normalMap,
+            roughnessMap: dMat.roughnessMap,
+            metalnessMap: dMat.metalnessMap,
+            aoMap: dMat.aoMap,
+            bumpMap: dMat.bumpMap,
+            roughness: dMat.roughness,
+            metalness: dMat.metalness,
+            visible: obj.userData.decalMesh.visible 
+          };
+          
+          if (isRemove) {
+             obj.userData.decalMesh.visible = false;
+          } else {
+             dMat.color.copy(new THREE.Color(previewHex));
+             dMat.map = null;
+             dMat.normalMap = null;
+             dMat.roughnessMap = null;
+             dMat.metalnessMap = null;
+             dMat.aoMap = null;
+             dMat.bumpMap = null;
+             dMat.roughness = 0.5;
+             dMat.metalness = 0.1;
+             dMat.needsUpdate = true;
+          }
+        }
+
+        const previewColor = isRemove ? null : new THREE.Color(previewHex);
         ms.forEach((m) => {
-          m.color.copy(previewColor);
+          const isTargetMat = (m.name || m.uuid) === matId;
+          if (!isTargetMat) return; // ONLY tint the hovered material!
+
+          if (isRemove) {
+             m.color.setHex(m.userData.originalColorHex !== undefined ? m.userData.originalColorHex : 0xffffff);
+             m.map = m.userData.originalMap !== undefined ? m.userData.originalMap : null;
+             m.opacity = m.userData.originalOpacity !== undefined ? m.userData.originalOpacity : 1.0;
+             m.transparent = m.userData.originalTransparent !== undefined ? m.userData.originalTransparent : false;
+             
+             // Restore original physical properties
+             m.roughness = m.userData.originalRoughness !== undefined ? m.userData.originalRoughness : 0.5;
+             m.metalness = m.userData.originalMetalness !== undefined ? m.userData.originalMetalness : 0.1;
+             m.normalMap = null;
+             m.roughnessMap = null;
+             m.metalnessMap = null;
+             m.aoMap = null;
+             m.bumpMap = null;
+          } else {
+             m.color.copy(previewColor);
+             m.map = null;
+             m.normalMap = null;
+             m.roughnessMap = null;
+             m.metalnessMap = null;
+             m.aoMap = null;
+             m.bumpMap = null;
+             m.roughness = 0.5;
+             m.metalness = 0.1;
+             m.transparent = false;
+             m.opacity = 1.0;
+          }
           m.needsUpdate = true;
         });
-        return saved;
+        return { base: saved, decal: savedDecal };
       });
 
       brushPreviewRef.current = {
@@ -1394,7 +1528,10 @@ function AutoSizedModelWithDimensions({
       const mArr = Array.isArray(hitMesh.material)
         ? hitMesh.material
         : [hitMesh.material];
-      const matId = mArr[0]?.name || mArr[0]?.uuid || "all";
+        
+      const matIndex = hits[0].face && hits[0].face.materialIndex !== undefined ? hits[0].face.materialIndex : 0;
+      const hitMat = mArr[matIndex];
+      const matId = hitMat?.name || hitMat?.uuid || "all";
 
       // Restore preview before applying so state-driven effect takes over
       restorePreview();
@@ -1688,7 +1825,9 @@ function AutoSizedModelWithDimensions({
           last === "color"
             ? null
             : appliedMaterials
-              ? appliedMaterials[id] || appliedMaterials["all"]
+              ? appliedMaterials[id] !== undefined
+                ? appliedMaterials[id]
+                : appliedMaterials["all"]
               : null;
 
         let textureUrl = null;
@@ -2050,8 +2189,8 @@ function AutoSizedModelWithDimensions({
               textureCache
                 .load(url)
                 .then((texture) => {
-                  texture.wrapS = THREE.MirroredRepeatWrapping;
-                  texture.wrapT = THREE.MirroredRepeatWrapping;
+                  texture.wrapS = THREE.RepeatWrapping;
+                  texture.wrapT = THREE.RepeatWrapping;
                   texture.flipY = false;
                   const imageAspect =
                     texture.image?.width && texture.image?.height
@@ -2062,6 +2201,15 @@ function AutoSizedModelWithDimensions({
                   if (isColorSpace) texture.colorSpace = THREE.SRGBColorSpace;
                   if (m[mapType]) m[mapType].dispose();
                   m[mapType] = texture;
+                  
+                  if (mapType !== "map" && obj.userData.decalMesh) {
+                    const dMat = obj.userData.decalMesh.material;
+                    if (isWearableModel) {
+                      dMat[mapType] = texture;
+                      dMat.needsUpdate = true;
+                    }
+                  }
+                  
                   m.needsUpdate = true;
                   endTextureLoad();
                   invalidate();
@@ -2128,6 +2276,32 @@ function AutoSizedModelWithDimensions({
         }
         if (customRoughness !== undefined) {
           m.roughness = customRoughness;
+        }
+
+        // Sync physical properties and PBR maps to the decal mesh so Editor 2 graphics
+        // perfectly match the underlying texture and look realistic.
+        if (obj.userData.decalMesh) {
+          const dMat = obj.userData.decalMesh.material;
+          if (isWearableModel) {
+            dMat.roughness = m.roughness;
+            dMat.metalness = m.metalness;
+            dMat.normalMap = m.normalMap;
+            dMat.roughnessMap = m.roughnessMap;
+            dMat.metalnessMap = m.metalnessMap;
+            dMat.aoMap = m.aoMap;
+            dMat.bumpMap = m.bumpMap;
+            dMat.bumpScale = m.bumpScale;
+          } else {
+            dMat.roughness = 0.5;
+            dMat.metalness = 0.1;
+            dMat.normalMap = null;
+            dMat.roughnessMap = null;
+            dMat.metalnessMap = null;
+            dMat.aoMap = null;
+            dMat.bumpMap = null;
+            dMat.bumpScale = 1;
+          }
+          dMat.needsUpdate = true;
         }
 
         if (shouldApply) {
@@ -3938,94 +4112,97 @@ export default function EditorScreen1({
               !(modelUrl && modelUrl.toLowerCase().includes("tape")) && (
                 <div className="flex flex-col gap-3.5 pt-2 border-t border-gray-100 mt-1">
                   {/* Metallic Slider */}
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
-                      <span>Metallic</span>
-                      <span>
-                        {Math.round(
-                          (appliedMetallic?.[
-                            selectedMaterial && selectedMaterial !== "none"
-                              ? selectedMaterial
-                              : "all"
-                          ] ?? 0.1) * 100,
-                        )}
-                        %
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      defaultValue={
-                        appliedMetallic?.[
-                          selectedMaterial && selectedMaterial !== "none"
-                            ? selectedMaterial
-                            : "all"
-                        ] ?? 0.1
+                  <DebouncedSlider
+                    label="Metallic"
+                    value={
+                      appliedMetallic?.[
+                        selectedMaterial && selectedMaterial !== "none"
+                          ? selectedMaterial
+                          : "all"
+                      ] ?? 0.1
+                    }
+                    onChange={(val) => {
+                      if (onApplyMetallic) {
+                        onApplyMetallic(selectedMaterial, val);
                       }
-                      key={`metallic-${selectedMaterial}-${appliedMetallic?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.1}`}
-                      onChange={(e) => {
-                        if (onApplyMetallic) {
-                          onApplyMetallic(
-                            selectedMaterial,
-                            parseFloat(e.target.value),
-                          );
-                        }
-                      }}
-                      className="w-full accent-[#c05520] cursor-pointer h-1 bg-gray-100 rounded-lg appearance-none"
-                    />
-                  </div>
+                    }}
+                  />
 
                   {/* Roughness Slider */}
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between items-center text-xs font-semibold text-gray-500">
-                      <span>Roughness</span>
-                      <span>
-                        {Math.round(
-                          (appliedRoughness?.[
-                            selectedMaterial && selectedMaterial !== "none"
-                              ? selectedMaterial
-                              : "all"
-                          ] ?? 0.5) * 100,
-                        )}
-                        %
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      defaultValue={
-                        appliedRoughness?.[
-                          selectedMaterial && selectedMaterial !== "none"
-                            ? selectedMaterial
-                            : "all"
-                        ] ?? 0.5
+                  <DebouncedSlider
+                    label="Roughness"
+                    value={
+                      appliedRoughness?.[
+                        selectedMaterial && selectedMaterial !== "none"
+                          ? selectedMaterial
+                          : "all"
+                      ] ?? 0.5
+                    }
+                    onChange={(val) => {
+                      if (onApplyRoughness) {
+                        onApplyRoughness(selectedMaterial, val);
                       }
-                      key={`roughness-${selectedMaterial}-${appliedRoughness?.[selectedMaterial && selectedMaterial !== "none" ? selectedMaterial : "all"] ?? 0.5}`}
-                      onChange={(e) => {
-                        if (onApplyRoughness) {
-                          onApplyRoughness(
-                            selectedMaterial,
-                            parseFloat(e.target.value),
-                          );
-                        }
-                      }}
-                      className="w-full accent-[#c05520] cursor-pointer h-1 bg-gray-100 rounded-lg appearance-none"
-                    />
-                  </div>
+                    }}
+                  />
                 </div>
               )}
 
             {/* Texture Library */}
             {true && (
               <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Texture Library
-                  </label>
+                <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Texture Library
+                    </label>
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={() =>
+                          setIsTextureDropdownOpen(!isTextureDropdownOpen)
+                        }
+                        className={`p-1 rounded-full border text-gray-500 hover:text-gray-900 bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer flex items-center justify-center transition-all ${isTextureDropdownOpen ? "bg-gray-100 border-gray-300" : ""}`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2.5}
+                          stroke="currentColor"
+                          className="w-3.5 h-3.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="m19.5 8.25-7.5 7.5-7.5-7.5"
+                          />
+                        </svg>
+                      </button>
+
+                      {isTextureDropdownOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setIsTextureDropdownOpen(false)}
+                          />
+                          <div className="absolute left-0 top-full mt-1.5 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto py-1.5 flex flex-col">
+                            {textureLibrary.map((category) => (
+                              <button
+                                key={category.category}
+                                onClick={() => {
+                                  setActiveTextureCategory(category.category);
+                                  setIsTextureDropdownOpen(false);
+                                }}
+                                className={`px-4 py-2 text-left text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer ${activeTextureCategory === category.category ? "text-[#c05520] bg-orange-50/50" : "text-gray-700"}`}
+                              >
+                                {category.category}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
                   {!!(
                     appliedMaterials?.[
                       isWearableModel || isTapeModel
@@ -4071,74 +4248,6 @@ export default function EditorScreen1({
                   )}
                 </div>
 
-                {/* Category Tabs */}
-                <div className="flex gap-1.5 py-1 items-center justify-between relative">
-                  <div className="flex gap-1.5 overflow-hidden flex-wrap max-h-8">
-                    {textureLibrary
-                      .filter(
-                        (c, i) => i < 3 || c.category === activeTextureCategory,
-                      )
-                      .map((category) => (
-                        <button
-                          key={category.category}
-                          onClick={() =>
-                            setActiveTextureCategory(category.category)
-                          }
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTextureCategory === category.category ? "bg-[#c05520] text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-                        >
-                          {category.category}
-                        </button>
-                      ))}
-                  </div>
-
-                  <div className="relative shrink-0">
-                    <button
-                      onClick={() =>
-                        setIsTextureDropdownOpen(!isTextureDropdownOpen)
-                      }
-                      className={`p-1.5 rounded-full border text-gray-500 hover:text-gray-900 bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer flex items-center justify-center transition-all ${isTextureDropdownOpen ? "bg-gray-100 border-gray-300" : ""}`}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2.5}
-                        stroke="currentColor"
-                        className="w-4 h-4"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="m19.5 8.25-7.5 7.5-7.5-7.5"
-                        />
-                      </svg>
-                    </button>
-
-                    {isTextureDropdownOpen && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => setIsTextureDropdownOpen(false)}
-                        />
-                        <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto py-1.5 flex flex-col">
-                          {textureLibrary.map((category) => (
-                            <button
-                              key={category.category}
-                              onClick={() => {
-                                setActiveTextureCategory(category.category);
-                                setIsTextureDropdownOpen(false);
-                              }}
-                              className={`px-4 py-2 text-left text-xs font-semibold hover:bg-gray-50 transition-colors cursor-pointer ${activeTextureCategory === category.category ? "text-[#c05520] bg-orange-50/50" : "text-gray-700"}`}
-                            >
-                              {category.category}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
                 {/* Texture Grid */}
                 <div className="grid grid-cols-4 gap-2 mt-1 max-h-[200px] overflow-y-auto pr-1">
                   {textureLibrary
@@ -4178,8 +4287,6 @@ export default function EditorScreen1({
                           <img
                             src={texture.preview}
                             alt={texture.name}
-                            loading="lazy"
-                            decoding="async"
                             className="absolute inset-0 w-full h-full object-cover"
                           />
                         ) : (

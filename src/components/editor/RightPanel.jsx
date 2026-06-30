@@ -1942,6 +1942,8 @@ function AutoSizedModel({
           isTransparent = true;
         } else if (colorHex) {
           finalColorHex = colorHex;
+        } else if (modelUrl && modelUrl.toLowerCase().includes("tape")) {
+          finalColorHex = "#ffffff";
         }
 
         if (isTransparent) {

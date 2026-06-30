@@ -216,7 +216,8 @@ export default function UploadsPopup({
   onUpdateTextureGaps,
   onDeleteUploadedImage,
   onTogglePinUploadedImage,
-  modelUrl
+  modelUrl,
+  onOpenTapeLayout
 }) {
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -379,6 +380,51 @@ export default function UploadsPopup({
 
       {/* ── Scrollable Body ── */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '20px 20px 20px', display: 'flex', flexDirection: 'column', gap: 2, scrollbarWidth: 'thin' }}>
+
+        {onOpenTapeLayout && modelUrl?.includes('Tape') && (
+          <div className="mb-4">
+            <button
+              onClick={onOpenTapeLayout}
+              className="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-[#c05520] bg-transparent hover:bg-orange-50 transition-all duration-300 cursor-pointer group shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center border border-orange-200">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-4 h-4 text-[#c05520]"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9M20.25 20.25v-4.5m0 4.5h-4.5m4.5 0l-6-6"
+                    />
+                  </svg>
+                </div>
+                <span className="font-bold text-[#c05520] text-[15px] tracking-wide">
+                  Tape Layout
+                </span>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2.5}
+                stroke="currentColor"
+                className="w-4 h-4 text-[#c05520] group-hover:translate-x-1 transition-transform"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* ── 1. Upload Type Selector ── */}
         <div style={{ flexShrink: 0 }} className='mb-5'>

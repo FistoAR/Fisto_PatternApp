@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import EditorScreen1 from "../components/editor/EditorScreen1";
 import EditorScreen2 from "../components/editor/EditorScreen2";
+import { MODELS } from "../components/editor/ModelsPopup";
 import roundContainerUrl from "../assets/models/Food Containers/Round/Round.glb?url";
 import { getSingleModelUrl } from "../components/editor/LayoutPopup";
 import cap1Url from "../assets/models/Drinkware Bottles/Caps/Cap1.glb?url";
@@ -148,7 +149,6 @@ export default function EditorPage() {
   const canRedo = historyIndex.current < history.current.length - 1;
 
   const splitState = (state) => {
-    const subMats = ["Lid Label", "Body Label", "Lid", "Body"];
     const newState = {
       ...state,
       textures: { ...state.textures },
@@ -159,25 +159,34 @@ export default function EditorPage() {
       roughness: { ...state.roughness },
     };
 
-    const keys = [
-      "textures",
-      "colors",
-      "materials",
-      "lastApplied",
-      "metallic",
-      "roughness",
-    ];
-    keys.forEach((key) => {
-      if (newState[key]["all"] !== undefined) {
-        const val = newState[key]["all"];
-        subMats.forEach((name) => {
-          if (newState[key][name] === undefined) {
-            newState[key][name] = val;
-          }
-        });
-        delete newState[key]["all"];
-      }
-    });
+    const isBottle =
+      modelUrl &&
+      (modelUrl.toLowerCase().includes("plastic") ||
+        modelUrl.toLowerCase().includes("glass") ||
+        modelUrl.toLowerCase().includes("soft"));
+
+    if (isBottle) {
+      const subMats = ["Lid Label", "Body Label", "Lid", "Body"];
+      const keys = [
+        "textures",
+        "colors",
+        "materials",
+        "lastApplied",
+        "metallic",
+        "roughness",
+      ];
+      keys.forEach((key) => {
+        if (newState[key]["all"] !== undefined) {
+          const val = newState[key]["all"];
+          subMats.forEach((name) => {
+            if (newState[key][name] === undefined) {
+              newState[key][name] = val;
+            }
+          });
+          delete newState[key]["all"];
+        }
+      });
+    }
 
     return newState;
   };
@@ -187,7 +196,7 @@ export default function EditorPage() {
     setEditorState((prevState) => {
       const splitPrev = splitState(prevState);
       const nextMetallic = { ...splitPrev.metallic };
-      const targets = targetMat === "all" ? ["Lid Label", "Body Label", "Lid", "Body"] : [targetMat];
+      const targets = targetMat === "all" ? ["all", "Lid Label", "Body Label", "Lid", "Body"] : [targetMat];
       targets.forEach((t) => {
         nextMetallic[t] = value;
       });
@@ -204,7 +213,7 @@ export default function EditorPage() {
     setEditorState((prevState) => {
       const splitPrev = splitState(prevState);
       const nextRoughness = { ...splitPrev.roughness };
-      const targets = targetMat === "all" ? ["Lid Label", "Body Label", "Lid", "Body"] : [targetMat];
+      const targets = targetMat === "all" ? ["all", "Lid Label", "Body Label", "Lid", "Body"] : [targetMat];
       targets.forEach((t) => {
         nextRoughness[t] = value;
       });
@@ -303,6 +312,14 @@ export default function EditorPage() {
         modelUrl.toLowerCase().includes("glass") ||
         modelUrl.toLowerCase().includes("soft"));
 
+    const isWearableModel =
+      modelUrl &&
+      (modelUrl.toLowerCase().includes("t s1") ||
+        modelUrl.toLowerCase().includes("hoodie") ||
+        MODELS.some(
+          (m) => m.modelUrl === modelUrl && m.category === "Fashion Wear",
+        ));
+
     let newTextures = { ...editorState.textures };
     let newColors = { ...editorState.colors };
     let newMaterials = { ...editorState.materials };
@@ -360,11 +377,8 @@ export default function EditorPage() {
           newTextures["Body Label"] = textureDataUrl;
           newLastApplied["Lid Label"] = "texture";
           newLastApplied["Body Label"] = "texture";
-          delete newMaterials["Lid Label"];
-          delete newMaterials["Body Label"];
         } else {
           newTextures[targetMat] = textureDataUrl;
-          delete newMaterials[targetMat];
           newLastApplied[targetMat] = "texture";
         }
       }
@@ -387,14 +401,13 @@ export default function EditorPage() {
           newColors["Body Label"] = colorHex;
           newLastApplied["Lid Label"] = "color";
           newLastApplied["Body Label"] = "color";
-          delete newMaterials["Lid Label"];
-          delete newMaterials["Body Label"];
         } else {
           newColors[targetMat] = colorHex;
           // IMPORTANT: Only clear the texture for targetMat!
           // Keep other label textures unchanged!
-          delete newTextures[targetMat];
-          delete newMaterials[targetMat];
+          if (!isWearableModel) {
+            delete newTextures[targetMat];
+          }
           newLastApplied[targetMat] = "color";
         }
       }
@@ -416,6 +429,13 @@ export default function EditorPage() {
 
   const handleApplyColor = (materialId, colorHex) => {
     const targetMat = materialId && materialId !== "none" ? materialId : "all";
+    const isWearableModel =
+      modelUrl &&
+      (modelUrl.toLowerCase().includes("t s1") ||
+        modelUrl.toLowerCase().includes("hoodie") ||
+        MODELS.some(
+          (m) => m.modelUrl === modelUrl && m.category === "Fashion Wear",
+        ));
 
     setEditorState((prevState) => {
       const splitPrev = splitState(prevState);
@@ -429,30 +449,46 @@ export default function EditorPage() {
           // Complete reset of colors/materials overrides so model returns to pure original textures/colors
           Object.keys(nextColors).forEach((key) => delete nextColors[key]);
           Object.keys(nextLastApplied).forEach((key) => delete nextLastApplied[key]);
-          Object.keys(nextMaterials).forEach((key) => delete nextMaterials[key]);
+          if (!isWearableModel) {
+            Object.keys(nextMaterials).forEach((key) => delete nextMaterials[key]);
+            Object.keys(nextTextures).forEach((key) => delete nextTextures[key]);
+          }
         } else {
           nextColors["all"] = colorHex;
           nextLastApplied["all"] = "color";
-          delete nextMaterials["all"];
-          // Clear all per-material color/material overrides so they don't block the new global color
-          Object.keys(nextColors).forEach((key) => {
-            if (key !== "all") delete nextColors[key];
-          });
-          Object.keys(nextMaterials).forEach((key) => {
-            if (key !== "all") delete nextMaterials[key];
-          });
-          Object.keys(nextLastApplied).forEach((key) => {
-            if (key !== "all") delete nextLastApplied[key];
-          });
+          if (!isWearableModel) {
+            nextMaterials["all"] = null;
+            delete nextTextures["all"];
+            // Clear all per-material color/material overrides so they don't block the new global color
+            Object.keys(nextColors).forEach((key) => {
+              if (key !== "all") delete nextColors[key];
+            });
+            Object.keys(nextMaterials).forEach((key) => {
+              if (key !== "all") delete nextMaterials[key];
+            });
+            Object.keys(nextTextures).forEach((key) => {
+              if (key !== "all") delete nextTextures[key];
+            });
+            Object.keys(nextLastApplied).forEach((key) => {
+              if (key !== "all") delete nextLastApplied[key];
+            });
+          }
         }
       } else {
         if (colorHex === null) {
           delete nextColors[targetMat];
           delete nextLastApplied[targetMat];
+          if (!isWearableModel) {
+            delete nextMaterials[targetMat];
+            delete nextTextures[targetMat];
+          }
         } else {
           nextColors[targetMat] = colorHex;
           nextLastApplied[targetMat] = "color";
-          delete nextMaterials[targetMat];
+          if (!isWearableModel) {
+            nextMaterials[targetMat] = null;
+            delete nextTextures[targetMat];
+          }
         }
       }
 
@@ -478,6 +514,13 @@ export default function EditorPage() {
 
   const handleApplyMaterial = (materialId, materialType) => {
     const targetMat = materialId && materialId !== "none" ? materialId : "all";
+    const isWearableModel =
+      modelUrl &&
+      (modelUrl.toLowerCase().includes("t s1") ||
+        modelUrl.toLowerCase().includes("hoodie") ||
+        MODELS.some(
+          (m) => m.modelUrl === modelUrl && m.category === "Fashion Wear",
+        ));
 
     setEditorState((prevState) => {
       const splitPrev = splitState(prevState);
@@ -499,7 +542,10 @@ export default function EditorPage() {
           nextMaterials["all"] = materialType;
           nextLastApplied["all"] = "material";
           delete nextColors["all"];
-          // Clear all per-material color/material overrides so they don't block the new global material
+          if (!isWearableModel) {
+            delete nextTextures["all"];
+          }
+          // Clear all per-material color/material/texture overrides so they don't block the new global material
           Object.keys(nextColors).forEach((key) => {
             if (key !== "all") delete nextColors[key];
           });
@@ -509,6 +555,11 @@ export default function EditorPage() {
           Object.keys(nextLastApplied).forEach((key) => {
             if (key !== "all") delete nextLastApplied[key];
           });
+          if (!isWearableModel) {
+            Object.keys(nextTextures).forEach((key) => {
+              if (key !== "all") delete nextTextures[key];
+            });
+          }
         }
       } else {
         if (materialType === null) {
@@ -518,6 +569,9 @@ export default function EditorPage() {
           nextMaterials[targetMat] = materialType;
           nextLastApplied[targetMat] = "material";
           delete nextColors[targetMat];
+          if (!isWearableModel) {
+            delete nextTextures[targetMat];
+          }
         }
       }
 
