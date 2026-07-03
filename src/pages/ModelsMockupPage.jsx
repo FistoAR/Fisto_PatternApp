@@ -14,8 +14,8 @@ import packagingTapesIcon from "../assets/images/MockupsSection/Icons/tapes.webp
 import drinkWareIcon from "../assets/images/MockupsSection/Icons/drinkwareBottle.webp";
 import ecoFriendlyBagsIcon from "../assets/images/MockupsSection/Icons/eco-bag.webp";
 import fashionIcon from "../assets/images/MockupsSection/Icons/tshirt.webp";
-import foodContainerNewIcon from "../assets/images/MockupsSection/Icons/foodContainer.webp";
-import foodPackingIcon from "../assets/images/MockupsSection/Icons/foodPacking.webp";
+import foodContainerNewIcon from "../assets/images/MockupsSection/Icons/FoodContainer.webp";
+import foodPackingIcon from "../assets/images/MockupsSection/Icons/FoodPacking.webp";
 import cartonBox from "../assets/images/MockupsSection/Icons/cartonBoxes.webp";
 import allProducts from "../assets/images/MockupsSection/Icons/all.webp";
 
