@@ -1083,8 +1083,8 @@ function drawUVs(
     if (!uvCacheCanvas) {
       uvCacheCanvas = document.createElement("canvas");
     }
-    uvCacheCanvas.width = w;
-    uvCacheCanvas.height = h;
+    uvCacheCanvas.width = ctx.canvas.width;
+    uvCacheCanvas.height = ctx.canvas.height;
     const cacheCtx = uvCacheCanvas.getContext("2d");
 
     cacheCtx.save();
